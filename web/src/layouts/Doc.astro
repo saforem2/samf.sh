@@ -391,11 +391,12 @@ const articleSchema =
   .footnote-popover). A frontmatter import would reorder it and flip those
   overrides.
 
-  DEV-ONLY GOTCHA: Vite does not reliably HMR an @import-ed CSS file — edits
-  to Doc.css often won't show up on save OR on hard reload, because the
-  stale cache is in Vite's module transform, not the browser. If a Doc.css
-  change isn't reflecting, touch this file (Doc.astro) to reprocess the
-  block, or restart the dev server. Production builds always pick it up.
+  Vite used to not reliably HMR an @import-ed CSS file: edits to Doc.css
+  would show up neither on save nor on hard reload, because the stale copy
+  sat in Vite's module transform rather than the browser. That no longer
+  reproduces — re-tested on Astro 5.18.0 with four consecutive edits, each
+  live in about three seconds. If it ever regresses, the workaround was to
+  touch this file so the block is reprocessed, or restart the dev server.
 -->
 <style is:global>
     /* KaTeX CSS is imported from frontmatter (above) so Vite copies its fonts;
