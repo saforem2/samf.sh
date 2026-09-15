@@ -1611,6 +1611,35 @@ img {
     height: auto;
 }
 
+/* Cap inline figures at the prose measure. A screenshot illustrates the
+   paragraph next to it, so running it wider inverts the emphasis — on a wide
+   monitor a 2162px terminal capture filled the whole 904px article column
+   while the prose beside it stopped at 84ch (672px).
+
+   Keyed on the ELEMENT, not on a parent: MDX emits a block-level <picture> as
+   a direct child of <main>, not wrapped in a <p> or <figure>, so a
+   `p > img` style selector matches none of them.
+
+   Capping the <picture> is enough for the themed pairs — the inner <img> is
+   already `max-width: 100%` of it — but bare `![](…)` images (e.g. a GIF) have
+   no <picture>, hence both. #main-content scopes it to article content and
+   outranks the unscoped `img` rule above.
+
+   The three deliberate wide cases keep their own widths:
+     .figure-margin  — right-floated margin figure (float rule above)
+     .figure-row     — multi-figure row
+     .svgbob-figure  — full-height ASCII diagrams, shown at native size */
+#main-content
+    :is(img, picture):not(
+        .svgbob-figure,
+        .figure-margin,
+        .figure-row,
+        :is(.figure-margin, .figure-row) *
+    ) {
+    max-width: var(--prose-measure);
+    height: auto;
+}
+
 /* ── Reader view ──────────────────────────────────────────────────────
    Per-page distraction-free mode, toggled by html[data-reader] (set by
    the toggleReader() script in Doc.astro). Pure CSS overlay: hides the
