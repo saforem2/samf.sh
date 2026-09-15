@@ -1,0 +1,92 @@
+---
+/**
+ * Deferred mount for the letterbird contact embed.
+ *
+ * The embed is by far the most expensive thing on /about/: the iframe it
+ * injects pulls Turbo, Stimulus and the whole of CodeMirror (~40 modules from
+ * ga.jspm.io) just to render a contact form. Measured on Slow 4G with 4x CPU
+ * throttling, eager vs. blocked:
+ *
+ *     DOMContentLoaded   1716ms -> 266ms
+ *     load               2864ms -> 911ms
+ *
+ * It also sits roughly 6.7 screens below the fold, so nearly everyone who
+ * loads the page pays that cost without ever seeing the form.
+ *
+ * `loading="lazy"` is not available here: the iframe is created by the embed
+ * script itself, so the attribute can only be set after the fetch has already
+ * started. So the script tag is injected by hand, when the form can first be
+ * seen.
+ *
+ * That moment is the callout opening, not a scroll position. The contact
+ * callout renders as a COLLAPSED <details>, and a collapsed <details> clips
+ * its content, so IntersectionObserver reports the mount as not intersecting
+ * however far you scroll — an intersection trigger here never fires at all.
+ * The toggle event is both correct and tighter: the embed loads only for
+ * someone who actually opens the form.
+ *
+ * The intersection path is kept as a fallback for the case where the callout
+ * markup changes and this is no longer inside a <details>.
+ */
+---
+
+{
+    /* Reserved space, so the injected iframe does not shove the surrounding
+    text down when it arrives. Measured locally this LOWERS CLS on the page
+    rather than adding to it. */
+}
+<div id="letterbird-mount" style="min-height: 10lh;"></div>
+
+{
+    /* is:inline keeps this in the page as written. Without it Astro hoists the
+    block into its bundling pipeline, where this one was silently dropped: no
+    inline copy, no _astro chunk, so the mount div sat inert and the form never
+    loaded at all. Verified in dist/ before and after. */
+}
+<script is:inline>
+    const mount = document.getElementById('letterbird-mount')
+
+    if (mount) {
+        const load = () => {
+            const s = document.createElement('script')
+            s.dataset.letterbirduser = 'sam'
+            s.src = 'https://letterbird.co/embed/v1.js'
+            mount.appendChild(s)
+        }
+
+        // The callout this lives in is a <details> that renders COLLAPSED, and
+        // a collapsed <details> clips its content, so IntersectionObserver
+        // reports the mount as not intersecting no matter how far you scroll.
+        // Scroll alone is therefore the wrong trigger. Load when the callout is
+        // actually opened, which is the first moment anyone can see the form.
+        const details = mount.closest('details')
+
+        if (details) {
+            if (details.open) {
+                load()
+            } else {
+                details.addEventListener('toggle', function onToggle() {
+                    if (details.open) {
+                        details.removeEventListener('toggle', onToggle)
+                        load()
+                    }
+                })
+            }
+        } else if ('IntersectionObserver' in window) {
+            // Not inside a disclosure (callout markup changed): fall back to
+            // loading shortly before it scrolls into view.
+            const io = new IntersectionObserver(
+                (entries, obs) => {
+                    if (entries.some((e) => e.isIntersecting)) {
+                        obs.disconnect()
+                        load()
+                    }
+                },
+                { rootMargin: '600px' },
+            )
+            io.observe(mount)
+        } else {
+            load()
+        }
+    }
+</script>

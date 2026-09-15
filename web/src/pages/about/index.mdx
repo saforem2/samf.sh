@@ -6,6 +6,7 @@ order: 0
 
 import { getCollection } from 'astro:content'
 import LastUpdated from '@/components/LastUpdated.astro'
+import LetterbirdContact from '@/components/LetterbirdContact.astro'
 
 export const allPosts = (await getCollection('docs'))
     .filter((doc) => {
@@ -1809,9 +1810,7 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
 >
 > > [!TIP] 💌 Contact
 > >
-> > <script
-> >     data-letterbirduser="sam"
-> >     src="https://letterbird.co/embed/v1.js"></script>
+> > <LetterbirdContact />
 >
 > <div style="text-align:center;">
 >
