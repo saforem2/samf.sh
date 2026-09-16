@@ -6,6 +6,12 @@ import { makeSidebarOrderedPages } from '@/utils/content'
 import { compareUrlPaths, splitPathChunks } from '@/utils/url'
 import { getReadingTime } from '@/utils/readingTime'
 import ShareButtons from '@/components/ShareButtons.astro'
+import CiteThis from '@/components/CiteThis.astro'
+import {
+    citationKeyBase,
+    resolveCitationKey,
+    type CitationKind,
+} from '@/utils/citation'
 import { getCollection } from 'astro:content'
 import { execSync } from 'node:child_process'
 // KaTeX CSS via frontmatter import so Vite processes its relative
@@ -311,6 +317,56 @@ if (isPost) {
         .slice(0, 3)
 }
 
+// ---------------------------------------------------------------------------
+// "Cite this post/talk" block.
+//
+// Only pages that are a real dated work get one: 58 of the 70 posts+talks.
+// The rest are section index pages (/posts/, /posts/2025/, ...) with no date,
+// plus 4 slide decks that render through SlideLayout instead of this layout.
+//
+// The key needs to know about EVERY citable page, not just this one, because
+// a few pages share a base key (the same talk given three times, two "Building
+// PyTorch from Source" posts, and one post/talk pair with identical titles).
+// resolveCitationKey appends MMDD to each member of a colliding group, so we
+// collect all bases first.
+// ---------------------------------------------------------------------------
+const citationDate = frontmatter.date ? parseDocDate(frontmatter.date) : null
+const isCitable = (isPost || isTalk) && !!citationDate && !!frontmatter.title
+
+let citationKey = ''
+if (isCitable) {
+    const allDocs = await getCollection('docs')
+    const bases: string[] = []
+    for (const doc of allDocs) {
+        const id = doc.id.replace(/\/index\.(mdx?|md)$/, '')
+        if (!/^(posts|talks)\//.test(id)) continue
+        // Slide decks render through SlideLayout and never emit a Cite
+        // block, so they are not citable pages and must not count toward a
+        // collision. Leaving them in gave two keys a disambiguating MMDD
+        // suffix against a phantom they never actually collided with.
+        if (doc.data.layout?.includes('SlideLayout')) continue
+        const d = doc.data.date ? parseDocDate(doc.data.date) : null
+        if (!d || !doc.data.title) continue
+        bases.push(
+            citationKeyBase({
+                title: doc.data.title,
+                date: d,
+                pathname: `/${id}/`,
+                kind: id.startsWith('talks/') ? 'talk' : 'post',
+            }),
+        )
+    }
+    citationKey = resolveCitationKey(
+        {
+            title: frontmatter.title,
+            date: citationDate!,
+            pathname: currentPath,
+            kind: isTalk ? 'talk' : 'post',
+        },
+        bases,
+    )
+}
+
 const articleSchema =
     isPost && frontmatter.date
         ? JSON.stringify({
@@ -335,11 +391,12 @@ const articleSchema =
   .footnote-popover). A frontmatter import would reorder it and flip those
   overrides.
 
-  DEV-ONLY GOTCHA: Vite does not reliably HMR an @import-ed CSS file — edits
-  to Doc.css often won't show up on save OR on hard reload, because the
-  stale cache is in Vite's module transform, not the browser. If a Doc.css
-  change isn't reflecting, touch this file (Doc.astro) to reprocess the
-  block, or restart the dev server. Production builds always pick it up.
+  Vite used to not reliably HMR an @import-ed CSS file: edits to Doc.css
+  would show up neither on save nor on hard reload, because the stale copy
+  sat in Vite's module transform rather than the browser. That no longer
+  reproduces — re-tested on Astro 5.18.0 with four consecutive edits, each
+  live in about three seconds. If it ever regresses, the workaround was to
+  touch this file so the block is reprocessed, or restart the dev server.
 -->
 <style is:global>
     /* KaTeX CSS is imported from frontmatter (above) so Vite copies its fonts;
@@ -561,6 +618,21 @@ const articleSchema =
                                 )
                             }
                             <slot />
+                            {
+                                isCitable && (
+                                    <CiteThis
+                                        title={frontmatter.title}
+                                        date={citationDate!}
+                                        pathname={currentPath}
+                                        kind={
+                                            (isTalk
+                                                ? 'talk'
+                                                : 'post') as CitationKind
+                                        }
+                                        citationKey={citationKey}
+                                    />
+                                )
+                            }
                             {
                                 relatedPosts.length > 0 && (
                                     <aside style="margin-top: 2lh; border-top: 1px solid var(--foreground2); padding-top: 1lh;">
@@ -2040,7 +2112,14 @@ const articleSchema =
             if (!code) return
             let ok = true
             try {
-                await navigator.clipboard.writeText(code.innerText)
+                // Copy the code WITHOUT the line-number anchors. They are real
+                // elements inside each line now, so innerText picks them up
+                // and every copied block came out as "1# Kick the tires...".
+                const clone = code.cloneNode(true) as HTMLElement
+                for (const n of clone.querySelectorAll('.code-line-link')) {
+                    n.remove()
+                }
+                await navigator.clipboard.writeText(clone.innerText)
                 button.textContent = 'copied!'
             } catch {
                 ok = false
@@ -2062,6 +2141,97 @@ const articleSchema =
         })
         block.appendChild(button)
     }
+</script>
+
+<!-- Linkable code lines.
+
+     Each line number is a real <a href="#b<n>-L<line>">. An earlier version
+     hit-tested clicks against the ::before counter box instead, which worked
+     but was not a link: the browser had no "Copy Link" to offer on
+     right-click, and no middle-click, no hover URL in the status bar. A real
+     anchor gets all of that for free.
+
+     The counter therefore moves off `span.line::before` and onto the anchor,
+     so the number is the link rather than sitting beside it.
+
+     Anchors are #b<n>-L<line>: a page can carry 30 code blocks (the argo post
+     does), so a bare #L12 would be ambiguous. Both indices are positional and
+     will drift if a post is edited, which is the accepted cost of not hand
+     -naming a thousand blocks. -->
+<script>
+    const lineBlocks = document.querySelectorAll('pre.astro-code')
+    lineBlocks.forEach((block, blockIndex) => {
+        const code = block.querySelector('code')
+        if (!code) return
+        // Unlabeled blocks (`text` / `plaintext`, shiki's fallback for a fence
+        // with no language) get no gutter. These are ASCII diagrams, terminal
+        // transcripts and log excerpts rather than source you would cite a
+        // line of, and a number column breaks box-drawing alignment. Matches
+        // global.css, which already drops the badge and border for these.
+        const lang = block.dataset.language
+        if (lang === 'text' || lang === 'plaintext') return
+        const lines = code.querySelectorAll('span.line')
+        if (!lines.length) return
+        const blockId = 'b' + (blockIndex + 1)
+        block.dataset.blockId = blockId
+        // Size the gutter once per block, to its widest line number, so the
+        // divider does not step right when the count crosses 9 -> 10.
+        block.style.setProperty(
+            '--line-number-width',
+            String(lines.length).length + 'ch',
+        )
+
+        lines.forEach((line, i) => {
+            const id = blockId + '-L' + (i + 1)
+            line.id = id
+            // Skip a line that already has one (script re-entry / view swap).
+            if (line.querySelector(':scope > .code-line-link')) return
+            const link = document.createElement('a')
+            link.className = 'code-line-link'
+            link.href = '#' + id
+            link.textContent = String(i + 1)
+            // The number is decorative for a screen reader walking the code;
+            // the accessible name says what following it does.
+            link.setAttribute('aria-label', 'Link to line ' + (i + 1))
+            line.prepend(link)
+        })
+    })
+
+    // Highlight the linked line. Runs for both an inbound link and our own
+    // clicks, since clicking an <a href="#..."> fires hashchange.
+    const markTargetLine = (scroll: boolean) => {
+        for (const el of document.querySelectorAll('.is-line-linked')) {
+            el.classList.remove('is-line-linked')
+        }
+        const id = location.hash.slice(1)
+        if (!/^b\d+-L\d+$/.test(id)) return
+        const line = document.getElementById(id)
+        if (!line) return
+        line.classList.add('is-line-linked')
+        if (!scroll) return
+        // Scroll the PAGE, not the block: <code> is itself a scroll container,
+        // so scrollIntoView on the line centres it inside the block and leaves
+        // the page wherever the browser's hash jump put it (~32px, under the
+        // sticky header).
+        const centre = () => {
+            const scroller =
+                document.getElementById('main-content') ??
+                document.scrollingElement
+            if (!scroller) return
+            scroller.scrollBy({
+                top:
+                    line.getBoundingClientRect().top -
+                    scroller.getBoundingClientRect().top -
+                    scroller.clientHeight / 2,
+            })
+        }
+        if (document.readyState === 'complete') centre()
+        else window.addEventListener('load', centre, { once: true })
+    }
+    // Scroll on arrival only. On our own click the line is already on screen,
+    // and yanking it to centre under the cursor is disorienting.
+    markTargetLine(true)
+    window.addEventListener('hashchange', () => markTargetLine(false))
 </script>
 
 <!-- Vim statusline scroll position + clock -->
@@ -2159,9 +2329,8 @@ const articleSchema =
                 details.classList.add('heading-collapse')
                 // Collapse year-section headings (e.g. "📆 2025") and a
                 // short allowlist of *exact* section labels on the about
-                // page (Music / Projects / More). Strip any leading
-                // emoji-icon-+-space before comparing so e.g.
-                // "📓 Projects" still matches "projects".
+                // page (Music / More). Strip any leading emoji-icon-+-space
+                // before comparing so e.g. "📓 More" still matches "more".
                 //
                 // Ignore the `<a class="heading-anchor">` that rehype
                 // injects (renders as a literal "##"/"###"/etc.) — its
@@ -2183,7 +2352,6 @@ const articleSchema =
                     .toLowerCase()
                 const collapseExact = new Set([
                     'music',
-                    'projects',
                     'more',
                     'detailed list',
                     'by year',

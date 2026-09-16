@@ -4,7 +4,7 @@ title: 'Local AI Apps on ALCF: Argo, Inference Endpoints, and One Gateway'
 date: 2026-06-27
 date-created: 2026-06-27
 date-modified: today
-description: 'Wiring Claude Code, OpenCode, Codex, and Hermes (CLI + desktop) through a single local llm-rosetta gateway that reaches both ALCF Argo (via argo-shim) and ALCF Inference Endpoints (Sophia/Metis), making Claude, GPT, and open models reachable from any client.'
+description: 'Wiring Claude Code, OpenCode, Codex, and Hermes (CLI + desktop) through a single local llm-rosetta gateway that reaches both ALCF Argo (via argo-shim) and ALCF Inference Endpoints (Sophia/Metis/Minerva), making Claude, GPT, and open models reachable from any client — then keeping it running on an always-on host, with automatic model fallback and an iMessage front end.'
 ---
 
 ALCF exposes multiple useful model gateways. [Argo][argo] gives me Claude and
@@ -32,11 +32,43 @@ start](#quick-start) below); everything after that is optional.
 [codex]: https://developers.openai.com/codex/cli/
 [hermes]: https://github.com/NousResearch/hermes-agent
 
-> **TL;DR**: `argo-shim` turns the SSH-gated Argo service into a localhost API.
+> [!INFO]- **TL;DR** — what this builds, and where each piece lives
+> `argo-shim` turns the SSH-gated Argo service into a localhost API.
 > `llm-rosetta` sits in front of it, translates OpenAI ⇆ Anthropic, and also
-> exposes ALCF's native Sophia/Metis inference endpoints. Point Claude Code,
-> OpenCode, Codex, Hermes, or anything OpenAI-compatible at one local port and
-> route by model name.
+> exposes ALCF's native Sophia/Metis/Minerva inference endpoints. Point Claude
+> Code, OpenCode, Codex, Hermes, or anything OpenAI-compatible at one local port
+> and route by model name.
+>
+> **The two-step minimum**
+>
+> - [Start `argo-shim`](#start-argo-shim) — one `uvx` command; it opens the SSH
+>   tunnel and writes the token.
+> - [Claude Code](#claude-code-anthropic-native) — no config needed, the shim
+>   writes `~/.claude/settings.json` for you.
+>
+> **Everything else is optional**
+>
+> - [The full picture](#the-full-picture) — architecture diagram of the whole
+>   stack.
+> - [`llm-rosetta` gateway](#2-llm-rosetta-gateway-for-openai-only-clients) — the
+>   `config.jsonc` that registers providers and models.
+> - Clients: [OpenCode](#1-opencode-openai-format-via-a-custom-provider) ·
+>   [Codex](#3-codex-openai-format-via-a-custom-provider) ·
+>   [Hermes](#4-hermes-cli--hermes-desktop)
+> - [Always-on host](#always-on-the-stationary-host) — running the stack on one
+>   machine and attaching to it from a laptop.
+> - [Model fallback](#model-fallback-argo-first-alcf-as-backstop) — prefer Argo
+>   Claude, fall back through GPT to an open ALCF model automatically.
+> - [iMessage](#imessage-via-photon) — talking to the agent from your phone.
+>
+> **When it breaks**
+>
+> - [Gotchas](#gotchas) — seven real ones, including
+>   [the `user` field 500](#1-openai-models-need-a-user-field),
+>   [silently stripped images](#4-the-capabilities-default-silently-drops-images),
+>   and [missing ALCF auth](#6-alcf-inference-models-appear-even-when-auth-is-missing).
+> - [Token rotation](#token-rotation) — shell helpers for the post-restart
+>   ritual.
 
 ## Quick start
 
@@ -49,35 +81,47 @@ The minimal setup is two steps: start `argo-shim`, and Claude Code picks it up
 automatically. If Claude Code with Argo is all you want, you can stop after this
 section.
 
-### Install and start `argo-shim`
+### Start `argo-shim`
+
+One line to try it, one to keep it. `argo-shim` creates the SSH tunnel and
+writes a token to `~/.claude/settings.json`. A recent build already includes
+the bearer-auth + user-injection support (see [Contributing
+back](#contributing-back)).
 
 ```bash
-# A recent argo-shim already includes the bearer-auth + user-injection support
-# (see "Contributing back"). Install from PyPI, or from a local checkout.
+# Kick the tires without installing anything.
+# Drop CELS_USERNAME if your ALCF username matches your local login name.
+CELS_USERNAME=<your-alcf-username> uvx argo-shim
+
+# Keep it: this is a long-running daemon you restart often, and the shell
+# helpers further down invoke it as a bare `argo-shim`, so put it on PATH.
 uv tool install argo-shim
-
-# If your ALCF username differs from your local login name, tell the shim:
-export CELS_USERNAME=<your-alcf-username>
-
-# Start it (creates the SSH tunnel, writes a token to ~/.claude/settings.json)
-argo-shim
 ```
 
 `argo-shim` listens on `127.0.0.1:25940`, derives a per-user port for the SSH
 tunnel, and prints the token. Each restart **rotates** the token (important
 later).
 
-Quick sanity check (the token lives in `~/.claude/settings.json`):
+Quick sanity check. The token lives in `~/.claude/settings.json`, so the
+helper digs it out itself. It builds the request body with [`jq`][jq] (`brew
+install jq`) rather than string interpolation, so a prompt containing quotes
+or an apostrophe still produces valid JSON:
 
 ```bash
-TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
+# argo-ask <model> <prompt...>  — Claude via Anthropic Messages.
+argo-ask() {
+  local model="$1"; shift
+  local token
+  token=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])") || return 1
+  jq -nc --arg m "$model" --arg p "$*" \
+    '{model:$m, max_tokens:64, messages:[{role:"user",content:$p}]}' \
+  | curl -sS http://127.0.0.1:25940/argoapi/v1/messages \
+      -H "x-api-key: $token" -H "anthropic-version: 2023-06-01" \
+      -H "content-type: application/json" --data @-
+}
 
-# Claude via Anthropic Messages: should return JSON
-curl -sS -H "x-api-key: $TOKEN" -H "anthropic-version: 2023-06-01" \
-  -H "content-type: application/json" \
-  http://127.0.0.1:25940/argoapi/v1/messages \
-  -d '{"model":"Claude Sonnet 4.5","max_tokens":20,
-       "messages":[{"role":"user","content":"say hi"}]}'
+argo-ask "Claude Opus 5" say hi          # should return JSON
+argo-ask "Claude Opus 5" "what's 2+2?"   # quotes are safe
 ```
 
 ### Claude Code (Anthropic, native)
@@ -123,7 +167,7 @@ So there are two classes of problems:
 The end-state architecture solves all of this with one local front door
 (`llm-rosetta`) and one shim for the SSH-gated Argo path:
 
-```c
+```
       ┌─────────────┐ ┌─────────────┐         ┌─────────────┐ ┌─────────────┐
       │ Claude Code │ │    vtcode   │         │   OpenCode  │ │    Hermes   │
       └─────────────┘ └─────────────┘         └─────────────┘ └─────────────┘
@@ -180,6 +224,7 @@ that:
 
 [argo-shim]: https://github.com/n-getty/argo-shim
 [n-getty]: https://github.com/n-getty
+[jq]: https://jqlang.github.io/jq/
 
 To make the OpenAI path work and let OpenAI-format clients authenticate, I made
 two small additive patches (covered in [Gotchas](#gotchas) below), both since
@@ -236,7 +281,7 @@ custom provider pointed at the shim (OpenCode's `@ai-sdk/anthropic` sends
                 "headers": { "anthropic-version": "2023-06-01" }
             },
             "models": {
-                "claudeopus48": { "name": "claude-4.8-opus" }
+                "claudeopus5": { "name": "claude-opus-5" }
             }
         }
     }
@@ -252,11 +297,14 @@ export ARGO_SHIM_TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.cl
 
 ### 2. `llm-rosetta` gateway (for OpenAI-only clients)
 
-Install the gateway:
+Install the gateway. Same reasoning as `argo-shim`: it is a daemon you
+restart often, and later sections call `llm-rosetta-gateway` by bare name.
 
 ```bash
 uv tool install "llm-rosetta[gateway]"
 ```
+
+Don't start it yet, it needs the config below first.
 
 Create `~/.config/llm-rosetta-gateway/config.jsonc`. The Argo providers point
 at the local shim; the ALCF inference providers point directly at the public
@@ -293,27 +341,27 @@ OpenAI-compatible endpoint:
         },
     },
     "models": {
-        // Register each model in BOTH forms clients send: bare ("claude-opus-4-8")
-        // and vendor-prefixed ("anthropic/claude-opus-4-8"). Declare `capabilities`
+        // Register each model in BOTH forms clients send: bare ("claude-opus-5")
+        // and vendor-prefixed ("anthropic/claude-opus-5"). Declare `capabilities`
         // explicitly: the default is ["text"], which makes rosetta strip images.
-        "claude-opus-4-8": {
+        "claude-opus-5": {
             "provider": "argo",
-            "upstream_model": "Claude Opus 4.8",
+            "upstream_model": "Claude Opus 5",
             "capabilities": ["text", "vision", "tools", "reasoning"],
         },
-        "anthropic/claude-opus-4-8": {
+        "anthropic/claude-opus-5": {
             "provider": "argo",
-            "upstream_model": "Claude Opus 4.8",
+            "upstream_model": "Claude Opus 5",
             "capabilities": ["text", "vision", "tools", "reasoning"],
         },
-        "gpt-5.5": {
+        "gpt-5.6-sol": {
             "provider": "argo-openai",
-            "upstream_model": "GPT-5.5",
+            "upstream_model": "GPT-5.6 Sol",
             "capabilities": ["text", "vision", "tools", "reasoning"],
         },
-        "openai/gpt-5.5": {
+        "openai/gpt-5.6-sol": {
             "provider": "argo-openai",
-            "upstream_model": "GPT-5.5",
+            "upstream_model": "GPT-5.6 Sol",
             "capabilities": ["text", "vision", "tools", "reasoning"],
         },
 
@@ -347,8 +395,7 @@ export a short-lived access token before starting/restarting the gateway:
 
 ```bash
 # First-time / monthly-ish auth; opens a Globus browser flow.
-uv run --with globus-sdk --with openai \
-  ~/.config/llm-rosetta-gateway/inference_auth_token.py authenticate
+uvx --from alcf-ai alcf-ai auth login
 
 # Refresh/export the access token for this shell, then restart rosetta so
 # ${ALCF_INFERENCE_TOKEN} gets substituted into the config.
@@ -362,23 +409,27 @@ For my day-to-day post-shim-restart ritual I use:
 argo-rosetta-sync --with-inference
 ```
 
-Test the translation (OpenAI request in, Claude answer out):
+Test the translation (OpenAI request in, Claude answer out). Same shape as
+`argo-ask` above, but pointed at the gateway and speaking OpenAI's format,
+so one helper covers every model rosetta knows about:
 
 ```bash
-curl -sS http://127.0.0.1:8765/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"claude-opus-4-8",
-       "messages":[{"role":"user","content":"say hi"}],"max_tokens":20}'
-```
+# rosetta-ask <model> <prompt...>
+rosetta-ask() {
+  local model="$1"; shift
+  jq -nc --arg m "$model" --arg p "$*" \
+    '{model:$m, max_tokens:64, messages:[{role:"user",content:$p}]}' \
+  | curl -sS http://127.0.0.1:8765/v1/chat/completions \
+      -H "Content-Type: application/json" --data @-
+}
 
-And test an ALCF inference model (if `ALCF_INFERENCE_TOKEN` was set before the
-gateway started):
+# An Argo model...
+rosetta-ask claude-opus-5 say hi
 
-```bash
-curl -sS http://127.0.0.1:8765/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"alcf-sophia/openai/gpt-oss-120b",
-       "messages":[{"role":"user","content":"say hi"}],"max_tokens":20}'
+# ...and an ALCF inference model, if ALCF_INFERENCE_TOKEN was exported before
+# the gateway started. A stale token shows up here as
+# {"error":{"code":"unauthorized"}} — rerun alcf-inference-token, restart.
+rosetta-ask alcf-sophia/openai/gpt-oss-120b say hi
 ```
 
 The gateway also ships a web admin panel at
@@ -397,7 +448,7 @@ OpenCode and Hermes) it points at the rosetta gateway rather than the shim.
 Define a custom provider and select it as the default:
 
 ```toml
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_provider = "rosetta"
 
 [model_providers.rosetta]
@@ -416,21 +467,21 @@ A few Codex-specific notes:
 
 - The provider id (`rosetta` here) can be anything **except** the reserved
   built-ins `openai`, `ollama`, and `lmstudio`.
-- Any rosetta model works as the top-level `model`: swap `gpt-5.5` for
-  `claude-opus-4-8`, `alcf-sophia/openai/gpt-oss-120b`, etc. (use the exact
+- Any rosetta model works as the top-level `model`: swap `gpt-5.6-sol` for
+  `claude-opus-5`, `alcf-sophia/openai/gpt-oss-120b`, etc. (use the exact
   ids you registered in the gateway config above).
 - To switch models per session without editing the config, pass them on the
   command line:
 
 ```bash
-codex --model claude-opus-4-8 --model-provider rosetta
+codex --model claude-opus-5 --model-provider rosetta
 ```
 
 Sanity-check that Codex is reaching the gateway (this hits the same
 `/v1/chat/completions` the earlier `curl` did, just through Codex's config):
 
 ```bash
-codex exec --model gpt-5.5 --model-provider rosetta "say hi"
+codex exec --model gpt-5.6-sol --model-provider rosetta "say hi"
 ```
 
 ### 4. Hermes (CLI + `hermes desktop`)
@@ -442,7 +493,7 @@ gateway with a `custom` provider:
 ```yaml
 model:
     base_url: 'http://127.0.0.1:8765/v1'
-    default: 'claude-opus-4-8'
+    default: 'claude-opus-5'
     provider: 'custom'
 ```
 
@@ -450,7 +501,7 @@ model:
 OpenAI-compatible endpoint (`base_url` takes precedence over any named
 provider). Because the rosetta gateway runs **no-auth** (loopback only), no API
 key is needed. Use any id you registered in the gateway config for `default`
-(`gpt-5.5`, `alcf-sophia/openai/gpt-oss-120b`, …).
+(`gpt-5.6-sol`, `alcf-sophia/openai/gpt-oss-120b`, …).
 
 Prefer to configure it interactively? `hermes model` walks you through adding a
 custom endpoint and writes the same block. Then confirm the CLI reaches the
@@ -468,6 +519,195 @@ hermes desktop     # alias: hermes gui
 
 Start a New Chat and you're talking to Argo (or any registered model) through
 the local gateway. 🎉
+
+## Always-on: the stationary host
+
+Everything above assumes the stack runs on the machine you're typing at. That
+breaks the moment you travel: `argo-shim`'s SSH tunnel dies with the network,
+and re-authenticating through MFA on hotel wifi is exactly the friction this
+setup was supposed to remove.
+
+The fix is to stop treating the laptop as the host. I run the whole stack on a
+stationary Mac that never sleeps, and attach to it from the laptop:
+
+```
+        laptop (travels)                stationary host (always on)
+   ┌──────────────────────────┐      ┌────────────────────────────────┐
+   │  herdr --remote  ────────┼─ssh─▶│  herdr server                  │
+   │  (terminal session)      │      │    ├─ hermes gateway           │
+   └──────────────────────────┘      │    ├─ llm-rosetta      :8765   │
+                                     │    ├─ argo-shim        :25940  │
+                                     │    └─ SSH tunnel       :25939  │
+                                     └────────────────────────────────┘
+                                                    │
+                                          ALCF Argo + Inference
+```
+
+The laptop holds no tokens and runs no daemons. It opens a terminal session on
+the host and detaches when the lid closes; the agent keeps working. Reconnecting
+from a different network is one command, with no re-auth:
+
+```bash
+herdr --remote <host> --remote-keybindings server
+```
+
+Two things make this stick. First, the host must actually never sleep — verify
+rather than assume:
+
+```bash
+pmset -g | grep -E 'SleepDisabled|^ sleep'
+# SleepDisabled  1
+# sleep          0
+```
+
+Second, give the SSH client room to ride out a stall. A restart of any service
+on the host briefly blocks the session, and an aggressive keepalive budget will
+tear down a working connection:
+
+```ssh-config
+Host myhost
+  ServerAliveInterval 30
+  ServerAliveCountMax 8   # 8 x interval before giving up
+  TCPKeepAlive yes
+```
+
+> [!WARNING]- The `Host *` precedence trap
+> SSH takes the **first** value it sees for each keyword, not the most specific
+> one. If `Host *` appears at the top of your config and sets
+> `ServerAliveInterval`, a per-host block further down **cannot override it** —
+> the per-host line is silently dead.
+>
+> Never verify by reading the file. Ask ssh what it actually resolved:
+>
+> ```bash
+> ssh -G myhost | grep -E 'serveralive|controlpersist'
+> ```
+>
+> The same applies to `ControlPersist`: a `Host *` value of `600` will beat a
+> per-host `4h` that appears below it.
+
+## Model fallback: Argo first, ALCF as backstop
+
+Once both upstreams work, you can prefer one and let the other cover for it.
+Argo serves the frontier models (Claude, the GPT/o-series); the ALCF Inference
+Endpoints serve open models on lab hardware. Argo is what you actually want for
+day-to-day work, so it goes first — and ALCF becomes the backstop that keeps a
+session alive when Argo is unreachable.
+
+That last part matters more than it sounds. Argo lives behind an SSH tunnel and
+an MFA-gated jump host, so it has strictly more ways to fail than the public
+inference endpoints: the tunnel drops, the token rotates, the shim restarts.
+ALCF Inference only needs a Globus token that refreshes non-interactively. The
+fallback chain is ordered by *reliability*, not by preference — most-wanted
+first, most-available last.
+
+In `~/.hermes/config.yaml`:
+
+```yaml
+model:
+    base_url: 'http://127.0.0.1:8765/v1'
+    default: 'anthropic/claude-opus-5'
+    provider: 'llm-rosetta'
+
+fallback_providers:
+    - provider: llm-rosetta
+      model: openai/gpt-5.6-sol
+    - provider: llm-rosetta
+      model: alcf-minerva/inkling-bf16
+```
+
+Hermes walks that list in order, so a turn degrades Claude → GPT → open model
+rather than failing. Every entry is the same gateway on `:8765`, so each extra
+tier costs nothing to wire up — it's one more model id rosetta already knows.
+
+You can see it fire in `~/.hermes/logs/agent.log`:
+
+```
+Fallback activated: anthropic/claude-opus-5 → openai/gpt-5.6-sol (llm-rosetta)
+```
+
+That line is worth knowing by sight. Fallback is quiet by design — the session
+continues normally — so a model that's silently unavailable looks like a model
+that's working, just with different output. If you see that line constantly,
+your preferred upstream is down, not merely slow.
+
+> **Check the direction.** It is easy to end up with this backwards: set
+> `default` to whichever model you were last testing, and the chain now
+> *prefers* the backstop. Confirm what actually served a turn by watching the
+> rosetta log rather than trusting the config:
+>
+> ```bash
+> tail -f ~/.hermes/logs/rosetta-gateway.log | grep -o 'model=[^ ]*'
+> ```
+
+> **Note**: Minerva is a third ALCF inference cluster alongside Sophia and
+> Metis, registered the same way:
+>
+> ```jsonc
+> "alcf-minerva": {
+>   "type": "openai_chat",
+>   "api_key": "${ALCF_INFERENCE_TOKEN}",
+>   "base_url": "https://inference-api.alcf.anl.gov/resource_server/minerva/api/v1",
+> }
+> ```
+
+## iMessage via Photon
+
+The last piece is reaching the agent when you're away from both machines.
+Hermes ships a [Photon][photon] plugin that bridges iMessage, so the agent
+running on the stationary host is reachable from your phone.
+
+[photon]: https://github.com/photon-ai
+
+Enable the platform in `~/.hermes/config.yaml`:
+
+```yaml
+platforms:
+    photon:
+        enabled: true
+```
+
+The plugin runs a Node sidecar that the gateway talks to over gRPC on
+loopback. On a healthy start the gateway log says so explicitly:
+
+```
+[photon] connected — sidecar on 127.0.0.1:8789, streaming inbound over gRPC
+✓ photon connected
+Gateway running with 2 platform(s)
+```
+
+From there, a text message is a prompt. Inbound and outbound both show up in
+the gateway log:
+
+```
+inbound message: platform=photon user=+1######### msg='...'
+response ready: platform=photon time=228.8s api_calls=16 response=1536 chars
+```
+
+Note that `time=228.8s` with `api_calls=16`. A texted request can run a real
+multi-step tool-calling turn on the host — it isn't a thin chat relay. Combined
+with the always-on host above, the agent stays reachable whether you're at the
+machine, on a laptop elsewhere, or just holding a phone.
+
+> [!TIP]- Checking that Photon is actually connected
+> The sidecar being alive is not the same as the platform being connected. Check
+> all three:
+>
+> ```bash
+> # 1. platform registered
+> hermes status | grep -i photon
+> #   iMessage via Photon  ✓ configured (plugin)
+>
+> # 2. sidecar listening
+> lsof -nP -iTCP:8789 -sTCP:LISTEN
+>
+> # 3. gateway actually bridged to it
+> grep -E '\[photon\] connected|photon connected' ~/.hermes/logs/gateway.log | tail -2
+> ```
+>
+> The sidecar logs noisy `ZodError` lines for message shapes it doesn't
+> recognize (polls, some attachments). Those are non-fatal and don't indicate a
+> broken connection — look for an explicit disconnect instead.
 
 ## Gotchas
 
@@ -517,7 +757,7 @@ Two Hermes-specific quirks:
   request: only an inline `api_key` in `config.yaml` (which the desktop UI
   _strips_ on save). Running the gateway no-auth sidesteps this entirely.
 - Hermes prepends a vendor prefix to model names
-  (`anthropic/claude-opus-4-8`), then matches that exact string against the
+  (`anthropic/claude-opus-5`), then matches that exact string against the
   endpoint's `/v1/models` list. So the gateway must register **both** the bare
   and vendor-prefixed forms of every model, hence the duplicated entries in
   the config above.
@@ -537,17 +777,17 @@ it: no error, just a model that "couldn't see" the image.
 The fix is to declare real capabilities per model in the gateway config:
 
 ```jsonc
-"claude-opus-4-8": {
+"claude-opus-5": {
   "provider": "argo",
-  "upstream_model": "Claude Opus 4.8",
+  "upstream_model": "Claude Opus 5",
   "capabilities": ["text", "vision", "tools", "reasoning"]
 }
 ```
 
-My [regen script](#a-regen-script) now sets these per model family (Claude 4.x
-and the GPT-5/o-series get `text + vision + tools + reasoning`; GPT-4o/4.1 get
-`text + vision + tools`). After regenerating, images flow through to Argo
-instead of being quietly discarded.
+My [regen script](#a-regen-script) now sets these per model family (Claude
+4.x/5 and the GPT-5/o-series get `text + vision + tools + reasoning`;
+GPT-4o/4.1 get `text + vision + tools`). After regenerating, images flow
+through to Argo instead of being quietly discarded.
 
 ### 5. Duplicated responses in the Hermes desktop app
 
@@ -563,7 +803,7 @@ turn had `tool_turns=10`).
 
 The culprit was Hermes' `display.interim_assistant_messages: true`, which
 renders the model's _interim commentary between tool calls_ **and** the final
-answer. With a verbose reasoning model (GPT-5.5) those two are near-identical,
+answer. With a verbose reasoning model (GPT-5.6 Sol) those two are near-identical,
 so you see the reply twice with slightly different wording. The fix is one line
 in `~/.hermes/config.yaml`:
 
@@ -625,7 +865,7 @@ Every `argo-shim` restart mints a new token. To keep everything in sync I use
 shell helpers in `~/.config/zsh/functions.zsh`. These are the actual pieces you
 need, not magic commands hidden elsewhere.
 
-```bash
+```zsh
 # Re-export the live shim token into the env vars various clients read.
 refresh-argo-token() {
   local settings="$HOME/.claude/settings.json"
@@ -660,13 +900,8 @@ PY
 # Export a fresh Globus access token for ALCF Inference Endpoints. First run may
 # require an interactive browser auth flow (see below).
 alcf-inference-token() {
-  local helper="$HOME/.config/llm-rosetta-gateway/inference_auth_token.py"
-  mkdir -p "$(dirname "$helper")"
-  if [[ ! -r "$helper" ]]; then
-    curl -fsSL "https://raw.githubusercontent.com/argonne-lcf/inference-endpoints/refs/heads/main/inference_auth_token.py" -o "$helper" || return 1
-  fi
   local token
-  token=$(uv run --with globus-sdk --with openai "$helper" get_access_token) || return 1
+  token=$(uvx --from alcf-ai alcf-ai auth get-access-token) || return 1
   export ALCF_INFERENCE_TOKEN="$token"
   print "ALCF_INFERENCE_TOKEN refreshed (${token:0:8}…)"
 }
@@ -754,8 +989,14 @@ That's the `isinstance` check you see in the snippet above.
 
 The result: **Claude Code, OpenCode, Codex, vtcode, and Hermes (CLI +
 `hermes desktop`)** all talking to one local gateway. Argo models go through the SSH-backed shim;
-ALCF inference models go straight to Sophia/Metis with Globus auth. From the
+ALCF inference models go straight to Sophia/Metis/Minerva with Globus auth. From the
 client side it all looks like `http://127.0.0.1:8765/v1`.
+
+Run that gateway on a machine that never sleeps and the same stack stops being
+a laptop-local convenience: you can [attach to it from
+anywhere](#always-on-the-stationary-host), let it [fall back between
+upstreams](#model-fallback-argo-first-alcf-as-backstop) when one is
+unavailable, and [reach it from a text message](#imessage-via-photon).
 
 The two reusable building blocks are worth calling out:
 

@@ -46,7 +46,11 @@ const ROWS = [
     {
         where: 'Software',
         transient: ['mid-save kill', 'flaked dataloader worker'],
-        systemic: ['OOM (config too big)', 'corrupt shard ●', 'bad upstream commit ●'],
+        systemic: [
+            'OOM (config too big)',
+            'corrupt shard ●',
+            'bad upstream commit ●',
+        ],
     },
     {
         where: 'Network',

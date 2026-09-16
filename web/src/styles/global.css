@@ -257,11 +257,15 @@
            band for more comfortable reading; the ch-based layout scales
            with it cleanly. Mobile (<=480px) keeps its own flat 16px rule
            below.
-           NB: px bounds (not rem) are deliberate — this var is applied at
-           both `html` and `body`, and a rem-based clamp compounds (body's
-           rem re-resolves against the already-bumped root, landing at
-           ~18px). px bounds make the clamp nesting-invariant. */
-        --font-size: clamp(16px, 10px + 1vw, 17px);
+           rem, not px: a px root ignores a raised browser font default
+           outright (15px stays 15px for someone who asked for 20px), which
+           is the accessibility floor that decides this value. 1rem tracks
+           that setting instead — 20px for that user, 16px for everyone else.
+
+           The previous note here warned that a rem clamp compounds to ~18px
+           because the var lands on both `html` and `body`. Measured: it does
+           not; both resolve to the same value. */
+        --font-size: 1rem;
         /* --line-height: 1.5; */
         --line-height: initial;
         --font-family-sans-serif: var(--font-family);
@@ -685,6 +689,24 @@
             from var(--callout-color) calc(l * var(--oklch-scale, 1.12)) c h /
                 0.1
         );
+        /* Opaque equivalent of --callout-bg for descendants that need to MASK
+           something (the code-block language badge and copy glyph paint over
+           the block's border). --callout-bg is translucent by design, so
+           masking with it directly would let the border show through; this
+           composites the same tint onto the page background at full alpha.
+           Kept adjacent to --callout-bg so the two stay in step. */
+        /* The surface a descendant must paint to MASK something (the code
+           block's language badge and copy glyph paint over its border).
+
+           Two real layers, not a precomputed mix: --callout-bg is translucent
+           and the browser composites it over the page itself. Trying to
+           reproduce that composite with color-mix got the wrong colour in both
+           oklch and srgb (measured pure black in every theme). Painting the
+           same tint over the same page background makes the mask match the
+           callout surface by construction. Kept next to --callout-bg so the
+           two stay in step. */
+        --code-mask-bg: var(--callout-bg);
+        --code-mask-under: var(--background0);
         padding-left: 0.5ch;
         transition:
             transform 120ms ease-out,
@@ -964,6 +986,17 @@
                leading the title. */
             display: flex;
             align-items: baseline;
+            /* A flex container makes every child a flex ITEM and drops the
+               whitespace text nodes between them, so a title carrying inline
+               markup lost its spaces: "The `Host *` trap" rendered as
+               "TheHost *trap". Re-add the gap between items rather than
+               abandoning flex (the layout above depends on it). 1ch, not an
+               arbitrary length: it is exactly one character cell, so the join
+               matches the surrounding monospace text.
+
+               margin-inline-start:auto on the toggle still pushes it right —
+               a gap does not interfere with that. */
+            gap: 0 1ch;
             background-color: var(--callout-summary-bg);
             color: var(--callout-color);
             font-weight: var(--font-weight-bold);
@@ -1177,7 +1210,9 @@
 
 @media (max-width: 480px) {
     :root {
-        --font-size: 16px;
+        /* Same value as the desktop root now, but kept as its own declaration
+           so a future mobile-only tweak has somewhere to go. */
+        --font-size: 1rem;
     }
 
     body,
@@ -1319,13 +1354,16 @@ html[data-webtui-theme*='nvim-dark'] .dark-content {
     display: revert !important;
 }
 
+/* Code blocks carry no fill (see pre.astro-code below); they are bounded by
+   a language-tinted border instead. This rule used to repaint the panel with
+   !important, which beat that. */
 html[data-webtui-theme='custom-light'] .astro-code {
-    --pre-background: oklch(from var(--code-bg, #f8f8f8) l c h);
-    background-color: var(--pre-background) !important;
+    --pre-background: transparent;
+    background-color: transparent !important;
 }
 /* Don't paint span-level backgrounds — let the pre's background show
    through uniformly, including the top/bottom padding band. */
-html[data-webtui-theme='custom-light'] .astro-code span {
+html[data-webtui-theme='custom-light'] .astro-code span:not(.line) {
     --pre-background: oklch(from var(--code-bg, #f8f8f8) l c h);
     background-color: transparent !important;
 }
@@ -1346,54 +1384,54 @@ html[data-webtui-theme='custom-light'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
 }
 
-html[data-webtui-theme='custom-dark'] .astro-code span {
+html[data-webtui-theme='custom-dark'] .astro-code span:not(.line) {
     color: var(--shiki-custom-dark) !important;
     font-style: var(--shiki-custom-dark-font-style) !important;
     font-weight: var(--shiki-custom-dark-font-weight) !important;
     text-decoration: var(--shiki-custom-dark-text-decoration) !important;
     --pre-background: var(--background1);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 
-html[data-webtui-theme='catppuccin'] .astro-code span {
+html[data-webtui-theme='catppuccin'] .astro-code span:not(.line) {
     color: var(--shiki-catppuccin) !important;
     font-style: var(--shiki-catppuccin-font-style) !important;
     font-weight: var(--shiki-catppuccin-font-weight) !important;
     text-decoration: var(--shiki-catppuccin-text-decoration) !important;
     --pre-background: var(--background1, var(--shiki-catppuccin-bg));
-    background-color: var(--pre-background) !important ;
+    background-color: transparent !important;
 }
 
 html[data-webtui-theme='catppuccin-latte'] .astro-code,
-html[data-webtui-theme='catppuccin-latte'] .astro-code span {
+html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
     color: var(--shiki-catppuccin-latte) !important;
     font-style: var(--shiki-catppuccin-latte-font-style) !important;
     font-weight: var(--shiki-catppuccin-latte-font-weight) !important;
     text-decoration: var(--shiki-catppuccin-latte-text-decoration) !important;
     --pre-background: oklch(from #e6e9ef l c h);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 
 /* sam.onl Light/Dark Shiki themes — palette-matched syntax highlighting.
    Activates --shiki-sam-light-* / --shiki-sam-dark-* CSS vars baked into
    the rendered code blocks at build time by shikiConfig.themes. */
 html[data-webtui-theme='sam-light'] .astro-code,
-html[data-webtui-theme='sam-light'] .astro-code span {
+html[data-webtui-theme='sam-light'] .astro-code span:not(.line) {
     color: var(--shiki-sam-light) !important;
     font-style: var(--shiki-sam-light-font-style) !important;
     font-weight: var(--shiki-sam-light-font-weight) !important;
     text-decoration: var(--shiki-sam-light-text-decoration) !important;
     --pre-background: var(--shiki-sam-light-bg, #f8f8f8);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 html[data-webtui-theme='sam-dark'] .astro-code,
-html[data-webtui-theme='sam-dark'] .astro-code span {
+html[data-webtui-theme='sam-dark'] .astro-code span:not(.line) {
     color: var(--shiki-sam-dark) !important;
     font-style: var(--shiki-sam-dark-font-style) !important;
     font-weight: var(--shiki-sam-dark-font-weight) !important;
     text-decoration: var(--shiki-sam-dark-text-decoration) !important;
     --pre-background: var(--shiki-sam-dark-bg, #282828);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 
 /* Neovim Shiki themes — onelight (light) / cyberdream (dark), generated from
@@ -1401,60 +1439,282 @@ html[data-webtui-theme='sam-dark'] .astro-code span {
    mechanism as the sam-* themes: --shiki-<key>-* CSS vars baked into each code
    block at build by shikiConfig.themes. */
 html[data-webtui-theme='nvim-light-role'] .astro-code,
-html[data-webtui-theme='nvim-light-role'] .astro-code span {
+html[data-webtui-theme='nvim-light-role'] .astro-code span:not(.line) {
     color: var(--shiki-nvim-light-role) !important;
     font-style: var(--shiki-nvim-light-role-font-style) !important;
     font-weight: var(--shiki-nvim-light-role-font-weight) !important;
     text-decoration: var(--shiki-nvim-light-role-text-decoration) !important;
     --pre-background: var(--shiki-nvim-light-role-bg, #ffffff);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 html[data-webtui-theme='nvim-light-hue'] .astro-code,
-html[data-webtui-theme='nvim-light-hue'] .astro-code span {
+html[data-webtui-theme='nvim-light-hue'] .astro-code span:not(.line) {
     color: var(--shiki-nvim-light-hue) !important;
     font-style: var(--shiki-nvim-light-hue-font-style) !important;
     font-weight: var(--shiki-nvim-light-hue-font-weight) !important;
     text-decoration: var(--shiki-nvim-light-hue-text-decoration) !important;
     --pre-background: var(--shiki-nvim-light-hue-bg, #ffffff);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 html[data-webtui-theme='nvim-dark-role'] .astro-code,
-html[data-webtui-theme='nvim-dark-role'] .astro-code span {
+html[data-webtui-theme='nvim-dark-role'] .astro-code span:not(.line) {
     color: var(--shiki-nvim-dark-role) !important;
     font-style: var(--shiki-nvim-dark-role-font-style) !important;
     font-weight: var(--shiki-nvim-dark-role-font-weight) !important;
     text-decoration: var(--shiki-nvim-dark-role-text-decoration) !important;
     --pre-background: var(--shiki-nvim-dark-role-bg, #1c1c1c);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 html[data-webtui-theme='nvim-dark-hue'] .astro-code,
-html[data-webtui-theme='nvim-dark-hue'] .astro-code span {
+html[data-webtui-theme='nvim-dark-hue'] .astro-code span:not(.line) {
     color: var(--shiki-nvim-dark-hue) !important;
     font-style: var(--shiki-nvim-dark-hue-font-style) !important;
     font-weight: var(--shiki-nvim-dark-hue-font-weight) !important;
     text-decoration: var(--shiki-nvim-dark-hue-text-decoration) !important;
     --pre-background: var(--shiki-nvim-dark-hue-bg, #1c1c1c);
-    background-color: var(--pre-background) !important;
+    background-color: transparent !important;
 }
 
 /* Code-block container: hugs content, no internal padding band.
    Half-line gap above and below so code blocks don't crowd
    surrounding text. (Was asymmetric 0.5lh top / 1lh bottom for
    no good reason — equalized.) */
+/* ---------------------------------------------------------------------------
+   Notebook cells (In[n] / Out[n])
+
+   src/utils/rehype-notebook-cells.mjs wraps each executed code block, plus the
+   output that followed it, in a .nb-cell. Without this the two rendered as
+   unrelated siblings with a gap, so a reader could not tell which output came
+   from which cell.
+
+   Grid, not absolute positioning: the prompt is a real column, so it stays put
+   when the code scrolls horizontally. min-width 0 on the body is what actually
+   lets a long line scroll instead of stretching the grid.
+   --------------------------------------------------------------------------- */
+/* One rhythm for the whole run. Measured gaps between consecutive cells were
+   42 / 42 / 92 / 21 / 21px before this, because each cell's own margin-block
+   collapsed differently depending on what sat between them.
+
+   The negative inline-start pulls the cell left so the 9ch prompt gutter
+   hangs into the margin instead of indenting the code away from the prose
+   column: the code block keeps the same left edge as an ordinary code block
+   elsewhere on the page. */
+.nb-cell {
+    margin-block: 1lh;
+    margin-inline-start: -3ch;
+}
+
+/* Rows inside a cell hug: the output belongs to the code directly above it. */
+.nb-cell > .nb-in + .nb-out,
+.nb-cell > .nb-out + .nb-out {
+    margin-block-start: 0.25lh;
+}
+
+.nb-in,
+.nb-out {
+    display: grid;
+    grid-template-columns: 9ch minmax(0, 1fr);
+    align-items: start;
+    column-gap: 1ch;
+}
+
+.nb-body {
+    min-width: 0;
+}
+
+/* Zero the block's own margin: .nb-cell owns the vertical rhythm now, and
+   leaving both gives a double gap between the code and its output.
+   Descendant, not child: a legacy .cell-output wraps its <pre> one level
+   deeper, and that one kept its 23px top margin, which showed as an empty
+   band above the output text. */
+.nb-body pre,
+.nb-body pre.astro-code {
+    margin-block: 0;
+}
+
+.nb-prompt {
+    color: var(--foreground2);
+    text-align: right;
+    white-space: nowrap;
+    user-select: none;
+    /* Sit on the first LINE of code, not on the block's top edge. The block
+       keeps 0.5lh of internal top padding, so the prompt has to absorb that
+       much and no more.
+
+       This used to add 1.1lh on top, compensating for pre.astro-code's own
+       top margin. That margin is now zeroed inside .nb-body, so the extra
+       1.1lh became pure overshoot and pushed the prompt 33.6px down while
+       the first code line sat at 10.5px. */
+    padding-block-start: 0.5lh;
+}
+
+.nb-in > .nb-prompt {
+    color: var(--blue);
+}
+
+.nb-out > .nb-prompt {
+    color: var(--red);
+}
+
+/* --blue and --red are tuned as accents, not as body text. Measured against
+   the LIGHT backgrounds they land at 3.12 and 2.78, both under the 4.5 AA
+   floor. Capping lightness keeps the hue (In stays blue, Out stays red) while
+   clearing AA. Scoped to the light themes on purpose: the dark ones already
+   measure 7.40 / 6.14, and darkening there would make it worse. */
+html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt,
+html[data-webtui-theme='sam-light'] .nb-in > .nb-prompt,
+html[data-webtui-theme='catppuccin-latte'] .nb-in > .nb-prompt,
+html[data-webtui-theme*='nvim-light'] .nb-in > .nb-prompt {
+    color: oklch(from var(--blue) min(l, 0.48) c h);
+}
+
+html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt,
+html[data-webtui-theme='sam-light'] .nb-out > .nb-prompt,
+html[data-webtui-theme='catppuccin-latte'] .nb-out > .nb-prompt,
+html[data-webtui-theme*='nvim-light'] .nb-out > .nb-prompt {
+    color: oklch(from var(--red) min(l, 0.48) c h);
+}
+
+/* Bind the output to its cell. The tint plus the accent rail is what makes
+   the pair read as one unit rather than two loose blocks; without it the
+   output floats with nothing tying it to the code above.
+
+   The rail is painted on .nb-body, not the <pre>: the global
+   `pre:not(.astro-code) { background: transparent !important }` in
+   @layer components outranks a scoped rule (the same cascade quirk noted on
+   the cite-body and li>details rules). */
+/* Cap output at a third of the viewport and scroll past it. A single cell
+   can emit 500 log lines or nine stacked figures, which otherwise pushes the
+   next input cell entirely off-screen and makes the page read as output with
+   occasional code. Rounded to whole lines so the cut never lands mid-glyph. */
+.nb-out > .nb-body {
+    border-left: 2px solid var(--red);
+    background: var(--background1);
+    max-height: round(down, 33vh, 1lh);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--foreground2) transparent;
+}
+
+/* Every block in a notebook cell spans the full column.
+   pre.astro-code is shrink-to-fit upstream, which is right for a lone code
+   block in prose but wrong in a stacked run: the 17 input blocks on the 4D
+   SU(3) post measured 419-725px inside an 893px column, so their right edges
+   stepped in and out down the page. For output it was worse -- the tint ran
+   the full width while the block sat at 25% of it, leaving a grey band. */
+.nb-in > .nb-body > pre,
+.nb-in > .nb-body pre.astro-code,
+.nb-out > .nb-body > pre,
+.nb-out > .nb-body pre.astro-code {
+    width: 100%;
+    max-width: 100%;
+}
+
+.nb-out > .nb-body > pre,
+.nb-out > .nb-body pre.astro-code {
+    padding-inline-start: 1ch;
+    background: transparent;
+}
+
+/* The <pre> is not the only thing painting. Shiki puts the theme background
+   on the <code> too, and the global inline-code rule paints any bare <code>.
+   Left alone, that inner box shows as a lighter panel inside the output tint
+   -- full-width for a ```text block, and hugging just the glyphs for a logs
+   block, since that <code> is inline-sized. The row's own tint is the only
+   background output should have. */
+.nb-out .nb-body pre code,
+.nb-out .nb-body pre code span {
+    background: transparent;
+}
+
+/* Output is not source: numbering a log dump is noise, and it puts a second
+   gutter immediately right of the Out[n] prompt. The counter lives on
+   `pre.astro-code span.line::before` (see the line-number block below), so
+   that is what has to be suppressed. */
+.nb-out pre.astro-code span.line::before {
+    content: none;
+}
+
+/* Below the prose breakpoint a 9ch gutter costs a quarter of the viewport.
+   Stack the label above the block instead of beside it. */
+@media (max-width: 80ch) {
+    .nb-in,
+    .nb-out {
+        display: block;
+    }
+
+    .nb-prompt {
+        display: block;
+        text-align: left;
+        padding-block-start: 0;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Notebook log output (```logs fences)
+
+   src/utils/rehype-log-output.mjs splits each Rich-formatted log line into
+   timestamp / level / source / message spans. These rules restore the color
+   the terminal had; the notebook export dropped it. Blocks are excluded from
+   Shiki (astro.config.mjs excludeLangs), so nothing here fights a token color.
+
+   Theme tokens only, so all 11 themes track automatically. Color-only, so no
+   units are involved.
+   --------------------------------------------------------------------------- */
+code.language-logs .log-ts,
+code.language-logs .log-src {
+    color: var(--foreground2);
+}
+
+code.language-logs .log-level {
+    font-weight: bold;
+}
+
+code.language-logs .log-level-i {
+    color: var(--blue);
+}
+
+code.language-logs .log-level-w {
+    color: var(--yellow);
+}
+
+code.language-logs .log-level-e {
+    color: var(--red);
+}
+
+code.language-logs .log-level-d {
+    color: var(--foreground2);
+}
+
+code.language-logs .log-msg {
+    color: var(--foreground0);
+}
+
 pre.astro-code {
-    /* Half a line of breathing room above the first line and below the
-       last, painted in the block's own background. Without it the badge
-       (and the copy button that replaces it on hover) sits on top of code
-       that reaches the top-right corner. Inline padding stays 0 — the
-       gutter and line-number column handle that. */
-    padding: 0.5lh 0;
+    /* Just enough room that the badge straddling the top edge does not sit
+       on the first line of code. 0.5lh was half a blank row top and bottom,
+       which read as padding rather than as a frame around the code. */
+    padding: 0.25lh 0;
     /* Extra headroom (vs the 0.5lh below) so the language badge, which
        sits in this gap, clears whatever is above — including the last line
        of an immediately-preceding code block, where 0.5lh left the badge
-       overlapping the code. */
-    margin-block: 1.1lh 0.5lh;
+       overlapping the code. A whole line is enough for that; 1.1lh was
+       overshoot. */
+    margin-block: 1lh 0.5lh;
     align-self: start;
-    background-color: var(--pre-background, var(--background1)) !important;
+    /* No fill: the block is defined by its border, not a tinted panel.
+       --pre-background is the token every other rule reads (webtui's base
+       pre, the per-theme overrides at ~1322, the gradient that fakes the
+       padding band), so blanking it here turns them all off at once instead
+       of needing an !important per rule. The explicit background-color and
+       -image still have to be set: Shiki writes an inline background-color
+       on the <pre>, and the base pre rule paints a gradient. */
+    --pre-background: transparent;
+    background-color: transparent !important;
+    background-image: none !important;
+    /* Inline padding so code clears the border it now sits inside. The end
+       side is set further down, where this rule previously zeroed it. */
+    padding-inline-start: 1ch;
     /* No max-height cap here — the surrounding container (slide-inner,
        article body) handles its own overflow. Capping the pre forces
        internal scrolling which clips visible content and makes users
@@ -1478,7 +1738,9 @@ pre.astro-code {
     min-width: 0;
     max-width: round(calc(0.98 * 100%), 1ch);
     width: max-content;
-    padding-inline-end: 0;
+    /* 1ch, not 0: the block is bounded by a border now, so code running
+       flush into the right edge reads as a clipping bug. */
+    padding-inline-end: 1ch;
     /* Anchor for the ::after language badge below. (The copy-button script
        also sets this inline at runtime; declaring it here means the badge
        is positioned correctly before that script runs.) */
@@ -1503,18 +1765,13 @@ pre.astro-code {
    scrolling to the <code>: with overflow on the <pre>, anything positioned
    outside its box is clipped and the badge disappears entirely. */
 pre.astro-code::after {
-    /* Nerd Font glyph, set per language by the --lang-icon rules below.
-       Falls back to the generic "code" glyph for anything unmapped, so a
-       new language gets a sensible mark without touching this rule.
-
-       IMPORTANT: only glyphs verified present in the CURATED Nerd Font
-       subset (web/public/fonts/nerd/SymbolsNerdFont-Regular.woff2) may be
-       used — anything outside it renders as tofu, and the subset carries
-       an unpredictable slice of each icon family (e.g. it has seti's
-       Python U+E606 but not devicon's U+E73C). Check a codepoint by
-       measuring its rendered width before using it. */
-    content: var(--lang-icon, '\e796');
-    font-family: 'Symbols Nerd Font', var(--font-family);
+    /* The language NAME, read straight off the attribute shiki already
+       emits, the way a TUI panel titles its frame. This replaced a Nerd Font
+       glyph per language: the name is unambiguous (js vs ts vs jsonc all had
+       to share marks), needs no curated-subset check, and reads at any size.
+       The --lang-icon rules below are kept as the copy-affordance glyph. */
+    content: attr(data-language);
+    font-family: var(--font-family);
     position: absolute;
     /* Centre the glyph exactly ON the block's top edge: `top: 0` puts its
        top there, then translating up by half its own height drops the
@@ -1524,33 +1781,52 @@ pre.astro-code::after {
        clear of it. */
     top: 0;
     translate: 0 -50%;
+    /* Top-right, in the same spot as the copy button, so the label reads as
+       the thing you click: on hover it fades out and the copy glyph fades in
+       over it, rather than the icon appearing elsewhere on the frame. */
     right: 1ch;
+    transition: opacity 100ms linear;
     /* Gap either side so the top border (below) breaks cleanly around the
-       glyph instead of running into it. */
+       label instead of running into it. */
     padding-inline: 0.6ch;
     color: var(--lang-badge, var(--material-pink));
     /* Page background, not a tint: the badge has to mask the border it
        sits on so the rule appears to break around it, which is the whole
        ASCII-box effect. A translucent wash would let the line show
        through. */
-    background: var(--background0);
+    /* Mask the border with whatever surface the block actually sits on, not
+       the page background: inside a callout that surface is --callout-bg
+       layered over the page, and painting --background0 there left a visible
+       page-coloured rectangle behind the label. --code-mask-bg is set by any
+       container with its own fill (see .callout below); it falls back to the
+       page background everywhere else. */
+    /* Tint layer over page layer (see --code-mask-bg on .callout). Outside a
+       callout --code-mask-bg is unset, so this collapses to the page
+       background alone -- the original behaviour. */
+    background:
+        linear-gradient(
+            var(--code-mask-bg, transparent),
+            var(--code-mask-bg, transparent)
+        ),
+        var(--code-mask-under, var(--background0));
     line-height: 1;
     user-select: none;
     pointer-events: none;
     z-index: 2;
 }
 
-/* The rule the badge breaks. Only the top edge is drawn — a full box would
-   fight the block's own background fill; a single rule with the glyph
-   notched into it is the part of the ASCII-box idiom that carries the
-   meaning. Tinted to the language hue but well muted, so it reads as
-   structure rather than as a second accent. */
+/* The box the badge breaks. Now that the block carries no background fill,
+   all four edges are drawn: with no panel to bound it, a lone top rule left
+   the code floating. Tinted to the language hue and held back from full
+   strength so it reads as structure rather than as a second accent — though
+   stronger than the 0.28 the top-only rule used, since a border is now the
+   only thing separating code from page. */
 pre.astro-code::before {
     content: '';
     position: absolute;
-    inset: 0 0 auto 0;
-    border-top: 1px solid
-        oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.28);
+    inset: 0;
+    border: 1px solid
+        oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.9);
     pointer-events: none;
     z-index: 1;
 }
@@ -1566,40 +1842,73 @@ pre.astro-code[data-language='plaintext']::before {
     content: none;
 }
 
-/* On hover the language glyph becomes a copy glyph in place — the badge IS
-   the affordance rather than being displaced by a separate control. The
-   notched rule stays put; only the mark changes.
+/* On hover the language label gives way to a copy glyph in the same spot —
+   the label IS the affordance rather than being displaced by a separate
+   control. The notched rule stays put; only the mark changes.
 
-   The real <button> still does the copying (see .code-copy-btn), so this
-   swap is purely visual. That button is styled as a bare hit-target
-   covering the badge, so the cursor and click both land correctly. */
+   The two are separate elements that cross-fade, not a content swap: the
+   label is text in the body font while the glyph is Nerd Font, and the copy
+   RESULT (check / x) has to outlast the hover.
+
+   Keep the label out of the way for the whole result window, otherwise it
+   reappears under the check the moment the pointer leaves. */
 pre.astro-code:hover::after,
-pre.astro-code:focus-within::after {
-    content: '\ebcc';
-    color: var(--foreground1);
+pre.astro-code:has(.code-copy-btn:focus-visible)::after,
+pre.astro-code.is-copied::after,
+pre.astro-code.is-copy-failed::after {
+    opacity: 0;
 }
 
-/* Click feedback. The script adds .is-copied (or .is-copy-failed) to the
-   <pre> for ~1.2s; these rules own everything the user sees.
-
-   Success shows a check, failure an x, each in its own colour, and the
-   glyph pops once. The state classes beat the :hover rule above because
-   they are declared later at equal specificity — the pointer is still over
-   the block at the moment of the click, so :hover is necessarily active
-   and the swap has to win from here. */
-pre.astro-code.is-copied::after,
-pre.astro-code.is-copied:hover::after {
+pre.astro-code .code-copy-btn::before {
+    /* U+EBCC cod-copy, U+EAB2 check, U+EA76 close: all verified present
+       in the curated subset (EB4D and EA87 are not). */
+    content: '\ebcc';
+    font-family: 'Symbols Nerd Font', var(--font-family);
+    color: var(--foreground3);
+    /* Same border-masking as the language badge above; same reason it must
+       follow the container surface rather than the page background. */
+    background:
+        linear-gradient(
+            var(--code-mask-bg, transparent),
+            var(--code-mask-bg, transparent)
+        ),
+        var(--code-mask-under, var(--background0));
+    padding-inline: 0.4ch;
+    opacity: 0;
+    transition: opacity 100ms linear;
+}
+/* :focus-visible on the button, not :focus-within on the block. Clicking the
+   button focuses it, so :focus-within stayed true after the pointer left and
+   the copy glyph was pinned on with the language label hidden behind it.
+   :focus-visible fires for keyboard focus but not a mouse click, which is
+   exactly the distinction wanted here. */
+pre.astro-code:hover .code-copy-btn::before,
+pre.astro-code .code-copy-btn:focus-visible::before {
+    opacity: 1;
+}
+pre.astro-code .code-copy-btn:hover::before {
+    color: var(--lang-badge, var(--material-pink));
+}
+/* Copy result: the <pre> carries .is-copied / .is-copy-failed for 1.2s. */
+pre.astro-code.is-copied .code-copy-btn::before {
     content: '\eab2';
     color: var(--material-green);
+    opacity: 1;
+    animation: code-copy-pop 240ms ease-out;
+}
+pre.astro-code.is-copy-failed .code-copy-btn::before {
+    content: '\ea76';
+    color: var(--material-red);
+    opacity: 1;
     animation: code-copy-pop 240ms ease-out;
 }
 
-pre.astro-code.is-copy-failed::after,
-pre.astro-code.is-copy-failed:hover::after {
-    content: '\f00d';
-    color: var(--material-red);
-    animation: code-copy-pop 240ms ease-out;
-}
+/* Click feedback lives on the copy button's ::before (see above), not here.
+   These rules used to put the check / x on the language badge's ::after,
+   back when that badge WAS the copy glyph. Leaving them in place fought the
+   button rules and left the glyph stuck on: the pop keyframes end at
+   opacity 1 with no fill-mode, so the last frame lingered after the state
+   class was removed and the label never faded back in. */
 
 /* Scale from the glyph's own centre. The badge is positioned with
    `translate: 0 -50%`, and `transform` is a separate property from
@@ -1734,10 +2043,21 @@ pre.astro-code > code {
     counter-reset: line;
     line-height: initial;
     /* background-color: var(--background1, var(--pre-background)) !important; */
-    /* Trailing padding so the last char of the longest line doesn't kiss the
-       block edge — without this, lines that exactly hit max-content get clipped
-       at the right when the `pre`'s own padding-inline-end is 0. */
-    padding-inline-end: 4ch;
+    /* Trailing clearance so the last character of a long line does not kiss
+       the block edge when scrolled to the end.
+
+       `scroll-padding-inline-end`, NOT `padding-inline-end`: the <pre> is
+       `width: max-content`, so real padding here is counted into the block's
+       intrinsic width and every SHORT block inherited 4ch of dead space after
+       its last character (measured: 39 of 43 blocks on this page never scroll,
+       so the gap was doing nothing on 91% of them while making each look
+       lopsided). scroll-padding only applies to the scroll container's own
+       scrolling, so it is inert until the content actually overflows — which
+       is exactly when the clearance is wanted.
+
+       The <pre>'s own padding-inline-end: 1ch (above) still keeps a
+       one-character margin on the non-scrolling case. */
+    scroll-padding-inline-end: 4ch;
 }
 
 pre.astro-code span.line[tabindex='0'] {
@@ -1747,8 +2067,10 @@ pre.astro-code span.line[tabindex='0'] {
 }
 
 pre.astro-code span.line[tabindex='0']:focus-visible {
-    background-color: oklch(from var(--foreground0) l c h / 0.12);
-    box-shadow: inset 2px 0 0 0 var(--foreground0);
+    background-color: oklch(
+        from var(--lang-badge, var(--material-pink)) l c h / 0.12
+    );
+    box-shadow: inset 2px 0 0 0 var(--lang-badge, var(--material-pink));
     /* The <code> carries `padding-inline-end: 4ch` so the longest line
        doesn't kiss the block edge. A line's `width: 100%` resolves against
        that padded content box, so the focus highlight stopped 4ch short of
@@ -1801,6 +2123,11 @@ pre.astro-code .line {
         'Segoe UI Emoji', 'Noto Color Emoji';
 }
 
+/* The line number. Rendered by script as a real <a> so it can be copied,
+   middle-clicked and opened like any other link; the ::before counter it
+   replaced could do none of that. The counter-increment stays here as the
+   fallback for any block the script has not reached (or if JS is off), where
+   the ::before still draws the number. */
 pre.astro-code span.line::before {
     counter-increment: line;
     content: counter(line);
@@ -1814,6 +2141,108 @@ pre.astro-code span.line::before {
     color: var(--pre-linenumber-fg, var(--foreground3));
     user-select: none;
     border-right: 2px solid var(--background2);
+}
+/* Once the anchor exists it IS the number, so the pseudo-element stands down
+   rather than printing a second one. */
+pre.astro-code span.line:has(> .code-line-link)::before {
+    content: none;
+}
+.code-line-link {
+    display: inline-block;
+    /* One fixed width for the whole block, not min/max around the digits:
+       a 1ch..3ch range let the box grow at line 10, stepping the divider
+       6.5px to the right mid-gutter. --line-number-width is set per block by
+       Doc.astro from the widest line number it actually has, so a 9-line
+       block keeps a 1ch gutter and a 100-line block widens once, uniformly.
+
+       content-box, against the site-wide border-box default: the width names
+       the space the DIGITS get. Under border-box the 1ch padding and 2px
+       border ate into it, leaving 8.5px — one character — so "10" spilled
+       through the divider and text-align: right had nothing to align. */
+    box-sizing: content-box;
+    width: var(--line-number-width, 2ch);
+    margin-right: 1ch;
+    padding-right: 1ch;
+    text-align: right;
+    color: var(--pre-linenumber-fg, var(--foreground3));
+    /* Per line, so it spans the code rather than the whole frame. Drawing it
+       once for the block (to meet the border at top and bottom, as a TUI box
+       joins at ┬/┴) needs a full-height element, and the three candidates all
+       failed: pre::before is the frame, pre::after is the language badge, and
+       code::before cannot stretch vertically inside a flex-column that also
+       scrolls. Not worth a wrapper element for ~5px at each end. */
+    border-right: 2px solid var(--background2);
+    text-decoration: none;
+    user-select: none;
+}
+
+/* The gutter divider, drawn once for the whole block rather than as a
+   border-right on each line. Per line it could only span the lines, so it
+   stopped ~5px short of the frame at top and bottom and read as floating;
+   as a full-height rule it meets the border at both ends, the way a TUI box
+   joins at its ┬ and ┴. Positioned at the gutter's outer edge: the anchor's
+   content width, plus its 1ch padding and the code's 1ch inset. */
+/* The gutter divider is drawn as an inset shadow on the border box rather
+   than its own pseudo-element: ::before is the frame and ::after is the
+   language badge, both already taken. A single vertical line at the gutter's
+   outer edge, spanning the full height so it meets the frame at top and
+   bottom the way a TUI box joins at ┬ and ┴.
+   Offset = block padding-inline (1ch) + digit width + their 1ch padding. */
+
+/* Only the hovered number lights up. The first version put the hover class on
+   the <pre>, which lit every line in the block at once. */
+.code-line-link:hover,
+.code-line-link:focus-visible {
+    color: var(--lang-badge, var(--material-pink));
+    text-decoration: none;
+}
+/* The number is a link, so it would otherwise inherit the site's body-link
+   treatment (a grow-from-underline block that fills the line box); over a 1ch
+   digit that reads as a dark square. Keep it a plain glyph. */
+pre.astro-code .code-line-link,
+pre.astro-code .code-line-link:hover,
+pre.astro-code .code-line-link:focus,
+pre.astro-code .code-line-link:focus-visible {
+    background: none;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* ── Linkable lines ──────────────────────────────────────────────────────
+   Clicking a line number copies a link to that line. The number itself is a
+   ::before counter and cannot be an anchor, so Doc.astro hit-tests the click
+   against the gutter box; these rules only supply the affordance and the
+   highlight. */
+
+/* The clicked (or linked-to) line. Tinted with the same language hue as the
+   block's border so the highlight reads as part of the block rather than a
+   new accent, and drawn with a left rail so the eye lands on the row start.
+   `box-shadow` rather than `border-left` to avoid shifting the text.
+
+   The hue is read off the <pre> explicitly: --lang-badge is declared on
+   pre.astro-code[data-language=...], and a bare var() here resolved to the
+   pink fallback instead of the block's colour. */
+pre.astro-code[data-language] span.line.is-line-linked {
+    /* Same treatment as :focus-visible above, so a line you tabbed to and a
+       line you linked to read the same.
+
+       !important because a hash jump also FOCUSES the line (it carries
+       tabindex="0"), and a loosely-nested `&:focus, &:hover` rule from the
+       prev/next nav styles paints `oklch(from var(--accent) l c h / .08)`
+       over it — pink, whatever the block's language. That rule sits later in
+       the cascade at equal specificity, so ordering alone does not win. */
+    background-color: oklch(
+        from var(--lang-badge, var(--material-pink)) l c h / 0.14
+    ) !important;
+    box-shadow: inset 3px 0 0 0 var(--lang-badge, var(--material-pink));
+    /* Match the focus rule: paint back over the <code>'s 4ch end padding so
+       the highlight runs the full width instead of stopping short. */
+    margin-inline-end: -4ch;
+    padding-inline-end: 4ch;
+}
+pre.astro-code span.line.is-line-linked::before,
+pre.astro-code span.line.is-line-linked > .code-line-link {
+    color: var(--lang-badge, var(--material-pink));
 }
 
 /* Invisible hit-target sitting exactly over the language badge. The badge

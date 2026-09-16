@@ -6,8 +6,9 @@ order: 0
 
 import { getCollection } from 'astro:content'
 import LastUpdated from '@/components/LastUpdated.astro'
+import LetterbirdContact from '@/components/LetterbirdContact.astro'
 
-export const recentPosts = (await getCollection('docs'))
+export const allPosts = (await getCollection('docs'))
     .filter((doc) => {
         const id = doc.id
         if (!id) return false
@@ -23,9 +24,8 @@ export const recentPosts = (await getCollection('docs'))
         )
     })
     .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
-    .slice(0, 8)
 
-export const recentTalks = (await getCollection('docs'))
+export const allTalks = (await getCollection('docs'))
     .filter((doc) => {
         const id = doc.id
         if (!id) return false
@@ -37,7 +37,6 @@ export const recentTalks = (await getCollection('docs'))
         )
     })
     .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
-    .slice(0, 8)
 
 ## 🧑🏻‍💻 About
 <div id="flex-container" style="display: flex; gap: 1ch; justify-content: space-between">
@@ -193,12 +192,79 @@ Pre-Training group] for the [AuroraGPT] project.
 
 </div>
 
+<style>{`
+  /* The posts / talks / work lists run 37, 23 and 27 rows. Shown in full they
+     bury everything below them, so each is capped at 20 lines and scrolls.
+     The height goes on .table-scroll-wrapper (Doc.astro wraps every table in
+     one at runtime) rather than the table itself: max-height on a <table> is
+     only a hint and gets ignored once the rows exceed it. */
+  .table-scroll-wrapper:has(> #posts-table),
+  .table-scroll-wrapper:has(> #talks-table),
+  .table-scroll-wrapper:has(> #repo-table),
+  #work-table .table-scroll-wrapper {
+    max-height: 20lh;
+    overflow-y: auto;
+    /* The base .table-scroll-wrapper rule sets width: 100%, which left the
+       posts box 835px wide around a 626px table: 208px of dead space with the
+       scrollbar stranded at the far edge. fit-content shrinks the box to the
+       table while max-width still clamps the wide case (talks is 887px and
+       genuinely scrolls). */
+    width: fit-content;
+    /* Reserve the scrollbar track so the table does not shift sideways when
+       the list is short enough not to need one. */
+    scrollbar-gutter: stable;
+    /* Leave a gutter that belongs to the PAGE, not the table, so there is
+       somewhere to put the pointer that scrolls the page normally. Measured
+       without it: a wheel over a capped table fed all 720px into the inner
+       list and advanced the page 0, so scrolling past the posts list took ~8
+       ticks before the page moved at all. overscroll-behavior only governs
+       the inner boundary, so it cannot solve the pass-through on its own.
+       End side only: a leading margin indented the tables out of line with
+       the body text. */
+    margin-inline-end: 8ch;
+    max-width: calc(100% - 8ch);
+  }
+  /* No gutter on narrow screens: 8ch costs a third of a 358px column there,
+     and touch scrolling does not have the pointer-capture problem the gutter
+     exists to solve. */
+  @media (max-width: 80ch) {
+    .table-scroll-wrapper:has(> #posts-table),
+    .table-scroll-wrapper:has(> #talks-table),
+    .table-scroll-wrapper:has(> #repo-table),
+    #work-table .table-scroll-wrapper {
+      margin-inline-end: 0;
+      max-width: 100%;
+    }
+  }
+  /* Keep the column headers visible while scrolling. WebTUI sets
+     position: relative on every td, and a positioned element paints above a
+     non-positioned one, so the pinned header needs an explicit z-index on the
+     th itself (that is where the position lives) to stay on top of the rows
+     passing under it. */
+  #posts-table thead th,
+  #talks-table thead th,
+  #repo-table thead th,
+  #work-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    /* A sticky element paints over nothing by default, and border-collapse
+       hands the cell borders to the table, so the band needs its own opaque
+       fill and its border redrawn as an inset shadow. */
+    background-color: var(--background1);
+    box-shadow:
+      inset 0 1px 0 var(--foreground3),
+      inset 0 -1px 0 var(--foreground3),
+      inset -1px 0 0 var(--foreground3);
+  }
+`}</style>
+
 ## 📬 Posts
 
-<table data-table-style="terminal">
+<table id="posts-table" data-table-style="terminal">
 <thead><tr><th>Date</th><th>Title</th></tr></thead>
 <tbody>
-{recentPosts.map((post) => (
+{allPosts.map((post) => (
 <tr>
 <td>{(() => { const d = new Date(post.data.date); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; })()}</td>
 <td><a href={`/${post.id.replace(/\/index\.(mdx?|md)$/, '/')}`}>{post.data.title}</a></td>
@@ -217,10 +283,10 @@ Pre-Training group] for the [AuroraGPT] project.
 > - HTML: [https://samforeman.me/talks/ai-for-science-2024/](https://samforeman.me/talks/ai-for-science-2024/)
 > - Slides: [https://samforeman.me/talks/ai-for-science-2024/slides](https://samforeman.me/talks/ai-for-science-2024/slides)
 
-<table data-table-style="terminal">
+<table id="talks-table" data-table-style="terminal">
 <thead><tr><th>Date</th><th>Title</th><th>Location</th></tr></thead>
 <tbody>
-{recentTalks.map((talk) => (
+{allTalks.map((talk) => (
 <tr>
 <td>{(() => { const d = new Date(talk.data.date); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; })()}</td>
 <td><a href={`/${talk.id.replace(/\/index\.(mdx?|md)$/, '/')}`}>{talk.data.shortTitle ?? talk.data.title}</a></td>
@@ -796,7 +862,7 @@ Pre-Training group] for the [AuroraGPT] project.
 > [!TIP|inline]
 > For a full list of my publications, see my [Google Scholar](https://scholar.google.com/citations?user=vV_1zDwAAAAJ&hl=en)
 
-<div data-table-style="terminal">
+<div id="work-table" data-table-style="terminal">
 
 | Year | Title |
 | ---- | ----- |
@@ -1112,20 +1178,24 @@ Pre-Training group] for the [AuroraGPT] project.
 
 ## 📂 Projects
 
-<a href="https://github.com/saforem2/"><code>saforem2</code></a>'s GitHub Repositories — top 10 by stars.
-Full list at [/projects](/projects).
+<a href="https://github.com/saforem2/"><code>saforem2</code></a>'s 25 most recently
+pushed-to repositories, including forks and other people's projects I've landed
+merged PRs in. Click any column header to re-sort. Full list at [/projects](/projects).
 
 <style>{`
   #repo-table {
-    width: 100%;
     margin-block: 1lh;
-    border-collapse: collapse;
   }
+  /* WebTUI styles any bare <button> as a control: height 3lh and
+     margin-inline 1ch. Both have to be unset here or the header row grows to
+     ~2.3x the body-row height and the labels sit inset from their cells. */
   #repo-table th button {
     appearance: none;
     background: none;
     border: none;
     padding: 0;
+    margin: 0;
+    height: auto;
     font: inherit;
     color: inherit;
     cursor: pointer;
@@ -1139,22 +1209,55 @@ Full list at [/projects](/projects).
     display: inline-block;
     width: 1ch;
     color: var(--foreground2);
-    font-size: 0.85em;
   }
   #repo-table th[data-sort-dir="asc"] .repo-arrow::before { content: "↑"; }
   #repo-table th[data-sort-dir="desc"] .repo-arrow::before { content: "↓"; }
   #repo-table td { vertical-align: top; }
+  /* Keep column labels on one line — the terminal table style leaves th free
+     to wrap, which broke "Updated" into "Update / d". */
+  #repo-table th { white-space: nowrap; }
   #repo-table td.col-stars,
   #repo-table td.col-updated { white-space: nowrap; }
-  #repo-table td.col-desc { color: var(--foreground2); }
+  /* Cap the description at ~46ch. It inherits the terminal style's tbody
+     nowrap, so this truncates on one line rather than wrapping: an earlier
+     attempt that let it wrap made row heights ragged (one line vs two) and
+     the table sat narrower than its own content. The full text stays
+     available via the title attribute. */
+  #repo-table td.col-desc {
+    color: var(--foreground2);
+    max-width: 46ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Marks a row that is not a project of my own: a fork, or a repo I only
+     landed a merged PR in. Nerd Font has to be named explicitly here; the
+     table otherwise renders in the body font, which has no codicons. */
+  /* "name @ branch". Muted so the repo name still reads as the primary
+     label, and nowrap so a slashed branch does not fold mid-name. */
+  .repo-branch {
+    color: var(--foreground2);
+    white-space: nowrap;
+  }
+  .repo-branch a { color: inherit; }
+  .repo-kind {
+    font-family: 'Symbols Nerd Font', monospace;
+    color: var(--foreground2);
+    white-space: nowrap;
+    /* Fixed slot so the repo names stay in one column: the three glyphs are
+       not the same advance width (the github mark is the widest). Sized
+       2.5ch rather than 2ch because at 2ch the widest glyph sat flush
+       against the name with no gap. */
+    display: inline-block;
+    width: 2.5ch;
+  }
 `}</style>
 
 <p id="repo-grid-status">Loading repositories from GitHub…</p>
-<table id="repo-table" hidden>
+<table id="repo-table" data-table-style="terminal" hidden>
   <thead>
     <tr>
-      <th data-sort="stars" data-sort-dir="desc"><button type="button" aria-label="Sort by stars">⭐ <span class="repo-arrow"></span></button></th>
-      <th data-sort="updated"><button type="button" aria-label="Sort by last updated">Updated <span class="repo-arrow"></span></button></th>
+      <th data-sort="stars"><button type="button" aria-label="Sort by stars">⭐ <span class="repo-arrow"></span></button></th>
+      <th data-sort="updated" data-sort-dir="desc"><button type="button" aria-label="Sort by last updated">Updated <span class="repo-arrow"></span></button></th>
       <th data-sort="name"><button type="button" aria-label="Sort by repository name">Repo <span class="repo-arrow"></span></button></th>
       <th>Description</th>
       <th data-sort="lang"><button type="button" aria-label="Sort by language">Lang <span class="repo-arrow"></span></button></th>
@@ -1162,7 +1265,7 @@ Full list at [/projects](/projects).
   </thead>
   <tbody></tbody>
 </table>
-<div id="repo-grid" data-github-user="saforem2" data-limit="10" data-show-cards="false" hidden></div>
+<div id="repo-grid" data-github-user="saforem2" data-limit="35" data-show-cards="false" hidden></div>
 
 <script>{`
   (async function () {
@@ -1175,10 +1278,30 @@ Full list at [/projects](/projects).
     const cap = limit ? parseInt(limit, 10) : Infinity;
     const showCards = grid.getAttribute("data-show-cards") !== "false";
     const username = grid.getAttribute("data-github-user") || "saforem2";
-    const apiUrl =
-      "https://api.github.com/users/" +
-      username +
-      "/repos?per_page=100&sort=updated";
+    // sort=pushed, not updated: updated_at moves on metadata alone (a star, a
+    // description edit), while pushed_at is the "I actually worked on this"
+    // signal. 43 of the first 100 repos disagree between the two, e.g.
+    // torchtitan reads updated 2026-08-19 but pushed 2026-08-24.
+    function pageUrl(page) {
+      return "https://api.github.com/users/" + username +
+        "/repos?per_page=100&sort=pushed&page=" + page;
+    }
+    // Recent public pushes, which is the only cheap way to learn WHICH branch
+    // I was working in: default_branch reads "main" on every fork, and the
+    // branches endpoint carries no commit dates, so ranking branches would
+    // cost one request per branch per repo.
+    function eventsUrl() {
+      return "https://api.github.com/users/" + username +
+        "/events/public?per_page=100";
+    }
+    // Merged PRs to repos owned by somebody else. These never appear in the
+    // /users/:u/repos endpoint at any page depth, so pytorch/torchtitan and
+    // n-getty/argo-shim are invisible without a second source.
+    function prSearchUrl() {
+      return "https://api.github.com/search/issues?q=" +
+        encodeURIComponent("author:" + username + " type:pr is:merged -user:" + username) +
+        "&sort=updated&order=desc&per_page=100";
+    }
     function formatNumber(n) {
       if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\\.0$/, "") + "M";
       if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\\.0$/, "") + "k";
@@ -1189,10 +1312,16 @@ Full list at [/projects](/projects).
       const mul = dir === "asc" ? 1 : -1;
       let cmp = 0;
       if (key === "stars") {
-        cmp = a.stargazers_count - b.stargazers_count;
-        if (cmp === 0) cmp = a.updated_at.localeCompare(b.updated_at);
+        // A contributed repo has no star count of its own to show. Sort those
+        // to the end in either direction rather than letting null read as 0.
+        const as = a.stars, bs = b.stars;
+        if (as === null && bs === null) cmp = 0;
+        else if (as === null) return 1;
+        else if (bs === null) return -1;
+        else cmp = as - bs;
+        if (cmp === 0) cmp = a.date.localeCompare(b.date);
       } else if (key === "updated") {
-        cmp = a.updated_at.localeCompare(b.updated_at);
+        cmp = a.date.localeCompare(b.date);
       } else if (key === "name") {
         cmp = a.name.localeCompare(b.name);
       } else if (key === "lang") {
@@ -1201,7 +1330,20 @@ Full list at [/projects](/projects).
       return cmp * mul;
     }
     let repos = [];
-    let sortKey = "stars";
+    let prRows = [];
+    // repo full_name -> branch of my most recent push there.
+    let pushBranches = new Map();
+    function annotateBranches(list) {
+      for (const r of list) {
+        const full = r.name.includes("/") ? r.name : username + "/" + r.name;
+        const b = pushBranches.get(full);
+        // Only worth showing when it is not the branch you would assume.
+        if (b && b !== "main" && b !== "master") r.branch = b;
+      }
+    }
+    // How many of the cap are held for repos I only contributed to.
+    const PR_SLOTS = Math.min(6, Math.floor(cap / 4));
+    let sortKey = "updated";
     let sortDir = "desc";
     function makeCell(text, cls) {
       const td = document.createElement("td");
@@ -1209,28 +1351,68 @@ Full list at [/projects](/projects).
       if (cls) td.className = cls;
       return td;
     }
-    function makeRepoCell(repo) {
+    function descCell(text) {
+      const td = makeCell(text, "col-desc");
+      // Truncated by CSS, so keep the full text reachable on hover.
+      if (text) td.setAttribute("title", text);
+      return td;
+    }
+    function makeRepoCell(row) {
       const td = document.createElement("td");
+      // Leading glyph, so the eye can pick out kind before reading the name.
+      // All three were added to the curated Symbols Nerd Font subset for this
+      // (it shipped 1582 glyphs and carried only E725); the subset is curated,
+      // so any glyph not explicitly kept renders as tofu.
+      //   U+F09B github  own repo
+      //   U+E725 fork    my fork of someone else's project
+      //   U+E727 merge   a repo I only landed a merged PR in
+      const GLYPH = { own: "\uF09B", fork: "\uE725", PR: "\uE727" };
+      const LABEL = { own: "repository", fork: "fork", PR: "merged PR" };
+      const tag = document.createElement("span");
+      tag.className = "repo-kind";
+      tag.textContent = GLYPH[row.kind] || GLYPH.own;
+      tag.setAttribute("title", LABEL[row.kind] || LABEL.own);
+      tag.setAttribute("aria-label", LABEL[row.kind] || LABEL.own);
+      tag.setAttribute("role", "img");
       const a = document.createElement("a");
-      a.href = repo.html_url;
-      a.textContent = repo.name;
+      a.href = row.url;
+      a.textContent = row.name;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      td.appendChild(a);
+      td.append(tag, a);
+      // The branch I last pushed to, when it is not the default one. Links to
+      // that branch rather than the repo root, since that is where the work
+      // being advertised actually lives.
+      if (row.branch) {
+        const at = document.createElement("span");
+        at.className = "repo-branch";
+        const bl = document.createElement("a");
+        bl.href = row.url + "/tree/" + row.branch;
+        bl.textContent = row.branch;
+        bl.target = "_blank";
+        bl.rel = "noopener noreferrer";
+        at.append(" @ ", bl);
+        td.appendChild(at);
+      }
       return td;
     }
     function render() {
-      const sorted = repos.slice().sort((a, b) => compare(a, b, sortKey, sortDir));
+      // Fill the reserved slots first, then top up with everything else, then
+      // sort the combined set so the user's chosen column still governs the
+      // order they see.
+      const ownSorted = repos.slice().sort((a, b) => compare(a, b, "updated", "desc"));
+      const picked = ownSorted.slice(0, Math.max(0, cap - prRows.length)).concat(prRows);
+      const sorted = picked.sort((a, b) => compare(a, b, sortKey, sortDir));
       const shown = sorted.slice(0, cap);
       tbody.replaceChildren();
-      shown.forEach((repo) => {
+      shown.forEach((row) => {
         const tr = document.createElement("tr");
         tr.append(
-          makeCell(formatNumber(repo.stargazers_count || 0), "col-stars"),
-          makeCell(fmtDate(repo.updated_at), "col-updated"),
-          makeRepoCell(repo),
-          makeCell(repo.description || "", "col-desc"),
-          makeCell(repo.language || "")
+          makeCell(row.stars === null ? "" : formatNumber(row.stars), "col-stars"),
+          makeCell(fmtDate(row.date), "col-updated"),
+          makeRepoCell(row),
+          descCell(row.description || ""),
+          makeCell(row.language || "")
         );
         tbody.appendChild(tr);
       });
@@ -1251,11 +1433,160 @@ Full list at [/projects](/projects).
         render();
       });
     });
+    // Everything downstream reads this shape, so a repo and a contributed-to
+    // project can share one sorted list.
+    function rowFromRepo(r) {
+      return {
+        kind: r.fork ? "fork" : "own",
+        name: r.name,
+        url: r.html_url,
+        date: r.pushed_at || r.updated_at,
+        stars: r.stargazers_count || 0,
+        description: r.description || "",
+        language: r.language || "",
+      };
+    }
     try {
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error("GitHub API error: " + res.status);
-      const data = await res.json();
-      repos = data.filter((r) => !r.fork);
+      // Sorted by pushed, so page 1 already holds the most recently touched
+      // repos and one page covers any realistic cap. Keep walking only if the
+      // cap is large enough to need it.
+      const MAX_PAGES = 3;
+      for (let page = 1; page <= MAX_PAGES; page += 1) {
+        const res = await fetch(pageUrl(page));
+        if (!res.ok) throw new Error("GitHub API error: " + res.status);
+        const data = await res.json();
+        repos = repos.concat(data.map(rowFromRepo));
+        if (data.length < 100 || repos.length >= cap) break;
+      }
+
+      // Branch annotations, non-fatal. The feed only reaches back a couple of
+      // days and covered 6 of 25 rows when measured, so a branch is a bonus on
+      // recently-touched repos rather than something every row will carry.
+      try {
+        const evRes = await fetch(eventsUrl());
+        if (evRes.ok) {
+          const events = await evRes.json();
+          const branchOf = new Map();
+          for (const e of events || []) {
+            if (e.type !== "PushEvent") continue;
+            const full = e.repo && e.repo.name;
+            const ref = (e.payload && e.payload.ref) || "";
+            if (!full || !ref.startsWith("refs/heads/")) continue;
+            // Events are newest-first, so the first hit per repo wins.
+            if (!branchOf.has(full)) {
+              branchOf.set(full, ref.slice("refs/heads/".length));
+            }
+          }
+          // Stash the whole map: PR rows are built further down, after this
+          // block, so they cannot be annotated here.
+          pushBranches = branchOf;
+          annotateBranches(repos);
+        }
+      } catch (evErr) {
+        console.warn("events feed unavailable:", evErr);
+      }
+
+      // Second source, deliberately non-fatal: the search API is rate limited
+      // to 10 req/min unauthenticated, so a failure here must not blank a
+      // table the first request already filled.
+      try {
+        const prRes = await fetch(prSearchUrl());
+        if (prRes.ok) {
+          const pr = await prRes.json();
+          const byRepo = new Map();
+          for (const it of pr.items || []) {
+            const full = it.repository_url.split("/repos/")[1];
+            if (!full) continue;
+            const when = it.closed_at || it.updated_at;
+            const prev = byRepo.get(full);
+            // Keep only the most recent merged PR per upstream repo.
+            if (!prev || when > prev.date) {
+              byRepo.set(full, {
+                kind: "PR", name: full,
+                url: "https://github.com/" + full,
+                date: when, stars: null,
+                description: it.title || "", language: "",
+              });
+            }
+          }
+          // Drop only a PR row that points at a repo I own outright (same
+          // owner AND name). A PR into somebody else's project is never a
+          // duplicate of one of mine.
+          const ownedFull = new Set(
+            repos.map((r) => (username + "/" + r.name).toLowerCase())
+          );
+          const external = [];
+          for (const [full, row] of byRepo) {
+            if (!ownedFull.has(full.toLowerCase())) external.push(row);
+          }
+          external.sort((a, b) => b.date.localeCompare(a.date));
+          // Same treatment for repos I only contributed to: a push to
+          // n-getty/argo-shim@chore/move-tests-to-dir is worth naming.
+          annotateBranches(external);
+
+          // Collapse fork/upstream pairs, preferring upstream. 18 of my 21
+          // contributed-to repos also exist as forks under my account, so
+          // without this the table shows llm-rosetta twice: once as my fork
+          // and once as Oaklight/llm-rosetta. The upstream row is the
+          // meaningful one (the PR landed there), but my fork carries the
+          // language and description the API omits from a search result, so
+          // the merged row keeps the upstream identity and borrows the fork's
+          // metadata. The list endpoint does not return a fork's parent, so
+          // the pairing is by repo name, which is what a fork keeps by
+          // default.
+          const upstreamNames = new Set(
+            external.map((r) => r.name.split("/")[1].toLowerCase())
+          );
+          // Which side of a fork/upstream pair to keep depends on where the
+          // work actually is. saforem2/torchtitan carries my ezpz branch and
+          // was pushed to today, while the merged PR upstream is from April:
+          // collapsing to pytorch/torchtitan sent the row's link to a repo I
+          // do not develop in. So keep whichever side was pushed to more
+          // recently, and let it carry the other's metadata.
+          const drop = new Set();
+          for (const row of external) {
+            const bare = row.name.split("/")[1].toLowerCase();
+            const mine = repos.find(
+              (r) => r.kind === "fork" && r.name.toLowerCase() === bare
+            );
+            if (!mine) continue;
+            if (mine.date > row.date) {
+              // My fork is the live one. Keep it, and note upstream on it.
+              mine.description = mine.description || row.description;
+              drop.add(row.name);
+            } else {
+              // The PR upstream is the more recent work. Keep that row, but
+              // borrow the language, description and branch a search result
+              // lacks.
+              row.description = mine.description || row.description;
+              row.language = mine.language || row.language;
+              if (mine.branch) row.branch = mine.branch;
+              drop.add("fork:" + bare);
+            }
+          }
+          for (let i = external.length - 1; i >= 0; i -= 1) {
+            if (drop.has(external[i].name)) external.splice(i, 1);
+          }
+          repos = repos.filter(
+            (r) =>
+              !(
+                r.kind === "fork" &&
+                upstreamNames.has(r.name.toLowerCase()) &&
+                drop.has("fork:" + r.name.toLowerCase())
+              )
+          );
+          // Reserve slots rather than letting date alone decide. My own repos
+          // are pushed to daily, so the top 25 by date bottoms out around
+          // 2026-06-29 while the newest external PR is 2026-08-14: on merit
+          // alone no contributed repo ever appears, and pytorch/torchtitan
+          // (2026-04-21) would need a cap near 60. Guaranteeing a few slots is
+          // the only way this table shows both kinds of work at this size.
+          prRows = external.slice(0, PR_SLOTS);
+        }
+      } catch (prErr) {
+        console.warn("PR search unavailable:", prErr);
+      }
+
       if (repos.length === 0) {
         if (status) status.textContent = "No repositories found.";
         return;
@@ -1479,9 +1810,7 @@ Full list at [/projects](/projects).
 >
 > > [!TIP] 💌 Contact
 > >
-> > <script
-> >     data-letterbirduser="sam"
-> >     src="https://letterbird.co/embed/v1.js"></script>
+> > <LetterbirdContact />
 >
 > <div style="text-align:center;">
 >

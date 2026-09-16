@@ -1,0 +1,118 @@
+---
+import { createShikiHighlighter } from '@astrojs/markdown-remark'
+import { buildBibtex, type CitationKind } from '@/utils/citation'
+import samLight from '@/shiki-themes/sam-light.json'
+import samDark from '@/shiki-themes/sam-dark.json'
+import nvimLightRole from '@/shiki-themes/nvim-light-role.json'
+import nvimLightHue from '@/shiki-themes/nvim-light-hue.json'
+import nvimDarkRole from '@/shiki-themes/nvim-dark-role.json'
+import nvimDarkHue from '@/shiki-themes/nvim-dark-hue.json'
+
+interface Props {
+    title: string
+    date: Date
+    pathname: string
+    kind: CitationKind
+    citationKey: string
+}
+
+const { title, date, pathname, kind, citationKey } = Astro.props as Props
+
+const bibtex = buildBibtex({ title, date, pathname, kind }, citationKey)
+const label = kind === 'talk' ? 'talk' : 'post'
+
+// This block never passes through the markdown pipeline (it is generated from
+// frontmatter), so it has to be highlighted by hand. The theme map MUST stay
+// in sync with shikiConfig.themes in astro.config.mjs: the per-theme CSS in
+// global.css keys off `--shiki-<name>` custom properties, and a theme missing
+// here renders as unstyled text under that theme rather than failing loudly.
+//
+// The highlighter is created once per module, not per page, and Astro caches
+// the module across the 58 pages that render this component.
+// Note the split: `themes` belongs to createShikiHighlighter, and only
+// `defaultColor` is a per-call option. Passing `themes` to the call instead
+// fails with "`themes` option must contain the defaultColor key".
+const highlighter = await createShikiHighlighter({
+    langs: ['bibtex'],
+    themes: {
+        'custom-light': 'min-light',
+        'custom-dark': 'one-dark-pro',
+        catppuccin: 'catppuccin-mocha',
+        'catppuccin-latte': 'catppuccin-latte',
+        'sam-light': samLight,
+        'sam-dark': samDark,
+        'nvim-light-role': nvimLightRole,
+        'nvim-light-hue': nvimLightHue,
+        'nvim-dark-role': nvimDarkRole,
+        'nvim-dark-hue': nvimDarkHue,
+    },
+})
+
+const highlighted = await highlighter.codeToHtml(bibtex, 'bibtex', {
+    defaultColor: 'custom-light',
+})
+---
+
+{
+    /*
+  The highlighted markup is a full `<pre class="astro-code">…</pre>`, the same
+  shape Shiki emits for a fenced block in MDX. Rendering it with set:html means
+  it picks up every existing code-block rule (per-theme colors, the language
+  badge, the copy button wired up in Doc.astro) instead of reimplementing them.
+  .cite-bibtex is kept as a hook for the few overrides this context needs.
+*/
+}
+<aside class="cite-this">
+    <details>
+        <summary>Cite this {label}</summary>
+        <div class="cite-body" set:html={highlighted} />
+    </details>
+</aside>
+
+<style>
+    .cite-this {
+        margin-block-start: 2lh;
+        border-top: 1px solid var(--background2);
+        padding-block-start: 1lh;
+    }
+
+    .cite-this summary {
+        cursor: pointer;
+        color: var(--foreground2);
+        font-style: italic;
+        list-style: none;
+    }
+
+    .cite-this summary::-webkit-details-marker {
+        display: none;
+    }
+
+    /* Disclosure caret, drawn rather than relying on the UA marker so it
+       matches the site's other collapsibles. */
+    .cite-this summary::before {
+        content: '+ ';
+        font-style: normal;
+        color: var(--foreground2);
+    }
+
+    .cite-this details[open] summary::before {
+        content: '- ';
+    }
+
+    .cite-this summary:hover {
+        color: var(--foreground0);
+    }
+
+    /* The highlighted markup is a real `pre.astro-code`, so it already gets
+       the site's per-theme code-block background, padding, language badge and
+       copy button from global.css. Nothing to re-declare here; the earlier
+       hand-rolled background/copy-button rules are gone with the hand-rolled
+       markup.
+
+       (That old plain <pre><code> was also the source of the grey boxes behind
+       each line: the global `code { background-color: var(--code-bg) }` for
+       INLINE code applied to it. Shiki's <code> is exempt from that rule.) */
+    .cite-body {
+        margin-block-start: 0.5lh;
+    }
+</style>

@@ -17,6 +17,13 @@ const docs = defineCollection({
            the location column on /talks/ as a link when set. */
         locationUrl: z.string().url().optional(),
         draft: z.boolean().optional(),
+        /* The page's Astro layout, e.g. '@/layouts/SlideLayout.astro'. Every
+           page already declares this in frontmatter, but the schema is strict
+           so zod drops any field it does not name. Doc.astro reads it to tell
+           slide decks (SlideLayout) apart from prose pages (Doc), since decks
+           render no citation block and must not count toward citation-key
+           collisions. */
+        layout: z.string().optional(),
     }),
 })
 

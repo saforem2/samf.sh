@@ -31,7 +31,14 @@ import { dirname, join } from 'node:path'
 import { fontDefs, FONT_STACK } from './svg-font.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const FIG_DIR = join(__dirname, '..', 'public', 'talks', '2026-08-03', 'figures')
+const FIG_DIR = join(
+    __dirname,
+    '..',
+    'public',
+    'talks',
+    '2026-08-03',
+    'figures',
+)
 const OUT = join(FIG_DIR, 'all-production-loss.svg')
 const OUT_MOBILE = join(FIG_DIR, 'all-production-loss-mobile.svg')
 
@@ -40,6 +47,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 // [tokens_B, loss] per chain. Bin-mean of the raw per-step series, reload blips
 // dropped. Pulled/derived by scripts (see header); transcribed verbatim.
+// prettier-ignore
 const C_2B_MDS = [
     [18.4, 6.298], [101.24, 3.994], [135.85, 3.592], [174.65, 3.355], [213.46, 3.215],
     [252.26, 3.114], [291.07, 3.04], [329.87, 2.989], [368.68, 2.95], [407.49, 2.92],
@@ -83,6 +91,7 @@ const C_2B_MDS = [
     [7625.35, 2.033], [7664.15, 2.032], [7702.96, 2.032], [7741.76, 2.031], [7765.97, 2.03],
     [7770.75, 2.033],
 ]
+// prettier-ignore
 const C_2B_256 = [
     [11.7, 6.956], [35.06, 4.381], [58.41, 3.753], [81.76, 3.479], [105.12, 3.327],
     [128.47, 3.227], [151.83, 3.155], [175.16, 3.102], [198.53, 3.061], [221.89, 3.028],
@@ -126,6 +135,7 @@ const C_2B_256 = [
     [4565.71, 2.648], [4589.06, 2.648], [4612.41, 2.648], [4635.77, 2.649], [4659.13, 2.651],
     [4672.29, 2.651], [4673.75, 2.652],
 ]
+// prettier-ignore
 const C_2B_512 = [
     [7.7, 9.654], [23.0, 6.097], [38.3, 5.216], [53.6, 4.724], [68.9, 4.373], [84.2, 4.095],
     [99.51, 3.899], [114.81, 3.754], [130.11, 3.645], [145.41, 3.556], [160.71, 3.483],
@@ -169,6 +179,7 @@ const C_2B_512 = [
     [3006.66, 2.709], [3021.96, 2.709], [3037.26, 2.708], [3052.56, 2.709], [3064.39, 2.709],
     [3068.52, 2.708],
 ]
+// prettier-ignore
 const C_20B_256 = [
     [0.4, 11.397], [1.18, 8.424], [1.96, 7.228], [2.74, 6.571], [3.52, 6.171], [4.3, 5.882],
     [5.08, 5.638], [5.86, 5.392], [6.64, 5.175], [7.42, 4.969], [8.2, 4.793], [8.98, 4.645],
@@ -197,6 +208,7 @@ const C_20B_256 = [
     [146.29, 2.469], [151.75, 2.436], [152.53, 2.427], [153.31, 2.421],
     [154.09, 2.415], [157.99, 2.434], [158.48, 2.431], [158.57, 2.439],
 ]
+// prettier-ignore
 const C_20B_512 = [
     [1.56, 11.436], [4.58, 8.465], [7.6, 7.311], [10.62, 6.619], [13.64, 6.221], [16.66, 5.94],
     [19.68, 5.688], [22.7, 5.449], [25.72, 5.231], [28.74, 5.019], [31.76, 4.833], [34.78, 4.671],
@@ -232,6 +244,7 @@ const C_20B_512 = [
 
 // series in draw order (least to most emphasis); color = source semantic mapping.
 // meta = end loss @ % of the 4.67T stage-1 target (compact vs the source's step count).
+// prettier-ignore
 const SERIES = [
     { data: C_2B_512, color: '#a01a1a', dash: null, label: '2B n512', meta: '2.71 @ 66%' },
     { data: C_2B_256, color: '#e05560', dash: null, label: '2B n256', meta: '2.65 @ 100%' },

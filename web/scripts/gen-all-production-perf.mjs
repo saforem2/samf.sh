@@ -31,7 +31,14 @@ import { dirname, join } from 'node:path'
 import { fontDefs, FONT_STACK } from './svg-font.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const FIG_DIR = join(__dirname, '..', 'public', 'talks', '2026-08-03', 'figures')
+const FIG_DIR = join(
+    __dirname,
+    '..',
+    'public',
+    'talks',
+    '2026-08-03',
+    'figures',
+)
 const OUT = join(FIG_DIR, 'all-production-perf.svg')
 const OUT_MOBILE = join(FIG_DIR, 'all-production-perf-mobile.svg')
 
@@ -39,6 +46,7 @@ const FONT = FONT_STACK
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 // [tokens_B, value] per chain. Bin-mean of the raw per-step series (see header).
+// prettier-ignore
 const TPS_B2_MDS = [
     [43.2, 4661.4], [129.5, 4741.6], [215.8, 4722.9], [302.1, 4622.5], [388.5, 4696.9],
     [474.8, 4666.8], [561.1, 4689.3], [647.4, 4739.7], [733.7, 4751.5], [820.1, 4683.0],
@@ -60,6 +68,7 @@ const TPS_B2_MDS = [
     [7380.3, 4313.5], [7466.6, 4306.6], [7552.9, 4462.9], [7639.2, 4509.2], [7725.6, 4322.8],
     [7769.7, 4606.8],
 ]
+// prettier-ignore
 const TPS_B2_256 = [
     [26.0, 3412.5], [77.9, 2958.1], [129.8, 2478.0], [181.6, 2657.0], [233.5, 2594.4],
     [285.4, 2764.6], [337.3, 2921.2], [389.2, 3018.3], [441.1, 3250.3], [493.0, 3196.1],
@@ -81,6 +90,7 @@ const TPS_B2_256 = [
     [4436.8, 3069.6], [4488.7, 3182.5], [4540.5, 3291.7], [4592.4, 3250.4], [4644.4, 3156.6],
     [4672.0, 3095.3],
 ]
+// prettier-ignore
 const MFU_B2_256 = [
     [26.0, 12.8], [77.9, 11.1], [129.8, 9.3], [181.6, 10.0], [233.5, 9.7], [285.4, 10.4],
     [337.3, 11.0], [389.2, 11.3], [441.1, 12.2], [493.0, 12.0], [544.9, 12.2], [596.8, 11.5],
@@ -99,6 +109,7 @@ const MFU_B2_256 = [
     [4229.2, 11.1], [4281.1, 12.0], [4333.0, 10.7], [4384.9, 9.9], [4436.8, 11.5], [4488.7, 11.9],
     [4540.5, 12.4], [4592.4, 12.2], [4644.4, 11.8], [4672.0, 11.6],
 ]
+// prettier-ignore
 const TPS_B2_512 = [
     [17.1, 2401.0], [51.1, 2535.1], [85.1, 2443.8], [119.1, 2040.4], [153.2, 2268.2],
     [187.2, 2706.7], [221.2, 2553.4], [255.2, 2480.4], [289.3, 2394.0], [323.3, 2576.5],
@@ -120,6 +131,7 @@ const TPS_B2_512 = [
     [2909.1, 2392.0], [2943.1, 2352.3], [2977.1, 2326.0], [3011.2, 2388.4], [3045.2, 2446.6],
     [3065.4, 2105.6],
 ]
+// prettier-ignore
 const MFU_B2_512 = [
     [17.1, 9.0], [51.1, 9.5], [85.1, 9.2], [119.1, 7.7], [153.2, 8.5], [187.2, 10.2], [221.2, 9.6],
     [255.2, 9.3], [289.3, 9.0], [323.3, 9.7], [357.3, 7.4], [391.3, 8.5], [425.4, 8.9],
@@ -137,6 +149,7 @@ const MFU_B2_512 = [
     [2705.0, 8.6], [2739.0, 8.1], [2773.0, 8.6], [2807.0, 9.0], [2841.1, 8.5], [2875.1, 8.7],
     [2909.1, 9.0], [2943.1, 8.8], [2977.1, 8.7], [3011.2, 9.0], [3045.2, 9.2], [3065.4, 7.9],
 ]
+// prettier-ignore
 const TPS_B20_256 = [
     [0.9, 301.3], [2.7, 395.6], [4.4, 364.6], [6.2, 366.8], [7.9, 327.0], [9.7, 349.5],
     [11.5, 396.2], [13.2, 394.2], [15.0, 393.2], [16.7, 407.3], [18.5, 404.0], [20.3, 396.8],
@@ -152,6 +165,7 @@ const TPS_B20_256 = [
     [143.6, 441.3], [145.3, 441.4], [147.1, 441.4], [148.9, 440.8], [150.6, 438.7],
     [152.4, 447.1], [154.2, 456.7], [155.9, 467.8], [157.7, 462.8], [158.6, 438.3],
 ]
+// prettier-ignore
 const MFU_B20_256 = [
     [0.9, 15.0], [2.7, 19.7], [4.4, 18.2], [6.2, 18.3], [7.9, 16.3], [9.7, 17.4], [11.5, 19.8],
     [13.2, 19.7], [15.0, 19.6], [16.7, 20.3], [18.5, 20.2], [20.3, 19.8], [22.0, 19.6],
@@ -167,6 +181,7 @@ const MFU_B20_256 = [
     [148.9, 22.0], [150.6, 21.9], [152.4, 22.3], [154.2, 22.8], [155.9, 23.3], [157.7, 23.1],
     [158.6, 21.9],
 ]
+// prettier-ignore
 const TPS_B20_512 = [
     [3.4, 298.1], [10.0, 335.8], [16.7, 349.9], [23.3, 337.0], [29.9, 331.0], [36.6, 343.3],
     [43.2, 348.7], [49.9, 348.4], [56.5, 307.5], [63.2, 339.2], [69.8, 342.3], [76.5, 344.4],
@@ -184,6 +199,7 @@ const TPS_B20_512 = [
     [501.7, 365.3], [508.3, 365.4], [514.9, 370.2], [521.6, 378.3], [528.2, 377.3],
     [534.9, 377.6], [540.9, 375.6], [604.3, 369.2], [604.8, 471.6],
 ]
+// prettier-ignore
 const MFU_B20_512 = [
     [3.4, 14.9], [10.0, 16.8], [16.7, 17.5], [23.3, 16.8], [29.9, 16.5], [36.6, 17.1],
     [43.2, 17.4], [49.9, 17.4], [56.5, 15.3], [63.2, 16.9], [69.8, 17.1], [76.5, 17.2],
@@ -201,6 +217,7 @@ const MFU_B20_512 = [
 ]
 
 // series: {tps, mfu (null = no data), color, dash, label, order}
+// prettier-ignore
 const SERIES = [
     { tps: TPS_B2_512, mfu: MFU_B2_512, color: '#a01a1a', dash: null, label: '2B n512' },
     { tps: TPS_B2_256, mfu: MFU_B2_256, color: '#e05560', dash: null, label: '2B n256' },
@@ -240,7 +257,14 @@ const MOBILE = {
     lw: 2.4,
 }
 
-function panel(cfg, px, py, pw, ph, { title, yMax, yStep, yUnit, key, drawLegend }) {
+function panel(
+    cfg,
+    px,
+    py,
+    pw,
+    ph,
+    { title, yMax, yStep, yUnit, key, drawLegend },
+) {
     const ax = px
     const ay = py
     const aw = pw
@@ -302,13 +326,41 @@ function buildSVG(cfg) {
     if (mobile) {
         const pw = W - M.left - M.right
         const ph = (H - M.top - M.bottom - 48) / 2
-        body += panel(cfg, M.left, M.top, pw, ph, { title: 'Tokens / sec / GPU', yMax: TPS_MAX, yStep: 1000, yUnit: '', key: 'tps', drawLegend: true })
-        body += panel(cfg, M.left, M.top + ph + 60, pw, ph, { title: 'Model FLOPs Utilization (TT only)', yMax: MFU_MAX, yStep: 5, yUnit: '%', key: 'mfu', drawLegend: false })
+        body += panel(cfg, M.left, M.top, pw, ph, {
+            title: 'Tokens / sec / GPU',
+            yMax: TPS_MAX,
+            yStep: 1000,
+            yUnit: '',
+            key: 'tps',
+            drawLegend: true,
+        })
+        body += panel(cfg, M.left, M.top + ph + 60, pw, ph, {
+            title: 'Model FLOPs Utilization (TT only)',
+            yMax: MFU_MAX,
+            yStep: 5,
+            yUnit: '%',
+            key: 'mfu',
+            drawLegend: false,
+        })
     } else {
         const pw = (W - M.left - M.right - cfg.panelGap) / 2
         const ph = H - M.top - M.bottom
-        body += panel(cfg, M.left, M.top, pw, ph, { title: 'Tokens / sec / GPU', yMax: TPS_MAX, yStep: 1000, yUnit: '', key: 'tps', drawLegend: true })
-        body += panel(cfg, M.left + pw + cfg.panelGap, M.top, pw, ph, { title: 'Model FLOPs Utilization (TT only)', yMax: MFU_MAX, yStep: 5, yUnit: '%', key: 'mfu', drawLegend: false })
+        body += panel(cfg, M.left, M.top, pw, ph, {
+            title: 'Tokens / sec / GPU',
+            yMax: TPS_MAX,
+            yStep: 1000,
+            yUnit: '',
+            key: 'tps',
+            drawLegend: true,
+        })
+        body += panel(cfg, M.left + pw + cfg.panelGap, M.top, pw, ph, {
+            title: 'Model FLOPs Utilization (TT only)',
+            yMax: MFU_MAX,
+            yStep: 5,
+            yUnit: '%',
+            key: 'mfu',
+            drawLegend: false,
+        })
     }
 
     return `<?xml version="1.0" encoding="utf-8"?>

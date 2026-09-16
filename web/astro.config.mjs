@@ -7,6 +7,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import remarkSlides from './src/utils/remark-slides.mjs'
 import rehypeTaskListInteractive from './src/utils/rehype-task-list-interactive.mjs'
+import rehypeNotebookCells from './src/utils/rehype-notebook-cells.mjs'
 // import rehypeMermaid from 'rehype-mermaid'
 // import Catppuccin from 'tm-themes/themes/catppuccin-mocha'
 // import { getSingletonHighlighter } from 'shiki'
@@ -190,11 +191,81 @@ const rehypeGitHubCallouts = () => {
             // type-label fallback ("Important", "Note", …) so a bare
             // `[!TYPE|inline] …` doesn't prepend the type name. A normal
             // callout still gets the type label when no explicit title.
+            // Suppress the type-label fallback when the title's text head is
+            // empty but markup follows (`> [!TIP] <span>…</span>`), or the
+            // summary would read "Tip" immediately followed by the real title.
+            // titleTailNodes is computed just below; recompute the predicate
+            // here rather than reorder the existing code.
+            const hasTitleMarkupOnly =
+                !calloutTitle &&
+                markerMatch[4] !== undefined &&
+                firstTextNode.value.split('\n').length === 1 &&
+                paragraph.children.indexOf(firstTextNode) <
+                    paragraph.children.length - 1
             const summaryText = isInline
                 ? calloutTitle || ''
                 : calloutTitle ||
-                  calloutTitleByType[calloutType] ||
-                  toTitleCase(rawType)
+                  (hasTitleMarkupOnly
+                      ? ''
+                      : calloutTitleByType[calloutType] || toTitleCase(rawType))
+
+            // Rich titles: `> [!TIP] Using your own \`conda\`` or
+            // `> [!TIP] <span>…</span>`.
+            //
+            // remark parses the title's markup into sibling nodes BEFORE this
+            // plugin runs, so markerMatch[4] only captures the plain-text head
+            // and everything from the first tag onward was silently dropped
+            // ("Using your own `conda`" rendered as "Using your own"; a title
+            // that STARTS with markup rendered as the bare type label).
+            //
+            // The title runs to the END OF THE MARKER LINE, not the end of
+            // the paragraph. With no blank `>` separator the body lives in the
+            // SAME paragraph, so walk the siblings and stop at the first text
+            // node containing a newline — that is where the body starts.
+            // Splitting there keeps the body out of the <summary> and leaves
+            // the remainder as the callout body.
+            //
+            // Deliberately NOT recursive: this hoists the marker paragraph's
+            // direct inline children only, which is what a title is.
+            const markerNodeIndex = paragraph.children.indexOf(firstTextNode)
+            const titleTailNodes = []
+            let bodyStartIndex = -1
+            if (markerMatch[4] !== undefined && remainingLines.length === 0) {
+                for (
+                    let i = markerNodeIndex + 1;
+                    i < paragraph.children.length;
+                    i++
+                ) {
+                    const child = paragraph.children[i]
+                    if (
+                        child.type === 'text' &&
+                        typeof child.value === 'string' &&
+                        child.value.includes('\n')
+                    ) {
+                        // Title keeps the head of this node (up to the
+                        // newline); the tail becomes the body's first text.
+                        const nl = child.value.indexOf('\n')
+                        const head = child.value.slice(0, nl)
+                        if (head)
+                            titleTailNodes.push({ type: 'text', value: head })
+                        child.value = child.value
+                            .slice(nl + 1)
+                            .replace(/^\s+/, '')
+                        bodyStartIndex = i
+                        break
+                    }
+                    titleTailNodes.push(child)
+                }
+                if (titleTailNodes.length > 0) {
+                    // Remove exactly the nodes that moved into the summary.
+                    const removeCount =
+                        (bodyStartIndex === -1
+                            ? paragraph.children.length
+                            : bodyStartIndex) -
+                        (markerNodeIndex + 1)
+                    paragraph.children.splice(markerNodeIndex + 1, removeCount)
+                }
+            }
 
             // Three blockquote shapes we need to handle:
             //   (a) `> [!NOTE] body on same line`    → single <p>, single text node
@@ -222,6 +293,19 @@ const rehypeGitHubCallouts = () => {
                 // Case (a)/(b) inline tail — strip the marker line, keep
                 // the rest as the paragraph's leading text.
                 firstTextNode.value = remainingTextOnFirstLine
+            } else if (titleTailNodes.length > 0) {
+                // Title nodes were already spliced out above. Drop just the
+                // marker text node; whatever remains in this paragraph is
+                // body content and must stay.
+                paragraph.children.splice(markerNodeIndex, 1)
+                const next = paragraph.children[markerNodeIndex]
+                if (
+                    next &&
+                    next.type === 'text' &&
+                    typeof next.value === 'string'
+                ) {
+                    next.value = next.value.replace(/^\s+/, '')
+                }
             } else if (hasMoreSiblingsInMarkerParagraph) {
                 // Case (b) where the marker is the only text on the first
                 // line but the paragraph has more inline content after
@@ -247,7 +331,7 @@ const rehypeGitHubCallouts = () => {
 
             // Drop the marker paragraph from the blockquote if it has no
             // remaining body content (case c — body is in a separate <p>).
-            if (!markerParagraphHasBody) {
+            if (!markerParagraphHasBody || paragraph.children.length === 0) {
                 node.children.splice(paragraphIndex, 1)
             }
 
@@ -274,7 +358,25 @@ const rehypeGitHubCallouts = () => {
                         type: 'element',
                         tagName: 'summary',
                         properties: {},
-                        children: [{ type: 'text', value: summaryText }],
+                        children: [
+                            ...(summaryText
+                                ? [
+                                      {
+                                          type: 'text',
+                                          // calloutTitle is trimmed, so a title
+                                          // whose text head is followed by
+                                          // markup ("The `Host *` trap") would
+                                          // render as "The<code>". Restore the
+                                          // single separating space.
+                                          value:
+                                              titleTailNodes.length > 0
+                                                  ? summaryText + ' '
+                                                  : summaryText,
+                                      },
+                                  ]
+                                : []),
+                            ...titleTailNodes,
+                        ],
                     },
                     ...node.children,
                 ],
@@ -407,10 +509,11 @@ export default defineConfig({
             rehypeKatex,
             rehypeMermaidClientSide,
             rehypeTaskListInteractive,
+            rehypeNotebookCells,
         ],
         syntaxHighlight: {
             type: 'shiki',
-            excludeLangs: ['mermaid', 'math'],
+            excludeLangs: ['mermaid', 'math', 'logs'],
         },
         shikiConfig: {
             wrap: false,
@@ -450,6 +553,7 @@ export default defineConfig({
                 rehypeKatex,
                 rehypeMermaidClientSide,
                 rehypeTaskListInteractive,
+                rehypeNotebookCells,
             ],
         }),
         sitemap(),

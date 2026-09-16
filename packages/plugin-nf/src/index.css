@@ -13,7 +13,7 @@
  * stale copy (/fonts/*.woff2 is served immutable, 1yr — see _headers). */
 @font-face {
     font-family: 'Symbols Nerd Font';
-    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=d7a2bbb8')
+    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=a38710eb')
         format('woff2');
     font-display: swap;
     font-style: normal;

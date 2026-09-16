@@ -45,6 +45,7 @@ const TOK_PER_ITER = 6144 * 8192 // 50.33M tokens/iteration
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 // train loss (iteration, lm_loss), 200-iter bin-mean of the raw per-step CSV.
+// prettier-ignore
 const TRAIN = [
     [100, 9.236], [300, 6.091], [500, 4.862], [700, 4.993], [900, 5.736], [1100, 5.209],
     [1300, 4.832], [1500, 4.535], [1700, 4.285], [1900, 4.08], [2100, 3.914], [2300, 3.78],
@@ -197,6 +198,7 @@ const TRAIN = [
     [154391, 2.033],
 ]
 // val loss (iteration, val_loss), 1600-iter bin-mean; iter-0 sentinel dropped.
+// prettier-ignore
 const VAL = [
     [800, 5.494], [2400, 3.818], [4000, 3.272], [5600, 3.068], [7200, 2.964], [8800, 2.904],
     [10400, 2.863], [12000, 2.834], [13600, 2.809], [15200, 2.792], [16800, 2.778],

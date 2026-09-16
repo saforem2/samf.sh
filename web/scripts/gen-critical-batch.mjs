@@ -23,7 +23,14 @@ import { dirname, join } from 'node:path'
 import { fontDefs, FONT_STACK } from './svg-font.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const FIG_DIR = join(__dirname, '..', 'public', 'talks', '2026-08-03', 'figures')
+const FIG_DIR = join(
+    __dirname,
+    '..',
+    'public',
+    'talks',
+    '2026-08-03',
+    'figures',
+)
 const OUT = join(FIG_DIR, 'critical-batch.svg')
 const OUT_MOBILE = join(FIG_DIR, 'critical-batch-mobile.svg')
 

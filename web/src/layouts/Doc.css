@@ -1167,6 +1167,26 @@ h6::before {
             max-width: var(--prose-measure);
         }
 
+        /* Author-written disclosures get the same cap as the prose around
+           them. A callout accordion is already capped in global.css, but a
+           plain `<details is-="accordion">` was not, so its summary band ran
+           the full article column (180ch+ on a wide monitor) while the
+           paragraph above it stopped at 84ch — the band visibly overhung the
+           text it belonged to.
+
+           `:not(.heading-collapse)` is the important exclusion: the
+           heading-section wrappers are structural, not content. They contain
+           the capped prose tags above and must stay full-column, or every
+           code block and table on the site would inherit an 84ch ceiling from
+           its enclosing section.
+
+           Only the box is capped. Anything inside that deliberately runs wide
+           (code blocks, tables) is unaffected, matching how the prose cap
+           already treats them. */
+        details[is-~='accordion']:not(.heading-collapse) {
+            max-width: var(--prose-measure);
+        }
+
         /* …except that capping `ul, ol` also caps everything inside a list
            item, so a code block nested in a list inherited the 84ch prose
            ceiling and got clipped (measured: 1651px of content squeezed
@@ -1588,6 +1608,35 @@ img {
     object-fit: contain;
     max-width: round(calc(100% - 2ch), 1ch);
     padding: 1ch;
+    height: auto;
+}
+
+/* Cap inline figures at the prose measure. A screenshot illustrates the
+   paragraph next to it, so running it wider inverts the emphasis — on a wide
+   monitor a 2162px terminal capture filled the whole 904px article column
+   while the prose beside it stopped at 84ch (672px).
+
+   Keyed on the ELEMENT, not on a parent: MDX emits a block-level <picture> as
+   a direct child of <main>, not wrapped in a <p> or <figure>, so a
+   `p > img` style selector matches none of them.
+
+   Capping the <picture> is enough for the themed pairs — the inner <img> is
+   already `max-width: 100%` of it — but bare `![](…)` images (e.g. a GIF) have
+   no <picture>, hence both. #main-content scopes it to article content and
+   outranks the unscoped `img` rule above.
+
+   The three deliberate wide cases keep their own widths:
+     .figure-margin  — right-floated margin figure (float rule above)
+     .figure-row     — multi-figure row
+     .svgbob-figure  — full-height ASCII diagrams, shown at native size */
+#main-content
+    :is(img, picture):not(
+        .svgbob-figure,
+        .figure-margin,
+        .figure-row,
+        :is(.figure-margin, .figure-row) *
+    ) {
+    max-width: var(--prose-measure);
     height: auto;
 }
 

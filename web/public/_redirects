@@ -11,10 +11,18 @@
 /landing/ /about 301
 
 # samforeman.me (Quarto) lowercased URLs -> case-sensitive Astro routes.
-# The l2hmc 4D SU(3) notebook builds at .../4dSU3/; preserve inbound links
-# to the old lowercase path.
-/posts/jupyter/l2hmc/4dsu3/ /posts/jupyter/l2hmc/4dSU3/ 301
+# This one used to point at .../l2hmc/4dSU3/, but that page has since been
+# superseded and deleted (see below), and Cloudflare does not chain redirects,
+# so the hop has to go straight to the replacement or it lands on a 404.
+/posts/jupyter/l2hmc/4dsu3/ /posts/2023/12/05/ 301
 
 # The AuroraGPT posts dir was renamed to lowercase (auroragpt) to match the
 # old-site URLs; redirect any links that still point at the capital path.
 /posts/AuroraGPT/* /posts/auroragpt/:splat 301
+
+# Three exports of the same 4D SU(3) notebook, none of which rendered its cell
+# output correctly (mangled fences / de-indented Python / uncolored logs).
+# Superseded by a single corrected page.
+/posts/ai-for-physics/l2hmc-qcd/4dSU3nb/ /posts/2023/12/05/ 301
+/posts/jupyter/l2hmc/4dSU3/ /posts/2023/12/05/ 301
+/posts/jupyter/l2hmc-4dSU3/ /posts/2023/12/05/ 301
