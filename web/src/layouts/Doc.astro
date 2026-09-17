@@ -1067,6 +1067,16 @@ const articleSchema =
             return
         }
 
+        // Expire a pending `g` on any other key, BEFORE the handlers below —
+        // several of them return early (the j/k bootstrap, ] / [, d/u/e), so
+        // a reset placed after them never runs for those keys and the chord
+        // stays armed. g then j then g would fire a phantom jump to the top.
+        // The g branch itself re-arms after this, so the chord still works.
+        if (e.key !== 'g' && e.key !== 'G') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__lastGAt = 0
+        }
+
         // Bootstrap focus into main content when j/k is pressed with nothing focused
         const activeElement = document.activeElement
         const isUnfocused =
@@ -1254,8 +1264,6 @@ const articleSchema =
                 top: e.key === 'd' ? halfPage : -halfPage,
                 behavior: reduceMotion ? 'auto' : 'smooth',
             })
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ;(window as any).__lastGAt = 0
             // No focus-follow here: calling .focus() mid-animation scrolls the
             // target back into view and cancels the smooth scroll (and made
             // rapid u after d jump the wrong way). d/u is pure viewport
@@ -1352,10 +1360,6 @@ const articleSchema =
             ;(window as any).__lastGAt = now
             return
         }
-        // Any other key ends a pending g, so g-then-j never jumps later.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(window as any).__lastGAt = 0
-
         // Shift+H / Shift+L — hop focus between sidebar and main.
         //
         // These were removed once as "awkward to reach", but plain h/l are
