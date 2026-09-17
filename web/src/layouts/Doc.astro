@@ -1067,6 +1067,16 @@ const articleSchema =
             return
         }
 
+        // Expire a pending `g` on any other key, BEFORE the handlers below —
+        // several of them return early (the j/k bootstrap, ] / [, d/u/e), so
+        // a reset placed after them never runs for those keys and the chord
+        // stays armed. g then j then g would fire a phantom jump to the top.
+        // The g branch itself re-arms after this, so the chord still works.
+        if (e.key !== 'g' && e.key !== 'G') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__lastGAt = 0
+        }
+
         // Bootstrap focus into main content when j/k is pressed with nothing focused
         const activeElement = document.activeElement
         const isUnfocused =
@@ -1230,8 +1240,12 @@ const articleSchema =
         // calls .focus() which forces an instant jump and cancels the smooth
         // scroll). Focus the first newly-visible element after the animation
         // settles instead.
+        // `e` is an alias for `u`: on a keyboard where u and d sit far apart,
+        // e/d is the easier pair to reach. It scrolls up a half page exactly
+        // like u rather than vim's line-at-a-time ctrl-e, because the point
+        // here is the pairing with d, not fidelity to vim's scroll verbs.
         if (
-            (e.key === 'd' || e.key === 'u') &&
+            (e.key === 'd' || e.key === 'u' || e.key === 'e') &&
             !e.metaKey &&
             !e.altKey &&
             !e.shiftKey
@@ -1299,10 +1313,79 @@ const articleSchema =
             }
         }
 
-        // Shift+H/J/K/L region-focus bindings removed alongside the Ctrl
-        // equivalents: shifted letters are awkward to reach, the TOC target
-        // no longer exists, and the z-chords cover the same moves. Plain
-        // h / l (below) still hop between sidebar and main.
+        // gg / G — jump the document to top / bottom, the vim pair.
+        //
+        // These scroll the VIEWPORT, like d/u/e above and unlike j/k, which
+        // move focus between elements. applyVimNavigation binds a single `g`
+        // to "focus the first item", but it is attached to the sidebar
+        // element, so on a doc page pressing g outside the sidebar did
+        // nothing at all. This handles the document case.
+        //
+        // Doubled, because a lone g is a prefix in vim and a single-tap jump
+        // to top fires on the way to anything else. 600ms and the shared
+        // "second press wins" shape match the z-chord above.
+        if (
+            (e.key === 'g' || e.key === 'G') &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey
+        ) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const scroller = (window as any).getDocScroller?.() ?? mainContent
+            if (!scroller) return
+            const reduceMotion = window.matchMedia(
+                '(prefers-reduced-motion: reduce)',
+            ).matches
+            const behavior = reduceMotion ? 'auto' : 'smooth'
+
+            if (e.key === 'G') {
+                e.preventDefault()
+                scroller.scrollTo({ top: scroller.scrollHeight, behavior })
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ;(window as any).__lastGAt = 0
+                return
+            }
+
+            const now = Date.now()
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const last = (window as any).__lastGAt ?? 0
+            if (now - last <= 600) {
+                e.preventDefault()
+                scroller.scrollTo({ top: 0, behavior })
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ;(window as any).__lastGAt = 0
+                return
+            }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ;(window as any).__lastGAt = now
+            return
+        }
+        // Shift+H / Shift+L — hop focus between sidebar and main.
+        //
+        // These were removed once as "awkward to reach", but plain h/l are
+        // directional twins that only fire when focus is already inside a
+        // region, so there is no way to reach for the sidebar from a standing
+        // start. The shifted pair is the explicit "go there" move and is worth
+        // having back. They delegate to the same handlers as plain h/l rather
+        // than duplicating the logic.
+        if (
+            (e.key === 'H' || e.key === 'L') &&
+            e.shiftKey &&
+            !e.ctrlKey &&
+            !e.metaKey &&
+            !e.altKey
+        ) {
+            const goingLeft = e.key === 'H'
+            const target = goingLeft
+                ? getSidebarTarget()
+                : (currentElement ?? findFirstFocusableElement() ?? null)
+
+            if (target instanceof HTMLElement) {
+                e.preventDefault()
+                vimFocusElement(target)
+            }
+            return
+        }
 
         if (e.key === 'h' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             const activeElement = document.activeElement
