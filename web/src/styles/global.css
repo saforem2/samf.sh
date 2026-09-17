@@ -2142,6 +2142,27 @@ pre.astro-code span.line::before {
     user-select: none;
     border-right: 2px solid var(--background2);
 }
+/* Unlabeled blocks get no gutter at all. `text` / `plaintext` is shiki's
+   fallback for a fence with no language, which on this site means ASCII
+   diagrams, terminal transcripts and log excerpts rather than source anyone
+   would cite a line of — and a number column shifts every row right, breaking
+   box-drawing alignment.
+
+   Doc.astro's gutter script already returns early for these languages, so they
+   never get a .code-line-link. This rule is what stops the ::before FALLBACK
+   from numbering them anyway: the script skipping a block and the block having
+   no JS applied are indistinguishable to the `:has()` rule below, so without
+   this the fallback drew a gutter on exactly the blocks the script had
+   deliberately left alone. The script's comment claims it "matches
+   global.css"; this is the rule that makes that true. */
+pre.astro-code[data-language='text'] span.line::before,
+pre.astro-code[data-language='plaintext'] span.line::before {
+    content: none;
+    border-right: none;
+    margin-right: 0;
+    padding-right: 0;
+}
+
 /* Once the anchor exists it IS the number, so the pseudo-element stands down
    rather than printing a second one. */
 pre.astro-code span.line:has(> .code-line-link)::before {
