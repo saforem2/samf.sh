@@ -377,17 +377,22 @@
            numbers are gone), and a small horizontal pad so code doesn't
            kiss the tinted-background edge. */
         margin-inline-start: 0ch;
-        padding-block: 0;
+        /* A small top pad keeps the first line of code clear of the language
+           badge, which is centred on the block's top edge. Was 0 while slides
+           had no badge; the bottom stays tight because nothing sits there. */
+        padding-block: 0.4lh 0;
         padding-inline: 1ch;
-        /* Doc pages give the <pre> a 1.1lh top margin as headroom for the
-           language badge. Slides have no badge, so that headroom is just
-           dead space on a fixed-height surface — keep the symmetric gap. */
-        margin-block: 0.5lh;
+        /* Headroom for the badge, which straddles the top edge and would
+           otherwise collide with whatever precedes the block. Doc pages use
+           1.1lh; slides are a fixed-height surface, so this is the smallest
+           gap that clears the glyph. */
+        margin-block: 0.9lh 0.5lh;
     }
-    /* No language badge or its notched top rule on slides — a deck already
-       carries its own title and chrome, and with `padding-block: 0` above
-       there is no room for either. */
-    pre.astro-code::after,
+    /* Keep the notched top rule off slides — it reads as frame-on-frame
+       against the deck's own chrome — but the language badge (::after) now
+       renders, matching doc pages. It doubles as the copy affordance:
+       SlideLayout mounts CodeCopyButtons, which puts a real button over the
+       badge, and global.css cross-fades the label to a copy glyph on hover. */
     pre.astro-code::before {
         content: none;
     }

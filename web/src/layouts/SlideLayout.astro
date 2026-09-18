@@ -1,6 +1,7 @@
 ---
 import Layout from '@/layouts/Layout.astro'
 import Presentation from '@/components/slides/Presentation.astro'
+import CodeCopyButtons from '@/components/CodeCopyButtons.astro'
 // KaTeX CSS: import from frontmatter (NOT `@import` in a <style> block) so Vite
 // processes the stylesheet's relative `url(fonts/KaTeX_*)` refs -- hashing them
 // into /_astro/ and COPYING the font files into the build. An `@import` inside
@@ -22,4 +23,5 @@ const description = (Astro.props as Props).description ?? fm.description
     <Presentation {title}>
         <slot />
     </Presentation>
+    <CodeCopyButtons />
 </Layout>
