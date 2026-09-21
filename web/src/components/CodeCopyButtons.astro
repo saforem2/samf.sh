@@ -22,6 +22,16 @@
         // stack two click targets in the same corner.
         if (block.querySelector(':scope > .code-copy-btn')) continue
 
+        // Unlabeled blocks get no button. global.css suppresses the badge
+        // (::after) on `text` / `plaintext`, and the badge is what the copy
+        // glyph cross-fades WITH -- so a button here paints nothing at any
+        // point, while still being tab-focusable and announcing itself as
+        // "copy" to a screen reader. That is a control a keyboard user can
+        // reach and a pointer user cannot see. Matching the CSS and skipping
+        // them keeps the affordance and the control in the same place.
+        const lang = (block as HTMLElement).dataset.language
+        if (lang === 'text' || lang === 'plaintext') continue
+
         block.style.position = 'relative'
 
         const button = document.createElement('button')
