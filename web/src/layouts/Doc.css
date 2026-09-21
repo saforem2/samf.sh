@@ -1600,7 +1600,12 @@ p:has(> img) {
     }
 }
 
-img {
+/* <video> alongside <img>: the animated talk figures are MP4s rather than
+   GIFs, and without this they lay out at intrinsic size (1800x1050 for the
+   diffusion loop) and run past the column. Same box as an image, because
+   that is what they replaced. */
+img,
+video {
     display: -webkit-box;
     display: -webkit-flex;
     display: -ms-flexbox;

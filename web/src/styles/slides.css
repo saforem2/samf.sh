@@ -465,9 +465,13 @@
         display: inline;
     }
 
-    /* Images default to fitting their slide; inline `style` can override. */
+    /* Images default to fitting their slide; inline `style` can override.
+       <video> is in here because the animated figures are MP4s, not GIFs:
+       without it they render at intrinsic size (1800x1050 for the diffusion
+       loop) and blow past the slide. */
     img,
-    svg {
+    svg,
+    video {
         max-width: 100%;
         height: auto;
         display: block;
