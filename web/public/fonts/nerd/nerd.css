@@ -1,4 +1,18 @@
-/* Self-hosted, subset Symbols Nerd Font. ~264KB vs 950KB upstream.
+/* Self-hosted, subset Symbols Nerd Font. ~40KB vs 950KB upstream.
+ *
+ * Re-subset 2026-09-21, 264KB -> 40KB. The previous cut kept 1588 glyphs
+ * where the site uses 60. This one keeps each used codepoint plus +/-8
+ * either side (312 glyphs): Nerd Font groups related icons adjacently, so
+ * that neighbourhood covers swapping an icon for a nearby variant without
+ * a regeneration. Keeping whole upstream BLOCKS instead was measured at
+ * 171KB for the same 60 glyphs -- Font Awesome Extension alone is 54KB --
+ * which is a lot to pay for icons from a block you happened to touch once.
+ * An icon from a range NOT already shipped needs a re-subset either way.
+ *
+ * Regenerate:
+ *   pyftsubset SymbolsNerdFont-Regular.woff2 --unicodes="<ranges>" \
+ *     --flavor=woff2 --output-file=out.woff2
+ * Verify no USED glyph was dropped before swapping it in, then bump ?v=.
  *
  * NO local() src on purpose. This is a *curated subset* whose glyph
  * coverage (incl. the high Material-Design F0xxx range used by the
@@ -14,7 +28,7 @@
  */
 @font-face {
     font-family: 'Symbols Nerd Font';
-    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=a38710eb') format('woff2');
+    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=cd4e5139') format('woff2');
     font-display: swap;
     font-style: normal;
     font-weight: 400;
