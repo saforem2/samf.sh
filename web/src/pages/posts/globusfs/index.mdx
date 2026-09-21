@@ -1,0 +1,157 @@
+---
+layout: '@/layouts/Doc.astro'
+title: 'globusfs: an fsspec Filesystem for Globus Collections'
+date: 2026-08-31
+date-created: 2026-08-31
+date-modified: today
+description: 'Building an fsspec backend for Globus so pyarrow, pandas, and dask can read a collection the way they read s3:// — and the HTTPS-server quirks that made it harder than it should have been, including a 404 that means two different things.'
+---
+
+Globus is how large scientific datasets actually move between facilities. It is
+not, however, something your data stack can read. There is no [fsspec][fsspec]
+backend for it, so `pyarrow`, `pandas`, `dask`, and `grain` cannot open a Globus
+collection the way they open `s3://` or `gs://`. You stage the whole file first,
+then work with it.
+
+[globusfs][repo] closes that gap: one backend, all of those clients.
+
+[fsspec]: https://filesystem-spec.readthedocs.io/
+[repo]: https://github.com/saforem2/globusfs
+[globus]: https://www.globus.org/
+
+```python
+import globusfs
+
+# Browser login once; tokens persist to ~/.globusfs/tokens.json
+fs = globusfs.filesystem("<collection-uuid>")
+
+fs.ls("/")
+with fs.open("data/file.parquet", "rb") as f:
+    ...
+```
+
+The payoff is column projection over the wire. Reading one column of sixty from
+a remote parquet file transfers a few KB instead of 360 KB, because the reader
+issues range requests for exactly the bytes that column needs:
+
+```python
+import fsspec, pyarrow.parquet as pq
+
+fs = fsspec.filesystem(
+    "globus",
+    collection_id="isaac",
+    https_url="https://g-05a4b6.2d513.8443.data.globus.org",
+)
+
+with fs.open("isaac/ability/ALL_2007-01.parquet", "rb") as f:
+    table = pq.ParquetFile(f).read(columns=["author"])
+```
+
+> [!INFO]- TL;DR — what this is and what to watch out for
+> An fsspec backend for Globus collections. Reads go over the HTTPS collection
+> endpoint (which speaks real HTTP range semantics); listings and metadata go
+> over the Transfer API (because the HTTPS interface has no directory listings
+> at all).
+>
+> The thing worth knowing even if you never use this library: **Globus Connect
+> Server returns HTTP 404 both for a missing file and for a transient backend
+> fault**, and the two are byte-identical in status. See
+> [the 404 problem](#the-404-that-means-two-things).
+
+## Two services, because neither is enough
+
+Globus Connect Server exposes two interfaces, and a usable filesystem needs
+both:
+
+| Concern | Service | Why |
+|---|---|---|
+| Reading bytes | HTTPS collection endpoint | Full HTTP range semantics: `206`, `Content-Range`, mid-file seeks |
+| Listing / metadata | Transfer API | The HTTPS interface has no directory listings |
+
+The read path subclasses fsspec's `HTTPFileSystem`, which already speaks
+exactly the range dialect GCS serves. The metadata path is a separate Transfer
+client. Most of the work is in making one object present those two services as
+a single coherent filesystem.
+
+## The 404 that means two things
+
+This is the finding worth carrying away even if you never touch Globus.
+
+GCS load-balances across GridFTP backends. When one is unhealthy it returns an
+`ENDPOINT_ERROR` / `GCS Manager Internal Error` — rendered to the client as
+**HTTP 404**. That is the same status a genuinely missing file returns.
+
+Three properties make this nastier than a normal flaky backend:
+
+1. **It is indistinguishable by status.** Only the response *body* separates
+   "this file does not exist" from "a backend is sick right now."
+2. **It is sticky for the life of a connection.** Retrying on the same
+   connection reproduces it. A retry has to establish a *fresh* one.
+3. **It is bursty.** Observed failure rates on the public test collection
+   swung from 0/20 to 20/20 within minutes, hitting files, directories, and
+   the collection root alike.
+
+The consequence for any client, not just this one:
+
+> [!WARNING]- A client that treats 404 as "absent" will report healthy data as missing
+> This is the failure mode to design against. `exists()` returning `False`,
+> a glob silently skipping matches, a loader concluding a shard is gone — all
+> of these are reachable from a backend hiccup that has nothing to do with your
+> data. The fix is to parse the body and retry on a fresh connection, not to
+> trust the status code.
+
+## Three more server quirks
+
+Each of these was found against a live collection, and each forces a design
+choice:
+
+**Suffix ranges return `416`.** A request for `bytes=-8` — which is how parquet
+readers conventionally seek to the footer — is rejected. Because `info()` knows
+the true size from the Transfer API, the workaround is to convert suffix ranges
+into absolute offsets before they leave the client.
+
+**`HEAD` is unusable.** A `HEAD` 404 carries no body, and the body is the only
+thing distinguishing a backend fault from a real miss. So HEAD results are
+*permanently* ambiguous — there is no amount of retrying that resolves them.
+Size and existence come from the Transfer API, or from a ranged `GET`, which
+does return a body and carries the total in `Content-Range`.
+
+**Mapped vs guest collections need different scopes.** A mapped collection
+requires `data_access` as a *dependent* scope of `transfer`; a guest collection
+does not, and High Assurance collections must not receive it. The library
+detects which kind it is talking to rather than asking the caller to know.
+
+## Verified against production
+
+Status claims are cheap, so specifically — this has been exercised against
+three live collections:
+
+- **ALCF Eagle** (`alcf#dtn_eagle`, 747 project directories): `ls`, `glob`,
+  `info`, `open()` with mid-file seek, and sparse ranged reads, all against
+  production Lustre.
+- **Globus Tutorial Collection 1**: writes (`PUT`/`DELETE`) round-trip.
+- **A public collection**: anonymous pyarrow column projection — one column of
+  sixty — *while that collection was intermittently returning the backend-fault
+  404s described above*. Which is the real test.
+
+### ALCF collection UUIDs
+
+ALCF's documentation lists collection names, not UUIDs, and the API wants
+UUIDs. Resolved via `endpoint_search`:
+
+| Collection | UUID | Type |
+|---|---|---|
+| `alcf#dtn_eagle` | `05d2c76a-e867-4f67-aa57-76edeb0beda0` | mapped |
+| `alcf#dtn_flare` | `f39a7a0f-5bfc-46ce-9615-ba9f8592814f` | mapped |
+| `alcf#dtn_grand` | `3caddd4a-bb35-4c3d-9101-d9a0ad7f3a30` | mapped |
+| Globus Tutorials on ALCF Eagle | `a6f165fa-aee2-4fe5-95f3-97429c28bf82` | guest, public |
+
+## Wrapping up
+
+The interesting part of this project was not the fsspec interface — that is a
+well-specified surface with good documentation. It was that the transport
+underneath violates an assumption nearly every HTTP client makes: that a `404`
+means the thing is not there.
+
+If you are writing anything that talks to Globus over HTTPS, that is the bit to
+internalize. The rest is plumbing.
