@@ -12,7 +12,7 @@ Mirrors what `netlify.toml` used to encode.
 | Setting                | Value                                            |
 | ---------------------- | ------------------------------------------------ |
 | **Production branch**  | `main`                                           |
-| **Build command**      | `bun install --frozen-lockfile && npx playwright install chromium && bun run build` |
+| **Build command**      | `git fetch --unshallow \|\| true && bun install --frozen-lockfile && npx playwright install chromium && bun run build` |
 | **Build output**       | `web/dist`                                       |
 | **Root directory**     | (project root, leave blank)                      |
 | **Framework preset**   | None (auto-detect picks Astro, also fine)        |
@@ -22,6 +22,33 @@ Mirrors what `netlify.toml` used to encode.
 > NOT auto-run `bun install` before invoking the build command —
 > without it, `turbo` (a devDependency) is not on PATH and the build
 > fails with `turbo: command not found`.
+
+### Why the build starts with `git fetch --unshallow`
+
+Cloudflare clones shallow, and `utils/lastModified.ts` deliberately
+refuses to trust git in a shallow repo: the grafted boundary commit makes
+`git log -1 -- <path>` return a real-looking but WRONG date for any file
+not touched in the tip. It falls back to filesystem mtime instead, which
+on a fresh CI checkout is the moment the files were written — so every
+page's "Updated:" line showed the BUILD time rather than the last edit.
+
+Measured on the about page: shallow resolves `2026-09-21T11:35` (the
+merge commit), unshallow resolves `2026-09-15T20:51`, which matches a
+full local clone.
+
+`--deepen=N` is not enough. It fetches the history but leaves the repo
+flagged shallow, so `isShallowRepo()` still short-circuits and mtime
+still wins. Only `--unshallow` clears the flag.
+
+Cost: ~37MB and ~2.6s on top of a clone that already pulls ~289MB, since
+the checked-out assets dominate. `|| true` so a re-run on an already
+complete clone (where git errors with "does not make sense") does not
+fail the build.
+
+The other documented fix is a real `date-modified` in a post's
+frontmatter, which takes priority and needs no history — but 24 of 25
+posts use the placeholders `today` or `last-modified`, which the code
+ignores on purpose, so that route means hand-maintaining a date forever.
 
 ## Environment variables
 
