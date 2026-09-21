@@ -7,6 +7,7 @@ import { compareUrlPaths, splitPathChunks } from '@/utils/url'
 import { getReadingTime } from '@/utils/readingTime'
 import ShareButtons from '@/components/ShareButtons.astro'
 import CiteThis from '@/components/CiteThis.astro'
+import CodeCopyButtons from '@/components/CodeCopyButtons.astro'
 import {
     citationKeyBase,
     resolveCitationKey,
@@ -2180,51 +2181,8 @@ const articleSchema =
     }
 </script>
 
-<!-- Code block copy buttons -->
-<script>
-    const codeBlocks = document.querySelectorAll('pre.astro-code')
-    for (const block of codeBlocks) {
-        block.style.position = 'relative'
-
-        const button = document.createElement('button')
-        button.className = 'code-copy-btn'
-        button.textContent = 'copy'
-        let resetTimer: ReturnType<typeof setTimeout> | undefined
-        button.addEventListener('click', async () => {
-            const code = block.querySelector('code')
-            if (!code) return
-            let ok = true
-            try {
-                // Copy the code WITHOUT the line-number anchors. They are real
-                // elements inside each line now, so innerText picks them up
-                // and every copied block came out as "1# Kick the tires...".
-                const clone = code.cloneNode(true) as HTMLElement
-                for (const n of clone.querySelectorAll('.code-line-link')) {
-                    n.remove()
-                }
-                await navigator.clipboard.writeText(clone.innerText)
-                button.textContent = 'copied!'
-            } catch {
-                ok = false
-                button.textContent = 'failed'
-            }
-            // The <pre> carries the state; global.css swaps the badge glyph
-            // to a check / x and plays the pop keyframe off these classes.
-            // Both are removed first so a rapid second click restarts the
-            // animation instead of being swallowed (a class that is already
-            // present doesn't re-trigger @keyframes).
-            block.classList.remove('is-copied', 'is-copy-failed')
-            void block.offsetWidth // force reflow so the re-add animates
-            block.classList.add(ok ? 'is-copied' : 'is-copy-failed')
-            clearTimeout(resetTimer)
-            resetTimer = setTimeout(() => {
-                button.textContent = 'copy'
-                block.classList.remove('is-copied', 'is-copy-failed')
-            }, 1200)
-        })
-        block.appendChild(button)
-    }
-</script>
+<!-- Code block copy buttons. Shared with SlideLayout — see the component. -->
+<CodeCopyButtons />
 
 <!-- Linkable code lines.
 

@@ -377,20 +377,25 @@
            numbers are gone), and a small horizontal pad so code doesn't
            kiss the tinted-background edge. */
         margin-inline-start: 0ch;
-        padding-block: 0;
+        /* Symmetric, so the code sits inside the ::before border rather than
+           against it, and the first line clears the badge straddling the top
+           edge. Was 0 while slides had neither border nor badge. */
+        padding-block: 0.4lh;
         padding-inline: 1ch;
-        /* Doc pages give the <pre> a 1.1lh top margin as headroom for the
-           language badge. Slides have no badge, so that headroom is just
-           dead space on a fixed-height surface — keep the symmetric gap. */
-        margin-block: 0.5lh;
+        /* Headroom for the badge, which straddles the top edge and would
+           otherwise collide with whatever precedes the block. Doc pages use
+           1.1lh; slides are a fixed-height surface, so this is the smallest
+           gap that clears the glyph. */
+        margin-block: 0.9lh 0.5lh;
     }
-    /* No language badge or its notched top rule on slides — a deck already
-       carries its own title and chrome, and with `padding-block: 0` above
-       there is no room for either. */
-    pre.astro-code::after,
-    pre.astro-code::before {
-        content: none;
-    }
+    /* Both pseudo-elements now render, matching doc pages: ::after is the
+       language badge, ::before is the language-tinted border that bounds the
+       block (global.css draws it as an inset 1px box coloured from
+       --lang-badge, since the block itself carries no fill).
+
+       The badge doubles as the copy affordance: SlideLayout mounts
+       CodeCopyButtons, which puts a real button over it, and global.css
+       cross-fades the label to a copy glyph on hover. */
     /* Omit line numbers on slides — they add gutter clutter and the
        counter's tinted-background gutter never lines up cleanly with the
        pre's padding-block, leaving an uneven band above/below the numbers.
@@ -460,9 +465,13 @@
         display: inline;
     }
 
-    /* Images default to fitting their slide; inline `style` can override. */
+    /* Images default to fitting their slide; inline `style` can override.
+       <video> is in here because the animated figures are MP4s, not GIFs:
+       without it they render at intrinsic size (1800x1050 for the diffusion
+       loop) and blow past the slide. */
     img,
-    svg {
+    svg,
+    video {
         max-width: 100%;
         height: auto;
         display: block;
