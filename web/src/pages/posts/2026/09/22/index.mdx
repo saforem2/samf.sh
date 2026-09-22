@@ -1,0 +1,271 @@
+---
+layout: '@/layouts/Doc.astro'
+title: 'Working From Anywhere: Persistent Access to Compute and Context'
+date: 2026-09-22
+date-created: 2026-09-22
+date-modified: today
+description: 'A portable working setup that follows me across networks: attaching to always-on agent sessions on my home Mac and on ALCF/CELS machines with herdr, keeping a single cross-agent memory store reachable from every client, staying model-flexible across Claude, GPT, and ALCF-hosted open models, and what happens when a restrictive network breaks the transport underneath all of it.'
+---
+
+Most of my day is spent talking to long-running agents — on my home machine,
+on ALCF login and compute nodes, and on CELS hosts — from whatever laptop I
+happen to be sitting at. Over time that has turned into a small system with a
+single design goal: **the work, the machines, and the accumulated context
+should follow me, not the other way around.**
+
+This post walks through four pieces of that system and how they fit together:
+
+1. **Attaching to remote sessions** with `herdr --remote`, so an agent session
+   on a distant machine feels local and _stays alive_ when I disconnect.
+2. **One transport underneath everything** — and what happened when a
+   restrictive campus network broke it.
+3. **A single, persistent cross-agent memory store**, reachable from every
+   client so context is not siloed per-machine or per-tool.
+4. **Model flexibility** — moving fluidly between Claude, GPT, and
+   ALCF-hosted open models, and between clients (Claude Code, Hermes,
+   OpenCode, …), without re-plumbing anything.
+
+The model-routing internals have their own post — [Local AI Apps on
+ALCF][alcf-post] — so here I'll link there rather than repeat it, and focus on
+how these layers _compose_.
+
+> [!INFO]- **TL;DR** — the shape of the system
+> - `herdr --remote <host>` attaches to a persistent agent session on a remote
+>   machine over SSH; the session survives disconnects, so long jobs and long
+>   conversations both outlive my laptop's network.
+> - Everything rides one point-to-point transport between my machines. When a
+>   campus network blocked the usual mesh, I swapped the transport layer without
+>   changing anything above it.
+> - A single memory service holds cross-agent session history and a wiki-style
+>   knowledge store; every client points at the _same_ endpoint, so context is
+>   shared rather than fragmented.
+> - Model choice is a routing decision, not a client decision: one local
+>   gateway fans out to Claude (via Argo), GPT, and ALCF-hosted open models, and
+>   any OpenAI/Anthropic-compatible client can use any of them.
+
+---
+
+## 1. Attaching to remote sessions with `herdr --remote`
+
+The foundation is being able to _attach_ to a session running somewhere else,
+rather than starting a fresh one each time I connect. I use
+[`herdr`][herdr] for this:
+
+```bash
+herdr --remote mbph          # attach to a session on my home Mac
+herdr --remote polaris       # ... or an ALCF login node
+herdr --remote logins.cels   # ... or a CELS host
+```
+
+Under the hood this is "just" SSH plus a terminal session on the far end — but
+the ergonomics matter:
+
+- **Persistence.** The session lives on the remote host, not in my terminal.
+  If my laptop sleeps, my wifi drops, or I close the lid and walk to a meeting,
+  the agent on the other end keeps going. I re-attach and the conversation (and
+  any running job) is exactly where I left it.
+- **Locality of compute.** When I'm working on Polaris or Aurora, I want the
+  agent _on_ the machine with the data, the module environment, and the
+  scheduler — not shuttling files back to my laptop. `herdr --remote` puts the
+  session where the work is.
+- **One muscle-memory for many machines.** The same command attaches to home,
+  ALCF, and CELS. I don't context-switch between different tools per host.
+- **It's deliberately minimal.** Because it's SSH + a terminal, it needs none
+  of the heavier "let an agent drive a whole spare Mac" machinery (Screen
+  Recording, Accessibility, synthetic input). That keeps it robust and portable
+  across very different hosts.
+
+The important consequence: **a remote session is only as reachable as the
+network path to it.** Which is exactly where the next piece comes in.
+
+---
+
+## 2. One transport underneath everything
+
+All of this — remote attach, the memory store below, file sync — depends on my
+machines being able to _find and reach each other_ regardless of which network
+I'm on. For a long time that was a mesh VPN: every machine gets a stable
+address, and point-to-point encrypted links form automatically.
+
+That works beautifully until you're on a network that doesn't want it to.
+
+### When a restrictive network breaks the transport
+
+On one campus network (`Argonne-Auth`), my mesh VPN simply would not connect.
+The failure was specific and worth understanding, because the _diagnosis_ is
+reusable even if your particulars differ.
+
+The symptom looked like a login failure, but the real story was at the TLS
+layer. I could resolve the control server's DNS fine, and I could open a raw
+TCP connection to it on 443 — but the moment the TLS handshake began, the
+connection was **reset by peer**. Not a timeout, not a certificate error: an
+immediate reset.
+
+The decisive test was to vary _only_ the hostname advertised in the TLS
+ClientHello (the SNI field) while holding the destination IP constant:
+
+| Test | Result |
+|---|---|
+| DNS resolution of the control host | ✅ correct answers |
+| Raw TCP connect to :443 | ✅ succeeds |
+| TLS handshake with the VPN's SNI | ❌ reset every time |
+| TLS handshake with an _unrelated_ SNI, **same IP** | ✅ reaches the server |
+| TLS handshake with the VPN's SNI, pointed at an **unrelated IP** | ❌ reset |
+
+That last row is the giveaway: send the VPN's hostname in the handshake and the
+connection dies _even when the IP belongs to something else entirely_. So the
+filter isn't blocking an IP range or doing TLS interception (no substitute
+certificate is ever presented — it's a clean reset). It's reading the plaintext
+**hostname out of the TLS ClientHello** and resetting connections whose SNI
+matches a category — here, VPN/anonymizer services. A well-known info site in
+the same product family loaded fine; a commercial VPN's endpoint got the same
+reset my mesh did. Classic **SNI-based category filtering.**
+
+> [!NOTE]
+> This is a legitimate network security control on infrastructure I don't
+> administer. The right long-term fix is to request an allowlist exception from
+> IT for the endpoints I need — not to treat the filter as an adversary. I
+> raised it through that channel.
+
+### Swapping the transport, keeping everything above it
+
+The useful architectural point is this: **because every layer above sat on a
+generic point-to-point tunnel, I only had to replace the transport — not the
+remote-attach workflow, not the memory store, not the model gateway.**
+
+The replacement I settled on is a peer-to-peer data-plane tool that establishes
+an encrypted tunnel between two machines I control _without_ routing through the
+filtered control endpoint — the two ends exchange what they need out-of-band
+and then connect directly (falling back to a relay that isn't on the filter's
+list). I'm intentionally not publishing a step-by-step recipe for getting
+around a specific institution's network policy here; the reusable lesson is the
+one worth taking away:
+
+- **Diagnose at the right layer.** "VPN won't connect" was really "SNI category
+  filter resets the control channel." You cannot fix what you've mis-located.
+- **Keep a clean seam between transport and everything else.** Remote attach,
+  memory, and model routing all spoke "connect to this host:port." Swapping the
+  thing that _provides_ that host:port was a localized change, not a rebuild.
+- **Distrust stale status.** At one point the VPN UI still displayed
+  "connected" with leftover byte counters from an earlier network — but a live
+  reachability probe timed out. On a network like this, verify the data path,
+  don't trust the indicator light.
+
+Once the tunnel was back — by a different mechanism — `herdr --remote`, the
+memory store, and everything else came straight back to life, unchanged.
+
+---
+
+## 3. A single, persistent cross-agent memory store
+
+The second thing that has to follow me is **context**. I don't want each agent,
+on each machine, starting amnesiac — and I especially don't want my home Mac's
+agent and an ALCF agent to have separate, divergent memories of the same
+project.
+
+So the memory store is **centralized and persistent**, not per-client:
+
+- One service holds **session history** (what each agent did, across every
+  project and harness) and a **wiki-style knowledge store** that agents read
+  from and write to.
+- It lives on an **always-on host**, and every client — on every machine —
+  points at the **same endpoint**. Capture hooks stream session events to it;
+  retrieval reads from it. The store is the source of truth; its index is
+  rebuildable from flat markdown, so "the files are the database."
+- Because it's centralized, **cross-agent handoffs and cross-project messages**
+  work: one agent can leave a note or an open handoff that another agent — in a
+  different project or on a different machine — picks up.
+
+The payoff is that "what was I doing on this?" has a single answer regardless of
+which client or machine asks. But centralization has a sharp edge that ties
+directly back to §2.
+
+### The dependency you inherit
+
+A centralized store reachable "from everywhere" is only reachable if the
+_transport_ to it is up. When the campus network broke my mesh VPN (§2), it
+didn't just break remote attach — it broke the memory store too, for the same
+SNI reason, because the client reached it over the same kind of tunnel.
+
+Two lessons crystallized here:
+
+- **Point every surface at one indirection, then move the indirection.** Once
+  the transport was restored, I pointed the memory clients at a single local
+  address that the tunnel forwards to the always-on host. Now the store is
+  reachable the same way on _every_ network, with one code path instead of
+  per-network special cases.
+- **Beware config that ignores your override.** Some capture hooks hardcode the
+  server URL on their command line, where it beats any environment variable. If
+  you "fix" things by exporting an env var, those hooks keep dialing the dead
+  address and your capture silently breaks while everything else looks fine.
+  The fix has to land where each surface actually reads its configuration —
+  which means _finding_ all of them.
+
+That second point is a recurring theme in this whole setup: the failure modes
+are rarely "it's totally down." They're "it's down _here_, silently, while the
+dashboard says green."
+
+---
+
+## 4. Model flexibility, and moving between clients
+
+The last piece is not being locked to one model _or_ one client. On any given
+day I might want Claude for one task, GPT for another, and an ALCF-hosted open
+model for a third — and I might want to reach them from Claude Code, from
+[Hermes][hermes] (CLI or desktop), or from [OpenCode][opencode].
+
+I've [written the full stack up separately][alcf-post], so here's just the shape
+and why it matters for a _portable_ setup:
+
+- **One local gateway** ([`llm-rosetta`][alcf-post]) presents a single
+  localhost API and routes by model name to:
+  - **Claude via Argo** (ALCF's internal frontier-model gateway), reached
+    through a small SSH-tunneling shim (`argo-shim`);
+  - **GPT-family models**, likewise;
+  - **ALCF Inference Endpoints** — open models on Sophia/Metis/Minerva behind
+    ALCF's OpenAI-compatible API.
+- **Every client points at that one port.** Switching from Claude Code to
+  Hermes to OpenCode is a client preference, not a re-plumbing job — they all
+  speak to the same gateway, so they all get the same model menu.
+- **Routing, fallback, and billing are centralized.** Model choice is a routing
+  decision; a request can prefer Argo Claude and fall back through GPT to an
+  open ALCF model automatically. Everything bills through ALCF and stays on
+  `127.0.0.1`.
+
+Why this belongs in a post about _portability_: because model access is behind
+the same "one local endpoint" indirection as everything else, it moves with me
+for the same reason the memory store does. When the transport changed in §2, the
+model gateway didn't care — it was already talking to a local port.
+
+---
+
+## How the four layers compose
+
+Read top to bottom, the stack is:
+
+1. **Transport** — a point-to-point encrypted tunnel between my machines, chosen
+   so it survives hostile networks. Everything else assumes only "I can reach
+   host:port."
+2. **Remote attach** — `herdr --remote` puts a _persistent_ agent session on the
+   right machine (home, ALCF, CELS) and lets me come and go.
+3. **Memory** — one centralized, persistent store gives every agent on every
+   machine a shared, durable context and a channel to hand work off.
+4. **Models** — one local gateway makes Claude, GPT, and ALCF open models
+   interchangeable across every client.
+
+The recurring design principle across all four: **put a clean indirection
+between "what I use" and "where it physically lives," so that when the network
+or the host changes, the change is localized.** The campus-network incident in
+§2 was the stress test — and the reason it was a swap rather than a rebuild is
+that the seams were already there.
+
+The uncomfortable corollary is that centralization concentrates failure: one
+broken transport took out remote attach _and_ memory at once. Worth it, in my
+experience — but only because each layer fails _loudly enough to diagnose_, and
+because the seams make each layer independently replaceable.
+
+[alcf-post]: https://samf.sh/posts/2026/06/27
+[herdr]: https://github.com/saforem2/herdr
+[opencode]: https://opencode.ai
+[hermes]: https://github.com/saforem2/hermes
+[claude-code]: https://docs.claude.com/en/docs/claude-code
