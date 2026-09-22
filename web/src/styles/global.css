@@ -623,6 +623,24 @@
            above/below. Force a full line-height on each side. */
         margin-block: 1lh;
     }
+    /* Separators stop at the prose measure rather than running the full
+       article column. A rule that outruns the text it divides reads as a
+       page-wide break instead of a break in the reading, and on a wide
+       display the overhang is most of the line.
+
+       Both mechanisms get the cap: the `hr` element (what Markdown `---`
+       emits) and webtui's `[is-~='separator']` divs used in the landing
+       sections and the footer.
+
+       Safe to apply blanket-wide because max-width only binds on elements
+       WIDER than the cap. The vertical separators (1ch, Chart's axis rules)
+       and the in-widget horizontal ones (Player's #progress is 15ch, its
+       gutter is flex-grow) are all far under 84ch, so the cap never
+       engages on them. */
+    hr,
+    [is-~='separator']:not([direction-='vertical']):not([direction-='y']) {
+        max-width: var(--prose-measure);
+    }
     hr {
         display: block;
         padding: 1ch 0;
