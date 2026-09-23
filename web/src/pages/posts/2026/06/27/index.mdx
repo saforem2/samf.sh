@@ -260,40 +260,128 @@ model in either the terminal or a native chat UI.
 
 These are all optional add-ons to the [Quick start](#quick-start) above. Each is
 one config block pointed at the same local stack; add only the clients you use.
-OpenCode can talk to `argo-shim` directly; Codex and Hermes are OpenAI-format,
-so they go through the `llm-rosetta` gateway (set up in step 2 below).
+OpenCode, Codex, and Hermes all speak OpenAI format, so they go through the
+`llm-rosetta` gateway. That is step 2 below, but every client here points at
+it — so set it up first and treat the numbering as a menu rather than an order.
 
 ### 1. OpenCode (OpenAI-format, via a custom provider)
 
-OpenCode reads `~/.config/opencode/opencode.json`. Add an Anthropic-compatible
-custom provider pointed at the shim (OpenCode's `@ai-sdk/anthropic` sends
-`x-api-key`, which the shim wants):
+OpenCode reads `~/.config/opencode/opencode.json`. Point a custom provider at
+the gateway:
 
 ```json
 {
     "provider": {
-        "argo": {
-            "npm": "@ai-sdk/anthropic",
-            "name": "Argo (via argo-shim)",
+        "llm-rosetta": {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "llm-rosetta (local gateway)",
             "options": {
-                "baseURL": "http://127.0.0.1:25940/argoapi/v1",
-                "apiKey": "{env:ARGO_SHIM_TOKEN}",
-                "headers": { "anthropic-version": "2023-06-01" }
+                "baseURL": "http://127.0.0.1:8765/v1"
             },
             "models": {
-                "claudeopus5": { "name": "claude-opus-5" }
+                "anthropic/claude-opus-5": {
+                    "name": "Claude Opus 5",
+                    "modalities": { "input": ["text", "image"], "output": ["text"] }
+                },
+                "openai/gpt-5.6-sol": {
+                    "name": "GPT-5.6 Sol",
+                    "modalities": { "input": ["text", "image"], "output": ["text"] }
+                },
+                "alcf-minerva/inkling-bf16": {
+                    "name": "inkling-bf16",
+                    "modalities": { "input": ["text"], "output": ["text"] }
+                }
             }
         }
     }
 }
 ```
 
-Export the token so `{env:ARGO_SHIM_TOKEN}` resolves (see
-[Token rotation](#token-rotation) for a helper that does this automatically):
+Three things about this block are deliberate.
+
+**There is no `apiKey`.** The gateway performs no client authentication, so
+there is no credential to supply or rotate. This is the main reason to route
+OpenCode through rosetta rather than at `argo-shim` directly: the shim mints a
+fresh token on every restart, and a client config that interpolates it only
+resolves when OpenCode is launched from a shell where the refresh helper has
+run. Pointing at the gateway removes that dependency entirely.
+
+**The model ids carry their provider prefix.** Use `anthropic/claude-opus-5`,
+not the bare `claude-opus-5`. The gateway serves both spellings as aliases for
+the same model, so registering both just duplicates every entry in the picker.
+Because OpenCode addresses models as `<provider>/<model-id>`, an
+already-prefixed id nests:
 
 ```bash
-export ARGO_SHIM_TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
+opencode run -m llm-rosetta/alcf-minerva/inkling-bf16 "..."
 ```
+
+**`modalities` is copied from the model, not guessed.** Read each model's
+`capabilities` array from the gateway and set `input` to `["text", "image"]`
+only where `vision` appears. Getting this wrong fails silently in the same way
+as [Gotcha 4](#4-the-capabilities-default-silently-drops-images): a model
+without vision has images stripped before the request is forwarded, so it
+answers from the surrounding text and never reports an error.
+
+Generating the whole block beats hand-writing it. This emits every model the
+gateway serves, with modalities derived from its own capability data:
+
+```bash
+curl -s http://127.0.0.1:8765/v1/models | python3 -c '
+import json, sys
+ms = [m for m in json.load(sys.stdin)["data"] if "/" in m["id"]]
+print(json.dumps({
+    m["id"]: {
+        "name": m.get("display_name") or m["id"],
+        "modalities": {
+            "input": ["text", "image"] if "vision" in (m.get("capabilities") or []) else ["text"],
+            "output": ["text"],
+        },
+    }
+    for m in sorted(ms, key=lambda x: x["id"])
+}, indent=2))'
+```
+
+Verify with a real call, not just a config parse. `opencode models | grep
+llm-rosetta` proves the file loaded; only `opencode run` proves it routes:
+
+```bash
+opencode run -m llm-rosetta/anthropic/claude-opus-5 "Reply with exactly: OK"
+```
+
+> [!TIP]- Talking to `argo-shim` directly instead
+> OpenCode can also reach Argo without the gateway, which is useful as a
+> fallback when `:8765` is down. Because OpenCode's `@ai-sdk/anthropic` sends
+> `x-api-key` (which the shim wants), this one is Anthropic-shaped:
+>
+> ```json
+> {
+>     "provider": {
+>         "argo": {
+>             "npm": "@ai-sdk/anthropic",
+>             "name": "Argo (via argo-shim)",
+>             "options": {
+>                 "baseURL": "http://127.0.0.1:25940/argoapi/v1",
+>                 "apiKey": "{env:ARGO_SHIM_TOKEN}",
+>                 "headers": { "anthropic-version": "2023-06-01" }
+>             },
+>             "models": {
+>                 "claudeopus5": { "name": "claude-opus-5" }
+>             }
+>         }
+>     }
+> }
+> ```
+>
+> Export the token so `{env:ARGO_SHIM_TOKEN}` resolves (see
+> [Token rotation](#token-rotation) for a helper that does this automatically):
+>
+> ```bash
+> export ARGO_SHIM_TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
+> ```
+>
+> This path reaches only the Argo models, not the ALCF Inference Endpoints,
+> and you own the token rotation yourself.
 
 ### 2. `llm-rosetta` gateway (for OpenAI-only clients)
 
@@ -305,6 +393,29 @@ uv tool install "llm-rosetta[gateway]"
 ```
 
 Don't start it yet, it needs the config below first.
+
+> [!NOTE]- What changed since this post was written
+> This was written against llm-rosetta 0.9.0; 0.13.0 is current as of September
+> 2026. Nothing below breaks, and upgrading in place left my config untouched
+> despite the versioned config-migration framework added in 0.10.0 — but back up
+> `config.jsonc` and `keys.db` before `uv tool upgrade llm-rosetta` anyway, since
+> that framework rewrites config on load and 0.13.0 also hardened the auth and
+> config layers.
+>
+> Worth knowing about the newer releases:
+>
+> - **Embeddings and rerank** are supported now, with their own routes. This
+>   post's config covers chat models only, and my generator still skips
+>   embeddings on the reasoning that they aren't chat models — true when I wrote
+>   it, no longer a reason to leave them out. ALCF serves three on Sophia
+>   (`google/embeddinggemma-300m` at 768 dimensions, plus
+>   `Salesforce/SFR-Embedding-Mistral` and
+>   `mistralai/Mistral-7B-Instruct-v0.3-embed` at 4096).
+> - **Tool-call ID sanitization** (0.12.0) fixes upstream 400s from clients that
+>   emit non-conformant `tool_call_id` values, which is worth having if you drive
+>   the gateway from Codex CLI.
+> - **Google Interactions API** support (0.13.0), bringing it to five API
+>   standards.
 
 Create `~/.config/llm-rosetta-gateway/config.jsonc`. The Argo providers point
 at the local shim; the ALCF inference providers point directly at the public
@@ -837,6 +948,52 @@ Or, after an `argo-shim` restart, do the whole thing:
 argo-rosetta-sync --with-inference
 ```
 
+Two failure modes hide behind this same 401, and they want opposite fixes. Read
+the token's expiry off disk before doing anything:
+
+```bash
+python3 -c '
+import json, glob, os, time, datetime
+for p in glob.glob(os.path.expanduser("~/.globus/app/*/*/tokens.json")):
+    for k, v in json.load(open(p)).get("data", {}).get("DEFAULT", {}).items():
+        e = v.get("expires_at_seconds")
+        print(k[:40], datetime.datetime.fromtimestamp(e).isoformat() if e else None,
+              "valid" if e and e > time.time() else "EXPIRED")'
+```
+
+**If the token reads EXPIRED**, the refresh token is usually gone rather than
+merely stale, and no amount of restarting recovers it. Re-authenticate
+interactively (`uvx --from alcf-ai alcf-ai auth login`), which needs a human for
+the MFA push, then restart.
+
+**If the token reads valid and requests still 401**, nothing is reading it.
+The gateway loads these from its environment exactly once at startup, so a
+long-lived process keeps presenting whatever it read then. Compare the listener
+against the process that is supposed to own it:
+
+```bash
+PID=$(lsof -nP -iTCP:8765 -sTCP:LISTEN -t | head -1)
+ps -o pid,ppid,lstart,etime -p "$PID"
+```
+
+A start time much older than the token, or a parent that isn't your supervisor,
+means a hand-started instance is squatting the port. That is worth knowing
+because a supervised setup gets *quieter*, not louder, when this happens: the
+supervisor refreshes tokens on a schedule, finds the port already busy, and
+exits without starting, so the logs show healthy refreshes while every request
+fails. Kill the orphan and let the supervisor take the port back, rather than
+hand-restarting into the same state:
+
+```bash
+kill -TERM "$PID"
+launchctl kickstart -k "gui/$UID/sh.example.rosetta-gateway"   # your job's label
+```
+
+The corollary is that `rosetta-gateway restart` above and a launchd-supervised
+gateway are two different management paths, and mixing them is what produces
+the orphan. Pick one. If launchd owns the gateway, restart it through
+`launchctl` and leave the shell helper for hosts where it doesn't.
+
 ### 7. Gemini is partially available
 
 I originally thought Gemini was completely broken because I kept hitting
@@ -858,6 +1015,33 @@ provider type, not the `google` provider type.
 So the config includes the working models as `gemini-2.5-pro`,
 `gemini-2.5-flash`, `gemini-3.5-flash`, and their `google/...` aliases, while
 omitting `Gemini 3.1 Flash Lite` until I add a model-specific request transform.
+
+### 8. A reasoning model on a small `max_tokens` looks dead
+
+Probing `inkling-bf16` with a deliberately cheap `max_tokens: 20` returned
+HTTP 200 and this:
+
+```json
+"finish_reason": "length",
+"message": { "content": "" },
+"usage": { "completion_tokens": 20, "completion_tokens_details": { "reasoning_tokens": 19 } }
+```
+
+Empty content, no error. The obvious reading is that the model is broken or the
+endpoint is serving nothing, which is wrong: it spent 19 of its 20 tokens
+thinking and had one left to answer with. Reasoning models draw their visible
+reply from the same budget as their hidden reasoning, so a small cap gets
+consumed before any text is emitted.
+
+`usage.completion_tokens_details.reasoning_tokens` is the tell, and
+`finish_reason` distinguishes the two cases outright: `"length"` means it ran
+out of budget, `"stop"` means it finished. Give a reasoning model 512 tokens or
+more when probing.
+
+This matters most when verifying something else. I hit it twice in one session
+while checking whether an auth fix had worked, and both times the empty
+response read as a still-failing endpoint rather than a healthy one answering
+within a budget I had set too low.
 
 ## Token rotation
 
