@@ -1,18 +1,35 @@
-/* Self-hosted, subset Symbols Nerd Font. ~40KB vs 950KB upstream.
+/* Self-hosted, subset Symbols Nerd Font. ~84KB vs 950KB upstream.
  *
- * Re-subset 2026-09-21, 264KB -> 40KB. The previous cut kept 1588 glyphs
- * where the site uses 60. This one keeps each used codepoint plus +/-8
- * either side (312 glyphs): Nerd Font groups related icons adjacently, so
- * that neighbourhood covers swapping an icon for a nearby variant without
- * a regeneration. Keeping whole upstream BLOCKS instead was measured at
- * 171KB for the same 60 glyphs -- Font Awesome Extension alone is 54KB --
- * which is a lot to pay for icons from a block you happened to touch once.
- * An icon from a range NOT already shipped needs a re-subset either way.
+ * 576 glyphs: every codepoint the site references, plus +/-8 either side.
+ * Nerd Font groups related icons adjacently, so that neighbourhood covers
+ * swapping an icon for a nearby variant without regenerating. Keeping
+ * whole upstream BLOCKS instead measured 171KB, a lot to pay for icons
+ * from a block you happened to touch once.
+ *
+ * !!! COUNT THE GLYPHS IN ALL FOUR NOTATIONS !!!
+ *
+ * The first cut at this shipped 312 glyphs against a scan that found 60
+ * uses. The real number was 147. The scan matched literal PUA characters
+ * and CSS `content: '\e6b2'` escapes, and silently missed both
+ *
+ *     &#xf0224;      HTML entity  (Doc.astro)
+ *     '\u{f0224}'    JS escape    (SidebarFileTree.astro, ICON_FILE)
+ *
+ * so 56 in-use glyphs were dropped and the sidebar file icon rendered as
+ * a tofu box. A size check cannot catch that; only diffing the subset's
+ * cmap against a complete scan can.
  *
  * Regenerate:
- *   pyftsubset SymbolsNerdFont-Regular.woff2 --unicodes="<ranges>" \
- *     --flavor=woff2 --output-file=out.woff2
- * Verify no USED glyph was dropped before swapping it in, then bump ?v=.
+ *   1. Scan src/ for ALL FOUR forms: literal PUA chars,
+ *      `content: '\NNNN'`, `&#xNNNN;`, and `\u{NNNNN}` / `\uNNNN`.
+ *   2. pyftsubset <source>.woff2 --unicodes="<ranges>" --flavor=woff2 \
+ *        --output-file=out.woff2
+ *   3. Load both with fontTools and assert (scan set - new cmap) is empty.
+ *      Do not skip this.
+ *   4. Bump ?v= below to a fresh hash of the file.
+ *
+ * U+EFC9, U+F61F and U+F698 are referenced but absent from upstream
+ * Symbols Nerd Font entirely, so they are tofu regardless.
  *
  * NO local() src on purpose. This is a *curated subset* whose glyph
  * coverage (incl. the high Material-Design F0xxx range used by the
@@ -28,7 +45,7 @@
  */
 @font-face {
     font-family: 'Symbols Nerd Font';
-    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=cd4e5139') format('woff2');
+    src: url('/fonts/nerd/SymbolsNerdFont-Regular.woff2?v=517e5242') format('woff2');
     font-display: swap;
     font-style: normal;
     font-weight: 400;
