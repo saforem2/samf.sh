@@ -500,6 +500,11 @@ export default defineConfig({
     site: 'https://samf.sh',
     compressHTML: false,
     markdown: {
+        // gfm: true is Astro's default, but stating it explicitly here
+        // because the Astro 6 / mdx 5 upgrade dropped footnotes from 31
+        // pages down to 2 -- GFM footnote syntax silently stopped being
+        // parsed once custom remarkPlugins were supplied.
+        gfm: true,
         remarkPlugins: [remarkMath],
         rehypePlugins: [
             rehypeHeadingIds,
