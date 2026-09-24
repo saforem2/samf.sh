@@ -1736,10 +1736,12 @@ const articleSchema =
     const setSidebarToggleLabel = (collapsed: boolean) => {
         if (!sidebarToggle) return
 
-        // The toggle now lives in the top action row as an icon button:
-        // collapse-to-left-edge glyph when open, hamburger when collapsed.
-        // (Was a bottom bar with a `‹z[h]` text label.)
-        sidebarToggle.innerHTML = collapsed ? '' : ''
+        // Matched directional pair from Material Design's chevron-box set:
+        // chevron-left-box-outline to collapse the sidebar leftwards,
+        // chevron-right-box-outline to bring it back. Was a hamburger
+        // (U+F0C9) paired with U+F344, which is not in upstream Symbols
+        // Nerd Font at all and rendered as tofu.
+        sidebarToggle.innerHTML = collapsed ? '󰧛' : '󰧙'
 
         sidebarToggle.setAttribute(
             'aria-label',
