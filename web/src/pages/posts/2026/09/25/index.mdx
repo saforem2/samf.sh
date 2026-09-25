@@ -555,41 +555,89 @@ before concluding anything is broken.
 
 ## Starting the whole stack
 
-After the LaunchAgents and Tailscale Serve routes have been installed once, the
-normal startup procedure is intentionally boring:
+I used to keep this as a list of `launchctl kickstart` lines per machine, and
+copy-pasted the relevant block. That was a bad habit for the reason this whole
+post keeps circling: kickstarting an agent only asks `launchd` to run something.
+It says nothing about whether the service came back. The list also drifted — I
+added the spool drainer and the export job and never updated the snippet.
+
+So the commands live in one `start-services` script that restarts each agent
+**and then probes the port a real consumer would use**:
 
 ```bash
-# On mbph
-launchctl kickstart -k gui/$(id -u)/dev.saforem2.scrollback
-launchctl kickstart -k gui/$(id -u)/dev.saforem2.silverbullet-agent-memory
-launchctl kickstart -k gui/$(id -u)/com.github.akitaonrails.ai-memory
-launchctl kickstart -k gui/$(id -u)/dev.saforem2.vaultserve
-launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-serve
-launchctl kickstart -k gui/$(id -u)/com.herdr-remote.relay
-launchctl kickstart -k gui/$(id -u)/com.herdr-remote.tunnel
-
-# The dashboard is currently started on demand
-cd "$HOME/agpt-dash"
-uv run python3 server.py --port 8720
-
-# Re-declare routes when adding or changing a backend
-tailscale serve --bg --https=10443 http://127.0.0.1:8766
-tailscale serve --bg --https=9443  http://127.0.0.1:3000
-tailscale serve --bg --https=8443  http://127.0.0.1:49375
-tailscale serve --bg --https=8720  http://127.0.0.1:8720
-tailscale serve --bg --https=443   http://127.0.0.1:8891
+start-services            # restart everything, then verify
+start-services --check    # verify only, change nothing
+start-services --serve    # also re-declare the Tailscale Serve routes
 ```
+
+It picks its service list from `hostname -s`, so the same script is correct on
+both machines. Each entry is a LaunchAgent label, an optional probe URL, and a
+description:
 
 ```bash
-# On mbpr
-launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-forward-mbph
-launchctl kickstart -k gui/$(id -u)/sh.samf.agpt-forward-mbph
+read -r -d '' SERVICES_MBPH <<'EOF'
+dev.saforem2.scrollback|http://127.0.0.1:8766/|Scrollback terminal history
+dev.saforem2.silverbullet-agent-memory|http://127.0.0.1:3000/|SilverBullet
+com.github.akitaonrails.ai-memory|http://127.0.0.1:49375/mcp|ai-memory server
+dev.saforem2.vaultserve|http://127.0.0.1:8891/|VaultServe
+sh.samf.tailcat-serve||Tailcat listener
+com.herdr-remote.relay|http://127.0.0.1:8375/|Herdr relay
+com.herdr-remote.tunnel||Cloudflare tunnel
+dev.saforem2.ai-memory-hook-drain||ai-memory spool drainer
+dev.saforem2.ai-memory-silverbullet-sync||ai-memory -> SilverBullet export
+EOF
 ```
 
-The AGPT dashboard and the Aurora/CELS forwards are currently started when I
-need them. The LaunchAgent-managed services return after login without an open
+The verdict logic is the part worth stealing. `401` and `403` count as healthy:
+they prove TLS, routing, and the authorization boundary all ran, and the service
+is correctly refusing an unauthenticated probe. Only `000` — nothing answered at
+all — is an unambiguous failure:
+
+```bash
+case "$code" in
+  2*|3*|401|403) printf '  %-34s ok (HTTP %s)\n' "$desc" "$code" ;;
+  000)           printf '  %-34s NO RESPONSE\n'  "$desc"; fail=$((fail+1)) ;;
+  *)             printf '  %-34s HTTP %s\n'      "$desc" "$code"; fail=$((fail+1)) ;;
+esac
+```
+
+Two smaller details matter. A periodic agent such as the spool drainer shows `-`
+instead of a PID between runs, which is healthy rather than missing. And the
+probe URL has to be a path the service actually routes: ai-memory answers `404`
+on `/` and `401` on `/mcp`, so probing `/` reports a false failure.
+
+The script exits with the number of failed checks, which makes it usable from
+`cron` or a healthcheck as well as by hand:
+
+```text
+host: mbph
+
+verifying
+  Scrollback terminal history        ok (HTTP 200)
+  SilverBullet                       ok (HTTP 200)
+  ai-memory server                   ok (HTTP 401)
+  VaultServe                         ok (HTTP 200)
+  Tailcat listener                   ok (pid 95304)
+  Herdr relay                        ok (HTTP 401)
+  Cloudflare tunnel                  ok (pid 46219)
+  ai-memory spool drainer            ok (periodic, idle)
+  ai-memory -> SilverBullet export   ok (periodic, idle)
+
+all checks passed
+```
+
+The AGPT dashboard and the Aurora/CELS forwards are still started when I need
+them. The LaunchAgent-managed services return after login without an open
 terminal. The dashboard could use the same LaunchAgent template once I decide it
 should be truly always-on.
+
+> [!WARNING]
+> Restarting a service restarts everything downstream of it, and the downstream
+> side may not notice. When I restarted `ai-memory` on the hub, the Tailcat
+> forward on the other Mac kept listening on its local port while its far end
+> was gone — `launchctl list` reported the forward as `-9`, and a request
+> through it hung instead of failing. Run `start-services --check` on *both*
+> machines after restarting anything shared.
 
 ## Verify paths, not processes
 
