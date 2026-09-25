@@ -564,6 +564,12 @@ export default defineConfig({
         sitemap(),
     ],
     vite: {
+        server: {
+            // The dev server is intentionally bound to the LAN/tailnet. Keep
+            // Vite's DNS-rebinding protection, but permit this machine's two
+            // names instead of allowing every Host header.
+            allowedHosts: ['mbph', 'mbph.tail3e7069.ts.net'],
+        },
         ssr: {
             noExternal: [
                 '@webtui/css',

@@ -1,0 +1,587 @@
+---
+layout: '@/layouts/Doc.astro'
+title: 'A Small Service Mesh for My Macs and Supercomputers'
+date: 2026-09-25
+date-created: 2026-09-25
+date-modified: today
+description: 'How I run local dashboards, shared agent memory, terminal history, notes, SSH forwards, and a remote-session relay across two Macs and ALCF systems using loopback services, launchd, Tailscale Serve, SSH, Tailcat, and Cloudflare Tunnel.'
+---
+
+I have accumulated a surprising number of small web services around my daily
+work: a training dashboard, terminal history, two views of my notes, an agent
+memory API, and a relay for attaching to persistent remote sessions. None is a
+large application. The interesting part is making each one available in the
+right places without making everything public.
+
+This post is an inventory of that system: what each service does, how the
+network paths fit together, and the commands and `launchd` patterns I use to
+bring them up again. It is the implementation-level companion to [Working From
+Anywhere][working-anywhere], which explains the larger remote-work design.
+
+> [!INFO]- **TL;DR** — the pattern
+>
+> - Applications listen on `127.0.0.1`, not every network interface.
+> - `launchd` keeps long-lived processes alive on macOS.
+> - **Tailscale Serve** gives selected HTTP services private HTTPS URLs inside
+>   my tailnet.
+> - **SSH forwards** move a port to the machine that needs it.
+> - **Tailcat** is a second point-to-point path when a network blocks Tailscale's
+>   control plane.
+> - **Cloudflare Tunnel** is reserved for one browser-facing service that must
+>   be reachable without joining my tailnet, and Cloudflare Access authenticates
+>   it.
+> - A listening process is not a health check. I verify the final URL from the
+>   machine that will consume it.
+
+## The topology
+
+The always-on MacBook, `mbph`, is the hub. A second MacBook, `mbpr`, is often on
+campus networks and acts as both a client and, for one service, the public edge.
+Aurora and CELS are remote compute environments behind SSH bastions.
+
+```text
+                              Cloudflare Access
+browser ───────────────────── relay.sf.onl
+                                     │ Cloudflare Tunnel
+                                     ▼
+                               herdr relay :8375
+                                     │
+                              mbpr (mobile Mac)
+                               │          │
+                 SSH forwards │          │ Tailcat forwards
+                               ▼          ▼
+                              mbph (home Mac)
+                     ┌─────────┼──────────────┐
+                     │         │              │
+                  Tailscale  localhost      SSH jump
+                    Serve    services       hosts
+                     │         │              │
+                     ▼         ▼              ▼
+                  browsers   agents       Aurora / CELS
+```
+
+Here is the concrete inventory. Ports are included because they make debugging
+far easier than descriptions like “the notes service.”
+
+| Service           | Local backend     | Reachability                                              | What it is for                                                 |
+| ----------------- | ----------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
+| Scrollback        | `mbph:8766`       | Tailscale HTTPS `:10443`                                  | Search and read terminal history away from the terminal        |
+| SilverBullet      | `mbph:3000`       | Tailscale HTTPS `:9443`                                   | Human-friendly editing of the shared agent-memory Markdown     |
+| ai-memory         | `mbph:49375`      | Tailscale HTTPS `:8443` and Tailcat                       | One persistent memory/MCP service for agents on every machine  |
+| AGPT dashboard    | `mbph:8720`       | Tailscale HTTPS `:8720` and an SSH forward to `mbpr:8720` | Monitor AuroraGPT runs from a browser                          |
+| VaultServe        | `mbph:8891`       | Tailscale HTTPS `:443`                                    | Read-only browsing and search for my Obsidian vault            |
+| Aurora data API   | Aurora `:8712`    | SSH local forward to `mbph:8712`                          | Feed live training data into the AGPT dashboard                |
+| Argo / CELS       | CELS HTTPS `:443` | SSH jump forward to `mbph:25939`                          | Reach the internal model gateway from local clients            |
+| Tailcat SSH       | `mbph:22`         | `mbpr:2222`                                               | A backup path to SSH when Tailscale is unavailable             |
+| Tailcat memory    | `mbph:49375`      | `mbpr:8443`                                               | The same backup path for agent memory                          |
+| AGPT reverse view | `mbph:8720`       | SSH local forward to `mbpr:8720`                          | Keep the dashboard at a stable localhost URL on the mobile Mac |
+| Herdr relay       | `mbpr:8375`       | Cloudflare at `relay.sf.onl`                              | Attach a browser to persistent terminal/agent sessions         |
+
+The table contains both applications and multiple routes to some applications.
+That distinction is useful: **an application owns its local port; a transport
+merely decides who can reach it.** I can replace Tailscale with an SSH forward
+without changing the application.
+
+## The common service recipe
+
+Every local application starts life on loopback:
+
+```bash
+my-service --host 127.0.0.1 --port 9000
+curl --fail http://127.0.0.1:9000/healthz
+```
+
+Binding to `127.0.0.1` means the process is not accidentally exposed on Wi-Fi,
+Ethernet, or a VPN interface. I then make persistence explicit with a macOS
+LaunchAgent:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.example.my-service</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/me/.local/bin/my-service</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/me/Library/Logs/my-service.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/me/Library/Logs/my-service.err.log</string>
+</dict>
+</plist>
+```
+
+Install it once, or restart it after a change:
+
+```bash
+label=dev.example.my-service
+plist="$HOME/Library/LaunchAgents/$label.plist"
+
+plutil -lint "$plist"
+launchctl bootstrap "gui/$(id -u)" "$plist"     # first install
+launchctl kickstart -k "gui/$(id -u)/$label"    # restart
+launchctl print "gui/$(id -u)/$label"           # inspect
+```
+
+`RunAtLoad` starts the job at login. `KeepAlive` restarts it if it exits. Logs
+go to stable files instead of disappearing with a terminal window.
+
+> [!WARNING]
+> `KeepAlive` is not proof that a service works. It can keep restarting a
+> crashing process, or keep a wedged process alive forever. Always test the
+> backend and the externally consumed route separately.
+
+## Private web apps with Tailscale Serve
+
+[Tailscale Serve][tailscale-serve] terminates HTTPS on the tailnet hostname and
+proxies to a loopback HTTP server. For example, these are the five routes on
+`mbph`:
+
+```bash
+tailscale serve --bg --https=10443 http://127.0.0.1:8766   # Scrollback
+tailscale serve --bg --https=9443  http://127.0.0.1:3000   # SilverBullet
+tailscale serve --bg --https=8443  http://127.0.0.1:49375  # ai-memory
+tailscale serve --bg --https=8720  http://127.0.0.1:8720   # AGPT dashboard
+tailscale serve --bg --https=443   http://127.0.0.1:8891   # VaultServe
+
+tailscale serve status
+```
+
+Serve configuration persists in Tailscale, so these commands define routes;
+they do not need to remain running in a shell. The backend processes still need
+their own supervision.
+
+This is **Tailscale Serve, not Funnel**. Serve is tailnet-only. Funnel would put
+a service on the public internet, which is not what I want for terminal history,
+notes, dashboards, or agent memory.
+
+### Scrollback: searchable terminal history
+
+[Scrollback][scrollback] turns captured terminal output into a small searchable
+web application. This is useful when I remember seeing an error or command but
+not which terminal, host, or session contained it. It is also much easier to
+read long output on a phone than through a terminal multiplexer.
+
+My wrapper allows the private Tailscale hostname while keeping the socket local:
+
+```python
+#!/usr/bin/env python3
+import uvicorn
+from scrollback.web.app import create_app
+
+uvicorn.run(
+    create_app(allowed_hosts=["my-mac.my-tailnet.ts.net"]),
+    host="127.0.0.1",
+    port=8766,
+)
+```
+
+Run the wrapper from a LaunchAgent, then add the `:10443` Serve route shown
+above. The hostname allowlist matters: the proxy preserves an HTTP host that a
+default local-only configuration may reject.
+
+### SilverBullet: a human view of agent memory
+
+[SilverBullet][silverbullet] is a Markdown knowledge base with wiki links,
+search, and a pleasant browser editor. I point it at a mounted/synchronized view
+of my agent-memory wiki:
+
+```bash
+mount-agent-memory
+silverbullet --single \
+  --hostname 127.0.0.1 \
+  --port 3000 \
+  "$HOME/AgentMemory"
+```
+
+This gives humans a useful complement to programmatic retrieval: I can browse a
+project's decisions, edit a durable page, or follow links across related notes.
+
+SilverBullet in this configuration does not add application-level
+authentication. Tailscale makes it private to the tailnet, **not private to one
+person inside that tailnet**. On a shared tailnet I would add a restrictive
+Tailscale grant/ACL for port `9443`, and preferably application authentication as
+defense in depth.
+
+### ai-memory: one memory service for every agent
+
+[`ai-memory`][ai-memory] stores captured agent sessions plus a Git-backed
+Markdown wiki. Every supported coding harness points at the same MCP endpoint,
+so Claude Code, Codex, OpenCode, and other clients can retrieve the same project
+history and hand work to one another.
+
+A minimal local launch looks like:
+
+```bash
+export AI_MEMORY_AUTH_TOKEN="$(openssl rand -hex 32)"
+ai-memory serve \
+  --transport http \
+  --bind 127.0.0.1:49375 \
+  --enable-web
+```
+
+I put the token in the LaunchAgent environment or a protected environment file,
+never in a public repository. The service is exposed through Tailscale on
+`:8443`; clients use the `/mcp` path and send the bearer token.
+
+`/mcp` is a machine endpoint, **not a web page**. Opening it in a normal browser
+correctly returns `401` because the browser did not send the bearer token. That
+response proves only that the route reached ai-memory and that authentication
+ran; it does not prove an MCP client can log in. A complete health check sends
+an authenticated `initialize` request and verifies the JSON-RPC response:
+
+```bash
+curl --fail-with-body \
+  -H "Authorization: Bearer $AI_MEMORY_AUTH_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  --data '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": {"name": "healthcheck", "version": "1.0"}
+    }
+  }' \
+  https://my-mac.my-tailnet.ts.net:8443/mcp
+```
+
+A healthy response is HTTP `200` with `result.serverInfo.name` equal to
+`ai-memory`. The optional human web interface is a separate `/web` route and
+needs browser/session authentication configured before it is useful as a page.
+
+For a new client, the project README's installers are preferable to hand-editing
+every harness:
+
+```bash
+ai-memory install-mcp --client claude-code --apply
+ai-memory install-hooks --agent claude-code --apply
+```
+
+### AGPT dashboard: training state without an SSH terminal
+
+The AGPT dashboard is a small local web app for current and historical
+AuroraGPT training runs. Its backend merges cached run metadata with a live data
+API forwarded from Aurora. I start the dashboard itself on `mbph`:
+
+```bash
+cd ~/agpt-dash
+uv run python3 server.py --port 8720
+curl --fail http://127.0.0.1:8720/
+```
+
+Tailscale Serve makes it available to my tailnet at HTTPS port `8720`. On
+`mbpr`, I additionally keep the same dashboard at a predictable localhost URL:
+
+```bash
+ssh -N \
+  -o BatchMode=yes \
+  -o ControlMaster=no \
+  -o ControlPath=none \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -L 127.0.0.1:8720:127.0.0.1:8720 \
+  mbph
+```
+
+That SSH command lives in a script supervised by `launchd` on `mbpr`. Disabling
+SSH connection sharing is intentional: a multiplexed master can accept the
+forward and detach from the process that `launchd` is supervising, leaving job
+state and actual port ownership out of sync.
+
+### VaultServe: read-only notes in a browser
+
+VaultServe is my intentionally small, read-only Obsidian viewer. It renders
+Markdown, resolves wiki links and embedded media, and searches the vault without
+giving the browser a write API.
+
+```bash
+VAULT_ROOT="$HOME/Obsidian/Notes" \
+VAULT_BIND=127.0.0.1 \
+VAULT_PORT=8891 \
+  ~/.hermes/vaultserve/.venv/bin/python \
+  ~/.hermes/vaultserve/server.py
+```
+
+This is useful on devices where I want to consult notes without installing or
+synchronizing the full Obsidian vault. The default Tailscale HTTPS route proxies
+to it, but it remains tailnet-only.
+
+## Bringing HPC services home with SSH
+
+Some services cannot originate on either Mac. They run behind institutional
+login nodes, so SSH is the transport.
+
+### Aurora data for the dashboard
+
+The training-data service listens on Aurora's loopback port `8712`. A local
+forward makes it look like an `mbph` service:
+
+```bash
+ssh -N \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -L 127.0.0.1:8712:127.0.0.1:8712 \
+  aurora
+
+curl --fail http://127.0.0.1:8712/api/backbone
+```
+
+The dashboard only knows about `127.0.0.1:8712`; it does not need to know about
+Aurora's bastions or network topology. This is the same indirection principle as
+Tailscale Serve, in the opposite direction.
+
+### Argo through CELS
+
+ALCF's Argo service is HTTPS inside the CELS network. An SSH jump host carries
+that endpoint back to a local TLS port:
+
+```bash
+ssh -N -f \
+  -o BatchMode=yes \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 \
+  -J "$USER@logins.cels.anl.gov" \
+  -L 127.0.0.1:25939:apps.inside.anl.gov:443 \
+  "$USER@compute-01.cels.anl.gov"
+```
+
+My actual entry point is [`argo-shim`][argo-shim], which wraps the tunnel and
+the authentication details:
+
+```bash
+uvx --no-cache argo-shim --host compute-01.cels.anl.gov
+```
+
+Local model gateways can now speak to `127.0.0.1:25939` while preserving the
+correct upstream TLS server name. A useful acceptance test is a complete TLS
+handshake, not merely seeing the SSH process:
+
+```bash
+openssl s_client \
+  -connect 127.0.0.1:25939 \
+  -servername apps.inside.anl.gov \
+  -brief </dev/null
+```
+
+## A fallback data plane with Tailcat
+
+Tailscale is normally the cleanest path between my Macs, but one campus network
+has blocked its control connection. I wanted the services above to depend on
+“a port exists here,” not on one particular VPN implementation, so I added a
+second point-to-point transport using [Tailcat][tailcat].
+
+On `mbph`, the server is restricted to the peer's public node key:
+
+```bash
+tailcat serve --allow='nodekey:<MBPR_PUBLIC_NODE_KEY>' all
+```
+
+On `mbpr`, one client process creates two loopback forwards:
+
+```bash
+tailcat forward '<MBPH_TAILCAT_ADDRESS>' \
+  2222:22 \
+  8443:49375
+```
+
+The first mapping makes `mbph` SSH available at `mbpr:2222`; the second makes
+the ai-memory API available at `mbpr:8443`. Both commands run under LaunchAgents
+with `KeepAlive` and a short throttle interval.
+
+The node key and Tailcat address are capabilities. I keep the real values in
+private configuration and use placeholders here. The key design point is that
+the services above do not change: SSH still speaks SSH and ai-memory still
+speaks HTTP/MCP. Only the bytes' route between the Macs changes.
+
+## One carefully public route with Cloudflare Tunnel
+
+Everything so far assumes the client can join my tailnet or reach an SSH path.
+The exception is [Herdr][herdr]'s browser relay, which lets me attach to a
+persistent terminal/agent session from an ordinary browser. That needs a public
+hostname, so it gets a separate and more explicit boundary.
+
+The relay binds to loopback on `mbpr`:
+
+```bash
+HERDR_RELAY_PORT=8375 uv run ./relay/herdr_relay.py
+curl -I http://127.0.0.1:8375/
+```
+
+A named Cloudflare Tunnel publishes only that backend:
+
+```yaml
+tunnel: herdr-relay
+credentials-file: /Users/me/.cloudflared/<TUNNEL-ID>.json
+
+ingress:
+    - hostname: relay.example.com
+      service: http://localhost:8375
+    - service: http_status:404
+```
+
+Create and run it with:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create herdr-relay
+cloudflared tunnel route dns herdr-relay relay.example.com
+cloudflared tunnel \
+  --config "$HOME/.cloudflared/config-herdr.yml" \
+  run herdr-relay
+```
+
+The final catch-all `404` prevents the tunnel from becoming an accidental
+general-purpose proxy. In production I also put the hostname behind
+**Cloudflare Access**; the relay retains its own token as a fallback. The tunnel
+credential, access audience, and relay token live in private files and never in
+the LaunchAgent plist or repository.
+
+Two LaunchAgents supervise this path independently:
+
+1. the Herdr relay on `127.0.0.1:8375`;
+2. `cloudflared`, which maintains outbound connections to Cloudflare.
+
+Splitting them makes failures legible. I can test the local relay first, then
+the authenticated public URL, and know which half is broken.
+
+## Starting the whole stack
+
+After the LaunchAgents and Tailscale Serve routes have been installed once, the
+normal startup procedure is intentionally boring:
+
+```bash
+# On mbph
+launchctl kickstart -k gui/$(id -u)/dev.saforem2.scrollback
+launchctl kickstart -k gui/$(id -u)/dev.saforem2.silverbullet-agent-memory
+launchctl kickstart -k gui/$(id -u)/com.github.akitaonrails.ai-memory
+launchctl kickstart -k gui/$(id -u)/dev.saforem2.vaultserve
+launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-serve
+
+# The dashboard is currently started on demand
+cd "$HOME/agpt-dash"
+uv run python3 server.py --port 8720
+
+# Re-declare routes when adding or changing a backend
+tailscale serve --bg --https=10443 http://127.0.0.1:8766
+tailscale serve --bg --https=9443  http://127.0.0.1:3000
+tailscale serve --bg --https=8443  http://127.0.0.1:49375
+tailscale serve --bg --https=8720  http://127.0.0.1:8720
+tailscale serve --bg --https=443   http://127.0.0.1:8891
+```
+
+```bash
+# On mbpr
+launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-forward-mbph
+launchctl kickstart -k gui/$(id -u)/sh.samf.agpt-forward-mbph
+launchctl kickstart -k gui/$(id -u)/com.herdr-remote.relay
+launchctl kickstart -k gui/$(id -u)/com.herdr-remote.tunnel
+```
+
+The AGPT dashboard and the Aurora/CELS forwards are currently started when I
+need them. The LaunchAgent-managed services return after login without an open
+terminal. The dashboard could use the same LaunchAgent template once I decide it
+should be truly always-on.
+
+## Verify paths, not processes
+
+This stack recently produced three instructive failures:
+
+- Tailscale Serve was healthy but proxied the AGPT URL to stale port `8726`
+  instead of the live dashboard on `8720`.
+- VaultServe still accepted TCP connections on `8890` but closed every HTTP
+  request without sending a response.
+- An SSH control master owned `mbpr:8720`, while the LaunchAgent that was
+  supposed to own the forward was not actually running.
+
+All three could look “up” in a process list. The acceptance checks need to cross
+the same boundary as the real consumer:
+
+```bash
+# Backend first
+curl --fail http://127.0.0.1:8891/healthz
+
+# Then the tailnet route
+curl --fail https://my-mac.my-tailnet.ts.net/
+
+# Reachability/auth-boundary check only; this is not a full health check
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://my-mac.my-tailnet.ts.net:8443/mcp
+
+# Test the forwarded dashboard on the consuming Mac, not the server
+ssh mbpr 'curl --fail http://127.0.0.1:8720/'
+
+# Inspect ownership as well as presence
+lsof -nP -iTCP:8720 -sTCP:LISTEN
+launchctl print gui/$(id -u)/sh.samf.agpt-forward-mbph
+```
+
+For an authenticated API, `401` proves that TLS, routing, proxying, and the
+authorization boundary ran. It does **not** prove valid credentials or protocol
+initialization; use the authenticated MCP request above for that. Conversely, a
+Tailscale-generated `502` means the route exists but its backend is unavailable
+or failed to produce HTTP.
+
+## Security boundaries
+
+The useful question is not “is it encrypted?” Every path here is encrypted. The
+question is **who is allowed to arrive at the application after decryption?**
+
+| Boundary          | Who can reach it                       | Additional control                            |
+| ----------------- | -------------------------------------- | --------------------------------------------- |
+| Loopback backend  | Processes on that host                 | Filesystem/user permissions                   |
+| Tailscale Serve   | Devices/users admitted to the tailnet  | Tailnet grants/ACLs; app auth where available |
+| SSH forward       | A user with an accepted SSH credential | SSH config and remote account permissions     |
+| Tailcat forward   | A peer holding the allowed key/address | Loopback binding at the client                |
+| Cloudflare Tunnel | The public internet can reach the edge | Cloudflare Access plus application auth       |
+
+There are a few rules I now apply consistently:
+
+1. **Bind local unless public is deliberate.** No application here needs
+   `0.0.0.0`.
+2. **Treat tailnet-only as private, not secret.** Every authorized tailnet member
+   can potentially reach an unauthenticated Serve route unless grants say
+   otherwise.
+3. **Keep credentials out of examples, repositories, and process arguments.**
+   Use protected environment files or the platform's credential store.
+4. **Publish one hostname, not a network.** The Cloudflare tunnel has one ingress
+   rule and a terminating `404` rule.
+5. **Test from the consumer.** A browser route is only healthy if a browser-side
+   HTTP request works; a forwarded API is only healthy if the client host can use
+   it.
+
+## What this buys me
+
+The obvious payoff is convenience: terminal history on my phone, training state
+without an Aurora login shell, notes from a browser, and agent context that does
+not depend on which laptop or coding harness I opened.
+
+The larger payoff is replaceability. Each application sees a local port. Each
+consumer sees a stable URL or local port. Between them I can choose Tailscale,
+SSH, Tailcat, or Cloudflare according to the trust boundary and the network I am
+currently on. When one transport fails, I do not have to redesign the service.
+
+That is enough “service mesh” for two Macs and a few supercomputers: not a
+cluster orchestrator, just small processes with explicit ownership, narrow
+network paths, persistent supervision, and health checks that exercise the
+whole route.
+
+[working-anywhere]: https://samf.sh/posts/2026/09/22
+[tailscale-serve]: https://tailscale.com/kb/1242/tailscale-serve
+[scrollback]: https://github.com/saforem2/scrollback
+[silverbullet]: https://silverbullet.md
+[ai-memory]: https://github.com/akitaonrails/ai-memory
+[argo-shim]: https://github.com/saforem2/argo-shim
+[tailcat]: https://github.com/saforem2/tailcat
+[herdr]: https://github.com/saforem2/herdr

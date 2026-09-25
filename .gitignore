@@ -83,3 +83,6 @@ bun.lockb
 
 # Lighthouse HTML reports left in the project root by ad-hoc runs.
 *.report.html
+
+# Agent scratch: per-run todo checklists and lessons notes, not site content.
+tasks/

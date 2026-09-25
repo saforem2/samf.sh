@@ -258,17 +258,35 @@ if (sourceFilePath) {
     }
 }
 
-// Parse a date value into a Date, anchoring bare `YYYY-MM-DD` frontmatter
-// strings at LOCAL noon. A date-only string parses as UTC midnight, which
-// rolls back a calendar day when formatted in a behind-UTC build zone (e.g.
-// `2024-06-17` renders "Jun 16" in Chicago). Noon keeps the intended day in
-// any zone. Mirrors the same fix in utils/lastModified.ts.
+// Parse a date value into a Date. Raw date-only strings are anchored at local
+// noon; Astro may already have coerced frontmatter dates into Date objects.
 function parseDocDate(d: string | Date): Date {
     if (d instanceof Date) return d
     const s = String(d).trim()
     return /^\d{4}-\d{2}-\d{2}$/.test(s)
         ? new Date(`${s}T12:00:00`)
         : new Date(s)
+}
+
+// Publication dates are calendar dates, not instants. Astro's content schema
+// represents `YYYY-MM-DD` at UTC midnight, so format that field in UTC to keep
+// the authored day stable in every build zone. Modification timestamps remain
+// local-time instants and continue through formatDate/formatDateShort.
+function formatPublicationDate(d: string | Date): string {
+    return parseDocDate(d).toLocaleDateString('en-US', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    })
+}
+
+function formatPublicationDateShort(d: string | Date): string {
+    const dt = parseDocDate(d)
+    const mm = String(dt.getUTCMonth() + 1).padStart(2, '0')
+    const dd = String(dt.getUTCDate()).padStart(2, '0')
+    const yy = String(dt.getUTCFullYear()).slice(-2)
+    return `${mm}/${dd}/${yy}`
 }
 
 // Format date helper
@@ -499,12 +517,12 @@ const articleSchema =
                                                             class="post-meta-item post-meta-date"
                                                             tabindex="0">
                                                             <span class="date-long">
-                                                                {formatDate(
+                                                                {formatPublicationDate(
                                                                     frontmatter.date,
                                                                 )}
                                                             </span>
                                                             <span class="date-short">
-                                                                {formatDateShort(
+                                                                {formatPublicationDateShort(
                                                                     frontmatter.date,
                                                                 )}
                                                             </span>
@@ -515,7 +533,7 @@ const articleSchema =
                                                         formatDate(
                                                             fileModifiedDate,
                                                         ) !==
-                                                            formatDate(
+                                                            formatPublicationDate(
                                                                 frontmatter.date,
                                                             ) && (
                                                             <span
