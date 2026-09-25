@@ -1356,22 +1356,6 @@ html[data-webtui-theme='catppuccin-latte'] .dark-content {
     display: none !important;
 }
 
-/* Neovim themes have clear light/dark semantics, so wire the
-   light-content/dark-content toggles. The *= matchers cover both palette
-   variants (nvim-light-role / nvim-light-hue, nvim-dark-role / nvim-dark-hue). */
-html[data-webtui-theme*='nvim-light'] .light-content {
-    display: revert !important;
-}
-html[data-webtui-theme*='nvim-light'] .dark-content {
-    display: none !important;
-}
-html[data-webtui-theme*='nvim-dark'] .light-content {
-    display: none !important;
-}
-html[data-webtui-theme*='nvim-dark'] .dark-content {
-    display: revert !important;
-}
-
 /* Code blocks carry no fill (see pre.astro-code below); they are bounded by
    a language-tinted border instead. This rule used to repaint the panel with
    !important, which beat that. */
@@ -1427,69 +1411,6 @@ html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
     font-weight: var(--shiki-catppuccin-latte-font-weight) !important;
     text-decoration: var(--shiki-catppuccin-latte-text-decoration) !important;
     --pre-background: oklch(from #e6e9ef l c h);
-    background-color: transparent !important;
-}
-
-/* sam.onl Light/Dark Shiki themes — palette-matched syntax highlighting.
-   Activates --shiki-sam-light-* / --shiki-sam-dark-* CSS vars baked into
-   the rendered code blocks at build time by shikiConfig.themes. */
-html[data-webtui-theme='sam-light'] .astro-code,
-html[data-webtui-theme='sam-light'] .astro-code span:not(.line) {
-    color: var(--shiki-sam-light) !important;
-    font-style: var(--shiki-sam-light-font-style) !important;
-    font-weight: var(--shiki-sam-light-font-weight) !important;
-    text-decoration: var(--shiki-sam-light-text-decoration) !important;
-    --pre-background: var(--shiki-sam-light-bg, #f8f8f8);
-    background-color: transparent !important;
-}
-html[data-webtui-theme='sam-dark'] .astro-code,
-html[data-webtui-theme='sam-dark'] .astro-code span:not(.line) {
-    color: var(--shiki-sam-dark) !important;
-    font-style: var(--shiki-sam-dark-font-style) !important;
-    font-weight: var(--shiki-sam-dark-font-weight) !important;
-    text-decoration: var(--shiki-sam-dark-text-decoration) !important;
-    --pre-background: var(--shiki-sam-dark-bg, #282828);
-    background-color: transparent !important;
-}
-
-/* Neovim Shiki themes — onelight (light) / cyberdream (dark), generated from
-   the default themes in two palette-swap variants (role / hue). Same activation
-   mechanism as the sam-* themes: --shiki-<key>-* CSS vars baked into each code
-   block at build by shikiConfig.themes. */
-html[data-webtui-theme='nvim-light-role'] .astro-code,
-html[data-webtui-theme='nvim-light-role'] .astro-code span:not(.line) {
-    color: var(--shiki-nvim-light-role) !important;
-    font-style: var(--shiki-nvim-light-role-font-style) !important;
-    font-weight: var(--shiki-nvim-light-role-font-weight) !important;
-    text-decoration: var(--shiki-nvim-light-role-text-decoration) !important;
-    --pre-background: var(--shiki-nvim-light-role-bg, #ffffff);
-    background-color: transparent !important;
-}
-html[data-webtui-theme='nvim-light-hue'] .astro-code,
-html[data-webtui-theme='nvim-light-hue'] .astro-code span:not(.line) {
-    color: var(--shiki-nvim-light-hue) !important;
-    font-style: var(--shiki-nvim-light-hue-font-style) !important;
-    font-weight: var(--shiki-nvim-light-hue-font-weight) !important;
-    text-decoration: var(--shiki-nvim-light-hue-text-decoration) !important;
-    --pre-background: var(--shiki-nvim-light-hue-bg, #ffffff);
-    background-color: transparent !important;
-}
-html[data-webtui-theme='nvim-dark-role'] .astro-code,
-html[data-webtui-theme='nvim-dark-role'] .astro-code span:not(.line) {
-    color: var(--shiki-nvim-dark-role) !important;
-    font-style: var(--shiki-nvim-dark-role-font-style) !important;
-    font-weight: var(--shiki-nvim-dark-role-font-weight) !important;
-    text-decoration: var(--shiki-nvim-dark-role-text-decoration) !important;
-    --pre-background: var(--shiki-nvim-dark-role-bg, #1c1c1c);
-    background-color: transparent !important;
-}
-html[data-webtui-theme='nvim-dark-hue'] .astro-code,
-html[data-webtui-theme='nvim-dark-hue'] .astro-code span:not(.line) {
-    color: var(--shiki-nvim-dark-hue) !important;
-    font-style: var(--shiki-nvim-dark-hue-font-style) !important;
-    font-weight: var(--shiki-nvim-dark-hue-font-weight) !important;
-    text-decoration: var(--shiki-nvim-dark-hue-text-decoration) !important;
-    --pre-background: var(--shiki-nvim-dark-hue-bg, #1c1c1c);
     background-color: transparent !important;
 }
 
@@ -1580,18 +1501,8 @@ html[data-webtui-theme='nvim-dark-hue'] .astro-code span:not(.line) {
    clearing AA. Scoped to the light themes on purpose: the dark ones already
    measure 7.40 / 6.14, and darkening there would make it worse. */
 html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt,
-html[data-webtui-theme='sam-light'] .nb-in > .nb-prompt,
-html[data-webtui-theme='catppuccin-latte'] .nb-in > .nb-prompt,
-html[data-webtui-theme*='nvim-light'] .nb-in > .nb-prompt {
-    color: oklch(from var(--blue) min(l, 0.48) c h);
-}
 
 html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt,
-html[data-webtui-theme='sam-light'] .nb-out > .nb-prompt,
-html[data-webtui-theme='catppuccin-latte'] .nb-out > .nb-prompt,
-html[data-webtui-theme*='nvim-light'] .nb-out > .nb-prompt {
-    color: oklch(from var(--red) min(l, 0.48) c h);
-}
 
 /* Bind the output to its cell. The tint plus the accent rail is what makes
    the pair read as one unit rather than two loose blocks; without it the

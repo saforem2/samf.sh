@@ -130,13 +130,24 @@ const fontFaceCss = [
         </script>
 
         <script is:inline>
+            // Retired themes map to their nearest survivor rather than
+            // dead-ending: an unknown value would leave data-webtui-theme
+            // set to a name no CSS matches, so the page renders unstyled
+            // for anyone who had picked one. sam-* and nvim-* were removed
+            // because Shiki emits a CSS variable per token PER THEME, and
+            // those six were ~31% of all HTML on the site.
+            const RETIRED = {
+                light: 'custom-light',
+                dark: 'custom-dark',
+                'sam-light': 'custom-light',
+                'sam-dark': 'custom-dark',
+                'nvim-light-role': 'custom-light',
+                'nvim-light-hue': 'custom-light',
+                'nvim-dark-role': 'custom-dark',
+                'nvim-dark-hue': 'custom-dark',
+            }
             const storedTheme = localStorage.getItem('webtui-theme')
-            const migratedTheme =
-                storedTheme === 'light'
-                    ? 'custom-light'
-                    : storedTheme === 'dark'
-                      ? 'custom-dark'
-                      : storedTheme
+            const migratedTheme = RETIRED[storedTheme] ?? storedTheme
             const systemTheme = window.matchMedia(
                 '(prefers-color-scheme: dark)',
             ).matches
