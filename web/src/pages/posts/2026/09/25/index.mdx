@@ -40,22 +40,22 @@ campus networks and acts as both a client and, for one service, the public edge.
 Aurora and CELS are remote compute environments behind SSH bastions.
 
 ```text
-                              mbpr (mobile Mac)
-                               │          │
-                 SSH forwards │          │ Tailcat forwards
-                               ▼          ▼
-                              mbph (home Mac)
-                     ┌─────────┼──────────┴───┬──────────────┐
-                     │         │              │              │
-                  Tailscale  localhost      SSH jump   herdr relay :8375
-                    Serve    services       hosts             │
-                     │         │              │               │ Cloudflare Tunnel
-                     ▼         ▼              ▼               ▼
-                  browsers   agents       Aurora / CELS   relay.sf.onl
-                                                          Cloudflare Access
-                                                               │
-                                                               ▼
-                                                            browser
+                      mbpr (mobile Mac)
+                        │           │
+          SSH forwards  │           │ Tailcat forwards
+                        ▼           ▼
+                       mbph (home Mac)
+      ┌────────────┬──────────┴─────────┬─────────────────┐
+      │            │                    │                 │
+  Tailscale    localhost            SSH jump         herdr relay
+    Serve      services               hosts             :8375
+      │            │                    │                 │  Cloudflare Tunnel
+      ▼            ▼                    ▼                 ▼
+  browsers      agents            Aurora / CELS     relay.sf.onl
+                                                  Cloudflare Access
+                                                          │
+                                                          ▼
+                                                       browser
 ```
 
 Here is the concrete inventory. Ports are included because they make debugging
