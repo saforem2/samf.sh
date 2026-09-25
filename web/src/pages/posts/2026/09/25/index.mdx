@@ -40,24 +40,22 @@ campus networks and acts as both a client and, for one service, the public edge.
 Aurora and CELS are remote compute environments behind SSH bastions.
 
 ```text
-                              Cloudflare Access
-browser ───────────────────── relay.sf.onl
-                                     │ Cloudflare Tunnel
-                                     ▼
-                               herdr relay :8375
-                                     │
                               mbpr (mobile Mac)
                                │          │
                  SSH forwards │          │ Tailcat forwards
                                ▼          ▼
                               mbph (home Mac)
-                     ┌─────────┼──────────────┐
-                     │         │              │
-                  Tailscale  localhost      SSH jump
-                    Serve    services       hosts
-                     │         │              │
-                     ▼         ▼              ▼
-                  browsers   agents       Aurora / CELS
+                     ┌─────────┼──────────┴───┬──────────────┐
+                     │         │              │              │
+                  Tailscale  localhost      SSH jump   herdr relay :8375
+                    Serve    services       hosts             │
+                     │         │              │               │ Cloudflare Tunnel
+                     ▼         ▼              ▼               ▼
+                  browsers   agents       Aurora / CELS   relay.sf.onl
+                                                          Cloudflare Access
+                                                               │
+                                                               ▼
+                                                            browser
 ```
 
 Here is the concrete inventory. Ports are included because they make debugging
@@ -75,7 +73,7 @@ far easier than descriptions like “the notes service.”
 | Tailcat SSH       | `mbph:22`         | `mbpr:2222`                                               | A backup path to SSH when Tailscale is unavailable             |
 | Tailcat memory    | `mbph:49375`      | `mbpr:8443`                                               | The same backup path for agent memory                          |
 | AGPT reverse view | `mbph:8720`       | SSH local forward to `mbpr:8720`                          | Keep the dashboard at a stable localhost URL on the mobile Mac |
-| Herdr relay       | `mbpr:8375`       | Cloudflare at `relay.sf.onl`                              | Attach a browser to persistent terminal/agent sessions         |
+| Herdr relay       | `mbph:8375`       | Cloudflare at `relay.sf.onl`                              | Attach a browser to persistent terminal/agent sessions         |
 
 The table contains both applications and multiple routes to some applications.
 That distinction is useful: **an application owns its local port; a transport
@@ -412,12 +410,19 @@ The exception is [Herdr][herdr]'s browser relay, which lets me attach to a
 persistent terminal/agent session from an ordinary browser. That needs a public
 hostname, so it gets a separate and more explicit boundary.
 
-The relay binds to loopback on `mbpr`:
+The relay binds to loopback on `mbph`:
 
 ```bash
 HERDR_RELAY_PORT=8375 uv run ./relay/herdr_relay.py
 curl -I http://127.0.0.1:8375/
 ```
+
+This one detail matters more than it looks: the relay shells out to the **local**
+`herdr` binary, so it can only ever report the sessions on the machine it runs
+on. The relay has to live wherever the agents live. It originally ran on `mbpr`,
+and once most of my agents had moved to `mbph` the public URL was faithfully
+serving the wrong machine's terminals. [Moving it](#moving-the-relay-to-another-machine)
+was the fix.
 
 A named Cloudflare Tunnel publishes only that backend:
 
@@ -456,6 +461,98 @@ Two LaunchAgents supervise this path independently:
 Splitting them makes failures legible. I can test the local relay first, then
 the authenticated public URL, and know which half is broken.
 
+### Moving the relay to another machine
+
+Because the relay reports on whatever machine it runs on, "which host serves the
+public URL" is a decision I expect to revisit. The useful property of a **named**
+tunnel is that moving it needs no DNS change at all: `relay.example.com` is a
+CNAME pointing at the tunnel's UUID, not at a host. Moving the connector is
+invisible from the outside.
+
+The move is a cutover, not a parallel run. Two copies of the relay on one LAN
+collide on mDNS (both register the same hardcoded
+`herdr-remote._herdr-remote._tcp.local.` name), and two connectors for one tunnel
+is not a state worth reasoning about. So: stop the old host first.
+
+Before touching anything, get any uncommitted work off the old machine. Mine had
+an unpushed feature sitting in the checkout, which a migration is an excellent
+way to lose:
+
+```bash
+git -C ~/projects/herdr-remote status --short
+```
+
+Install the prerequisites on the new host — `cloudflared`, `uv`, and `herdr`
+itself — then clone the relay at the same commit the old host was running.
+
+Copy the credentials and configuration. The tunnel credential and the `cert.pem`
+are what let the new host claim the same tunnel; without them `cloudflared` has
+no identity:
+
+```bash
+scp ~/.cloudflared/cert.pem newhost:~/.cloudflared/cert.pem
+scp ~/.cloudflared/<TUNNEL-ID>.json newhost:~/.cloudflared/
+ssh newhost 'chmod 600 ~/.cloudflared/cert.pem; chmod 400 ~/.cloudflared/*.json'
+```
+
+If the two machines have different usernames — mine do — every absolute path in
+the config, the env files, and the LaunchAgent plists has to be rewritten, and
+then *verified*, because a plist with a bad path fails quietly:
+
+```bash
+sed 's#/Users/olduser#/Users/newuser#g' config.env > /tmp/config.env
+ssh newhost 'for p in $(grep -oE "/Users/[^ ]*" ~/.config/herdr-remote/config.env); do
+  [ -e "$p" ] && echo "OK   $p" || echo "MISS $p"
+done'
+```
+
+Then cut over. Unload on the old host, confirm the port is actually released,
+and only then load on the new one:
+
+```bash
+# Old host
+launchctl unload ~/Library/LaunchAgents/com.herdr-remote.{relay,tunnel}.plist
+lsof -nP -iTCP:8375 -sTCP:LISTEN   # must be empty
+
+# New host
+launchctl load ~/Library/LaunchAgents/com.herdr-remote.{relay,tunnel}.plist
+```
+
+Verifying this is where it gets interesting, because the obvious check is
+useless. `curl https://relay.example.com/` returns the same `302` before and
+after the move — that is Cloudflare Access redirecting to SSO, and it would keep
+returning `302` even if I had migrated nothing. The public URL cannot tell me
+which machine is behind it.
+
+Two checks actually can. The tunnel's own connector list reports the connector's
+`cloudflared` version and creation time, so if the new host runs a different
+build the version alone identifies it:
+
+```bash
+cloudflared tunnel info herdr-relay
+```
+
+I expect exactly one connector, created at cutover time. And then the only check
+that really matters — ask the relay what it is actually serving, and confirm the
+session paths belong to the new machine:
+
+```bash
+ssh newhost 'herdr pane list' | head
+```
+
+Finally, keep the old host's LaunchAgents on disk but renamed, so they do not
+silently reload at next login while remaining available for rollback:
+
+```bash
+mv com.herdr-remote.relay.plist com.herdr-remote.relay.plist.migrated-YYYYMMDD
+```
+
+One log line will look alarming and is not: the relay throws a zeroconf
+`NonUniqueNameException` if anything else on the LAN still advertises that mDNS
+name. It runs in a daemon thread, and the relay logs `relay on :8375` and
+`Polling: local` immediately afterwards. Read the lines *after* the traceback
+before concluding anything is broken.
+
 ## Starting the whole stack
 
 After the LaunchAgents and Tailscale Serve routes have been installed once, the
@@ -468,6 +565,8 @@ launchctl kickstart -k gui/$(id -u)/dev.saforem2.silverbullet-agent-memory
 launchctl kickstart -k gui/$(id -u)/com.github.akitaonrails.ai-memory
 launchctl kickstart -k gui/$(id -u)/dev.saforem2.vaultserve
 launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-serve
+launchctl kickstart -k gui/$(id -u)/com.herdr-remote.relay
+launchctl kickstart -k gui/$(id -u)/com.herdr-remote.tunnel
 
 # The dashboard is currently started on demand
 cd "$HOME/agpt-dash"
@@ -485,8 +584,6 @@ tailscale serve --bg --https=443   http://127.0.0.1:8891
 # On mbpr
 launchctl kickstart -k gui/$(id -u)/sh.samf.tailcat-forward-mbph
 launchctl kickstart -k gui/$(id -u)/sh.samf.agpt-forward-mbph
-launchctl kickstart -k gui/$(id -u)/com.herdr-remote.relay
-launchctl kickstart -k gui/$(id -u)/com.herdr-remote.tunnel
 ```
 
 The AGPT dashboard and the Aurora/CELS forwards are currently started when I
@@ -504,8 +601,11 @@ This stack recently produced three instructive failures:
   request without sending a response.
 - An SSH control master owned `mbpr:8720`, while the LaunchAgent that was
   supposed to own the forward was not actually running.
+- The Herdr relay served `relay.sf.onl` correctly from the *wrong machine* for
+  weeks. Every probe passed, because the public URL returns an identical
+  Cloudflare Access `302` no matter which host is behind the tunnel.
 
-All three could look “up” in a process list. The acceptance checks need to cross
+All four could look “up” in a process list. The acceptance checks need to cross
 the same boundary as the real consumer:
 
 ```bash
