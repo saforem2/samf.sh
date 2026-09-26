@@ -1726,6 +1726,24 @@ const articleSchema =
             capture: true,
         })
         window.addEventListener('hashchange', syncActiveHeading)
+
+        // headingElements caches the nodes getElementById returned at startup,
+        // but the heading-collapse script runs AFTER this one and rebuilds
+        // every heading: it clones the <h2> into a <summary> and removes the
+        // original (`heading.remove()`). The cached nodes are then detached,
+        // and a detached element's getBoundingClientRect() is all zeros — so
+        // `top - containerTop` went hugely negative for EVERY heading, the
+        // `top <= 24` test passed on all of them, the loop never hit its
+        // break, and the sidebar highlighted the LAST heading no matter where
+        // the page was scrolled.
+        //
+        // Rebuild the cache once the restructure is done. The event already
+        // exists for the vim-nav tabindex pass; this just subscribes to it.
+        window.addEventListener('headings-collapsed', () => {
+            headingElements = buildHeadingElements()
+            syncActiveHeading()
+        })
+
         syncActiveHeading()
     }
 </script>
