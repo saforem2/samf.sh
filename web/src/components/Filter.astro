@@ -57,18 +57,21 @@ const themeOptions = {
 }
 
 // Body font: all 5 (incl. the quasi-proportional QP).
+// Defaults first: Layout.astro falls back to miosevka-qp for the body and
+// miosevka-term for code, so each list leads with the font you are already
+// looking at rather than burying it mid-list.
 const bodyFontOptions = {
+    'miosevka-qp': 'mIosevka-QP',
+    'miosevka-term': 'mIosevka-Term',
     iosevka: 'Iosevka',
     'victor-mono': 'Victor Mono',
-    'miosevka-term': 'mIosevka-Term',
-    'miosevka-qp': 'mIosevka-QP',
     system: 'System',
 }
 // Code font: true-monospace only — no QP (it breaks ASCII / column alignment).
 const codeFontOptions = {
+    'miosevka-term': 'mIosevka-Term',
     iosevka: 'Iosevka',
     'victor-mono': 'Victor Mono',
-    'miosevka-term': 'mIosevka-Term',
     system: 'System',
 }
 ---
