@@ -1,12 +1,6 @@
 ---
 import { createShikiHighlighter } from '@astrojs/markdown-remark'
 import { buildBibtex, type CitationKind } from '@/utils/citation'
-import samLight from '@/shiki-themes/sam-light.json'
-import samDark from '@/shiki-themes/sam-dark.json'
-import nvimLightRole from '@/shiki-themes/nvim-light-role.json'
-import nvimLightHue from '@/shiki-themes/nvim-light-hue.json'
-import nvimDarkRole from '@/shiki-themes/nvim-dark-role.json'
-import nvimDarkHue from '@/shiki-themes/nvim-dark-hue.json'
 
 interface Props {
     title: string
@@ -39,12 +33,6 @@ const highlighter = await createShikiHighlighter({
         'custom-dark': 'one-dark-pro',
         catppuccin: 'catppuccin-mocha',
         'catppuccin-latte': 'catppuccin-latte',
-        'sam-light': samLight,
-        'sam-dark': samDark,
-        'nvim-light-role': nvimLightRole,
-        'nvim-light-hue': nvimLightHue,
-        'nvim-dark-role': nvimDarkRole,
-        'nvim-dark-hue': nvimDarkHue,
     },
 })
 

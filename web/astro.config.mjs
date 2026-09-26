@@ -46,23 +46,15 @@ import rehypeNotebookCells from './src/utils/rehype-notebook-cells.mjs'
 import { createHighlighter } from 'shiki'
 import { createCssVariablesTheme } from 'shiki'
 
-// In-house Shiki themes generated from the project palette. Live alongside
-// the prepackaged themes (min-light, one-dark-pro, catppuccin-*) — see the
-// shikiConfig.themes block below. JSON imports use Node's import-attributes
-// proposal, which Vite/Node 22+ support.
-import samLight from './src/shiki-themes/sam-light.json' with { type: 'json' }
-import samDark from './src/shiki-themes/sam-dark.json' with { type: 'json' }
-// Neovim-mirrored themes: nvim-light = onelight (onedarkpro), nvim-dark =
-// cyberdream — both transcribed from the user's live nvim auto_dark_mode.lua
-// (palette + custom highlight overrides). See src/shiki-themes/nvim-*.json.
-// Neovim-mirrored syntax themes — onelight (light) / cyberdream (dark), each in
-// two palette-swap variants generated from the default themes by
-// scripts/gen-nvim-themes.mjs: "role" maps by semantic role, "hue" keeps the
-// default theme's structure shifted to the nearest nvim hue.
-import nvimLightRole from './src/shiki-themes/nvim-light-role.json' with { type: 'json' }
-import nvimLightHue from './src/shiki-themes/nvim-light-hue.json' with { type: 'json' }
-import nvimDarkRole from './src/shiki-themes/nvim-dark-role.json' with { type: 'json' }
-import nvimDarkHue from './src/shiki-themes/nvim-dark-hue.json' with { type: 'json' }
+// Four themes: min-light, one-dark-pro and the two catppuccins.
+//
+// Six in-house ones were removed — sam-light/sam-dark generated from the
+// project palette, and four Neovim mirrors (onelight / cyberdream, each in
+// "role" and "hue" palette-swap variants from scripts/gen-nvim-themes.mjs).
+// Shiki emits a CSS variable per token PER REGISTERED THEME, so each extra
+// theme multiplies across every token on the site: those six accounted for
+// 31% of all HTML (101MB -> 69MB across 151 pages, and 933KB -> 600KB on the
+// argo post). Anything added back here costs the same way.
 
 const oneLight = createCssVariablesTheme({
     name: 'one-light',
@@ -78,16 +70,7 @@ const catpuccinMocha = createCssVariablesTheme({
     fontStyle: true,
 })
 const highlighter = await createHighlighter({
-    themes: [
-        oneLight,
-        catpuccinMocha,
-        samLight,
-        samDark,
-        nvimLightRole,
-        nvimLightHue,
-        nvimDarkRole,
-        nvimDarkHue,
-    ],
+    themes: [oneLight, catpuccinMocha],
 })
 
 // import oneLight from 'shiki/themes/one-light.json'
@@ -529,16 +512,6 @@ export default defineConfig({
                 'custom-dark': 'one-dark-pro',
                 catppuccin: 'catppuccin-mocha',
                 'catppuccin-latte': 'catppuccin-latte',
-                // In-house themes generated from the project palette.
-                // Toggle via the theme picker → "sam-light" / "sam-dark".
-                'sam-light': samLight,
-                'sam-dark': samDark,
-                // Neovim-mirrored syntax themes (onelight / cyberdream), two
-                // palette-swap variants each (role / hue).
-                'nvim-light-role': nvimLightRole,
-                'nvim-light-hue': nvimLightHue,
-                'nvim-dark-role': nvimDarkRole,
-                'nvim-dark-hue': nvimDarkHue,
             },
             colorReplacements: {
                 'one-light': {
