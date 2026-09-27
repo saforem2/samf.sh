@@ -535,10 +535,11 @@ stationary Mac that never sleeps, and attach to it from the laptop:
    ┌──────────────────────────┐      ┌────────────────────────────────┐
    │  herdr --remote  ────────┼─ssh─▶│  herdr server                  │
    │  (terminal session)      │      │    ├─ hermes gateway           │
-   └──────────────────────────┘      │    ├─ llm-rosetta      :8765   │
-                                     │    ├─ argo-shim        :25940  │
-                                     │    └─ SSH tunnel       :25939  │
-                                     └────────────────────────────────┘
+   │                          │      │    ├─ llm-rosetta      :8765   │
+   │  ...or local clients     │      │    ├─ argo-shim        :25940  │
+   │    :18765 ───────────────┼─ssh─▶│    └─ SSH tunnel       :25939  │
+   │    :25941 ───────────────┼─ssh─▶│                                │
+   └──────────────────────────┘      └────────────────────────────────┘
                                                     │
                                           ALCF Argo + Inference
 ```
@@ -553,6 +554,68 @@ herdr --remote <host> --remote-keybindings server
 
 Two things make this stick. First, the host must actually never sleep — verify
 rather than assume:
+
+### Or: keep working locally and forward the ports
+
+Attaching to a remote terminal session means the agent runs on the host. That
+is the right answer when you want the work to survive a closed lid, but it is
+the wrong answer when you want to keep using the laptop's own editor, clipboard
+and windows. The alternative is to leave the clients on the laptop and move only
+the *services*: forward the host's two loopback ports and point every client at
+the forwarded copies.
+
+```bash
+ssh -N -L 127.0.0.1:18765:127.0.0.1:8765  myhost   # llm-rosetta
+ssh -N -L 127.0.0.1:25941:127.0.0.1:25940 myhost   # argo-shim
+```
+
+Note the deliberately different local ports. Using `18765` rather than `8765`
+lets the forward coexist with a still-running local gateway, so the cutover is
+reversible one client at a time instead of being a flag day.
+
+The laptop then runs no gateway, no shim, and — the real prize — **no second
+SSH tunnel to the jump host**. Two machines each holding their own MFA-gated
+tunnel to the same login node is twice the exposure for no benefit, and login
+nodes are not always gracious about it.
+
+Wrap each forward in a script that retries and, importantly, falls back to a
+second path:
+
+```bash
+for host in myhost myhost-alt; do
+  ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+      -L "127.0.0.1:$LOCAL:127.0.0.1:$REMOTE" "$host"
+done
+```
+
+`ExitOnForwardFailure` matters: without it `ssh` happily connects while silently
+failing to bind the local port, and you get a forward that looks alive and
+answers nothing. The second host is whatever path survives when the first does
+not — in my case a tunnel that works on networks which block my VPN's control
+plane.
+
+> [!WARNING]- Every `argo-shim` mints its own key
+> This is the trap that will bite you, and it is invisible until you hit it.
+> `argo-shim` generates a fresh gateway key **per process**, so the shim on the
+> host and the shim on the laptop never share one.
+>
+> Point a client at the forwarded shim while it still presents the laptop's key
+> and every request returns `401 Invalid API Key`. Change only the key and you
+> get the mirror image. **The URL and the key have to move in the same edit.**
+>
+> The fix is to stop copying the key at all. Fetch the host's live key at use
+> time:
+>
+> ```bash
+> ssh myhost 'cat ~/path/to/shim-key'   # cache it briefly; it rotates on restart
+> ```
+>
+> One more wrinkle for Claude Code specifically: its `apiKeyHelper` runs on
+> every request, so putting an SSH round trip there puts the network in the auth
+> path of your own session. I did exactly that — with the base URL still
+> pointing at the *local* shim — and locked myself out of the session I was
+> using to make the change. Edit that file from a different session, change the
+> URL and the key together, and keep a one-line rollback script to hand.
 
 ```bash
 pmset -g | grep -E 'SleepDisabled|^ sleep'
