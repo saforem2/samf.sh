@@ -574,9 +574,18 @@ lets the forward coexist with a still-running local gateway, so the cutover is
 reversible one client at a time instead of being a flag day.
 
 The laptop then runs no gateway, no shim, and — the real prize — **no second
-SSH tunnel to the jump host**. Two machines each holding their own MFA-gated
-tunnel to the same login node is twice the exposure for no benefit, and login
-nodes are not always gracious about it.
+MFA-gated tunnel of its own**. Two machines each holding their own tunnel to
+the same login node is twice the exposure for no benefit, and login nodes are
+not always gracious about it.
+
+To be precise, since this is the sort of claim that quietly stops being true:
+what the laptop sheds is the *shim's* tunnel, the long-lived `:25939` hop that
+`argo-shim` opens and keeps open. Ordinary SSH to the same hosts carries on —
+an interactive login, a `ControlMaster` socket, an `ssh -fN` for some other
+forward. Those are short-lived or cheap and are not what this is avoiding.
+Checking my own laptop while writing this, it held exactly that mix: no
+`argo-shim` and no `:25939`, but a control master to the CELS login node and a
+backgrounded forward to Aurora, both days old.
 
 Wrap each forward in a script that retries and, importantly, falls back to a
 second path:
