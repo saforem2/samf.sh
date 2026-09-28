@@ -804,6 +804,20 @@ model:
     provider: 'llm-rosetta'
     api_mode: chat_completions
 
+providers:
+    llm-rosetta: # as above
+        name: llm-rosetta
+        base_url: http://127.0.0.1:8765/v1
+        model: gpt-5.6-sol
+        discover_models: true
+    argo-shim:
+        name: argo-shim
+        base_url: http://127.0.0.1:25940
+        key_env: ARGO_SHIM_TOKEN
+        api_mode: anthropic_messages
+        context_length: 1000000
+        model: claude-opus-5
+
 fallback_providers:
     - provider: llm-rosetta
       model: anthropic/claude-opus-5
@@ -820,6 +834,14 @@ fallback_providers:
     - provider: llm-rosetta
       model: alcf-minerva/inkling-bf16
 ```
+
+`argo-shim` is registered here for the same reason `llm-rosetta` was: the tiers
+below name it, and a name that isn't under `providers:` doesn't resolve. Note
+that `providers:` appears once — this block extends the one from the previous
+section rather than repeating it. Two top-level `providers:` keys in one file
+is the quiet failure: `yaml.safe_load` keeps only the last and drops the
+other's providers without a word, and the ruamel round-trip Hermes writes
+config with raises `DuplicateKeyError` the next time anything edits the file.
 
 Hermes walks that list in order, so a turn degrades GPT → Claude → open model
 rather than failing.
@@ -838,6 +860,23 @@ Anthropic SDK appends `/v1/messages` to whatever base it is handed. So the
 `anthropic_messages` tier must not have it. Hermes normalizes this
 automatically for its OpenCode-family providers and for nothing else, so a
 custom provider is on its own here.
+
+The `api_mode` on tier 2 is load-bearing for the same reason. A tier that
+doesn't declare one inherits the wire from its `providers:` block — and
+`argo-shim` is registered as `anthropic_messages`, so dropping that one line
+sends the `chat_completions` tier down the Messages path instead:
+
+```python
+>>> from agent.chat_completion_helpers import _fallback_api_mode_hint
+>>> tier = {'provider': 'argo-shim', 'model': 'GPT-5.6 Sol',
+...         'base_url': 'http://127.0.0.1:25940/v1',
+...         'api_mode': 'chat_completions'}
+>>> _fallback_api_mode_hint(tier, tier['provider'], tier['base_url'])
+(True, 'chat_completions')
+>>> del tier['api_mode']
+>>> _fallback_api_mode_hint(tier, tier['provider'], tier['base_url'])
+(True, 'anthropic_messages')
+```
 
 Get it wrong in the `chat_completions` direction and the tier 404s — which is
 exactly what mine did, silently, for as long as it had been configured. The
