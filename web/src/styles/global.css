@@ -1624,12 +1624,22 @@ pre.astro-code {
        on the first line of code. 0.5lh was half a blank row top and bottom,
        which read as padding rather than as a frame around the code. */
     padding: 0.25lh 0;
-    /* Extra headroom (vs the 0.5lh below) so the language badge, which
-       sits in this gap, clears whatever is above — including the last line
-       of an immediately-preceding code block, where 0.5lh left the badge
-       overlapping the code. A whole line is enough for that; 1.1lh was
-       overshoot. */
-    margin-block: 1lh 0.5lh;
+    /* Tighter above than below, because a code block is nearly always
+       introduced by the line right before it ("Install deps:") and belongs
+       with it. The reverse (1lh 0.5lh) put 25px above each block and 12px
+       below, so in a list the block sat closer to the NEXT item's label
+       than to its own — the grouping read backwards.
+
+       0.5lh still clears the badge straddling the top edge: it is 16px
+       tall and centred on the border, so it needs 9.6px and gets 13px.
+       The one case that wanted a full line — a block immediately after
+       another block, badge landing on the previous block's last line —
+       does not occur in prose (measured: 0 adjacent pairs), and the 1lh
+       below now covers it anyway.
+
+       Notebooks (.nb-body, zeroed) and slides (0.9lh 0.5lh) set their own
+       and are unaffected. */
+    margin-block: 0.5lh 1lh;
     align-self: start;
     /* No fill: the block is defined by its border, not a tinted panel.
        --pre-background is the token every other rule reads (webtui's base
