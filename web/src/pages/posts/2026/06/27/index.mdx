@@ -295,6 +295,28 @@ Export the token so `{env:ARGO_SHIM_TOKEN}` resolves (see
 export ARGO_SHIM_TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
 ```
 
+Then prove it end-to-end rather than trusting the config. `--standalone` keeps
+this out of the background service, so it exercises the provider block as
+written:
+
+```console
+$ opencode run --standalone -m argo/claude-opus-5 "Reply with exactly: rosetta ok"
+rosetta ok
+```
+
+Once the gateway in step 2 is up, the same command reaches it through the
+`llm-rosetta` provider, which is the OpenAI-format path rather than the
+Anthropic one:
+
+```console
+$ opencode run --standalone -m llm-rosetta/anthropic/claude-opus-5 "Reply with exactly: gateway ok"
+gateway ok
+```
+
+Both were run against OpenCode `v2.0.18`. The model key in `models` is the id
+sent upstream, so `claudeopus5` and `claude-opus-5` both work here only because
+the shim normalizes the name — don't count on that with other providers.
+
 ### 2. `llm-rosetta` gateway (for OpenAI-only clients)
 
 Install the gateway. Same reasoning as `argo-shim`: it is a daemon you
@@ -453,15 +475,30 @@ model_provider = "rosetta"
 
 [model_providers.rosetta]
 name = "ALCF via llm-rosetta"
-# wire_api = "chat" → OpenAI Chat Completions (what rosetta exposes on /v1).
-# The default "responses" wire API would hit /v1/responses, which the gateway
-# doesn't serve.
 base_url = "http://127.0.0.1:8765/v1"
-wire_api = "chat"
+# Either wire API works: the gateway serves both /v1/chat/completions and
+# /v1/responses. "responses" is Codex's default and what I actually run.
+wire_api = "responses"
 # No env_key: the gateway is loopback-only and runs no-auth, so there's no key
 # to supply (same reason Codex's built-in Ollama provider omits it). Codex is
 # happy without one against a local endpoint.
 ```
+
+> **Correction (2026-09-28).** An earlier version of this post set
+> `wire_api = "chat"` and claimed the gateway doesn't serve `/v1/responses`.
+> That was wrong — I never tested it. It serves both:
+>
+> ```console
+> $ curl -s -X POST http://127.0.0.1:8765/v1/responses \
+>     -H 'Content-Type: application/json' \
+>     -d '{"model":"gpt-5.6-sol","input":"Reply with exactly: responses ok"}' \
+>   | python3 -c 'import json,sys; d=json.load(sys.stdin); print([c["text"] for o in d["output"] for c in o.get("content",[]) if c.get("type")=="output_text"][0])'
+> responses ok
+> ```
+>
+> The `400` I originally read as "no such route" was upstream rejecting my
+> request body: `/v1/responses` wants `input`, not `messages`. A `400` means
+> the route exists and disliked what you sent; a missing route gives `404`.
 
 A few Codex-specific notes:
 
@@ -473,43 +510,125 @@ A few Codex-specific notes:
 - To switch models per session without editing the config, pass them on the
   command line:
 
-```bash
-codex --model claude-opus-5 --model-provider rosetta
-```
+    ```bash
+    codex --model claude-opus-5 --model-provider rosetta
+    ```
 
-Sanity-check that Codex is reaching the gateway (this hits the same
-`/v1/chat/completions` the earlier `curl` did, just through Codex's config):
+Sanity-check that Codex is reaching the gateway. Outside a git repo you need
+`--skip-git-repo-check`, and `< /dev/null` stops `codex exec` from waiting on
+stdin:
 
-```bash
-codex exec --model gpt-5.6-sol --model-provider rosetta "say hi"
+```console
+$ codex exec --skip-git-repo-check --model gpt-5.6-sol "Reply with exactly: codex responses ok" < /dev/null
+codex
+codex responses ok
+
+tokens used
+19,817
 ```
 
 ### 4. Hermes (CLI + `hermes desktop`)
 
 Hermes installs a CLI (`hermes`) and a native Electron app together, and both
-read the same `~/.hermes/config.yaml`. Point the main model at the rosetta
-gateway with a `custom` provider:
+read the same `~/.hermes/config.yaml`. Register the gateway under `providers:`
+and point the main model at it by name:
 
 ```yaml
 model:
-    base_url: 'http://127.0.0.1:8765/v1'
-    default: 'claude-opus-5'
-    provider: 'custom'
+    base_url: http://127.0.0.1:8765/v1
+    default: gpt-5.6-sol
+    provider: llm-rosetta
+    api_mode: chat_completions
+providers:
+    llm-rosetta:
+        name: llm-rosetta
+        base_url: http://127.0.0.1:8765/v1
+        model: gpt-5.6-sol
+        discover_models: true
 ```
 
-`provider: custom` + `base_url` is Hermes' documented path for a self-hosted /
-OpenAI-compatible endpoint (`base_url` takes precedence over any named
-provider). Because the rosetta gateway runs **no-auth** (loopback only), no API
-key is needed. Use any id you registered in the gateway config for `default`
-(`gpt-5.6-sol`, `alcf-sophia/openai/gpt-oss-120b`, …).
+That is what I run, minus a 130-entry `models:` map the `hermes model` wizard
+wrote for itself. You don't need it: `discover_models: true` pulls the catalog
+from the gateway's `/v1/models` at runtime, and a `models:` **dict** is treated
+as per-model metadata rather than an allowlist, so it doesn't narrow anything
+either way. Pin a catalog with `discover_models: false` if you want the
+opposite.
+
+`llm-rosetta` isn't a name Hermes ships with — asking its resolver directly
+gives `Unknown provider 'llm-rosetta'`. Any key under `providers:` becomes a
+usable provider id that resolves internally to the `custom` backend, tagged
+with where it came from:
+
+```python
+>>> from hermes_cli.runtime_provider import resolve_runtime_provider
+>>> resolve_runtime_provider(requested="llm-rosetta")
+{'api_key': 'no-key-required',
+ 'api_mode': 'chat_completions',
+ 'base_url': 'http://127.0.0.1:8765/v1',
+ 'provider': 'custom',
+ 'requested_provider': 'llm-rosetta',
+ 'source': 'custom_provider:llm-rosetta'}
+```
+
+`api_key` answers the other question: the gateway runs **no-auth** (loopback
+only), and Hermes supplies the `no-key-required` placeholder itself rather than
+making you invent one. Use any id you registered in the gateway config for
+`default` (`claude-opus-5`, `alcf-sophia/openai/gpt-oss-120b`, …).
+
+`hermes status` confirms the name landed:
+
+```console
+$ hermes status
+◆ Environment
+  Project:      /Users/sam/.hermes/hermes-agent
+  Python:       3.14.7
+  .env file:    ✗ not found
+  Model:        gpt-5.6-sol
+  Provider:     llm-rosetta
+```
+
+The shorter anonymous form also works, if you'd rather not name a provider:
+
+```yaml
+model:
+    base_url: http://127.0.0.1:8765/v1
+    default: gpt-5.6-sol
+    provider: custom
+    api_mode: chat_completions
+```
+
+Five lines, no `providers:` block. The tradeoff is that `custom` is a single
+anonymous slot, and the fallback chain below refers to `llm-rosetta` and
+`argo-shim` by name. Those names only exist because they are registered — a
+`fallback_providers` entry naming an unregistered provider dies with
+`Unknown provider 'llm-rosetta'`, and giving the tier an inline `base_url`
+does not rescue it.
 
 Prefer to configure it interactively? `hermes model` walks you through adding a
 custom endpoint and writes the same block. Then confirm the CLI reaches the
-gateway:
+gateway. Note the `-q`: `hermes chat` takes its prompt as a flag, and a bare
+positional string exits with `unrecognized arguments`. `--oneshot` answers and
+exits instead of seeding an interactive session:
 
-```bash
-hermes chat "say hi"
+```console
+$ hermes chat -q "Reply with exactly: hermes ok" --oneshot
+Query: Reply with exactly: hermes ok
+Initializing agent...
+────────────────────────────────────────
+
+╭─ ☤ Hermes ───────────────────────────────────────────────────────────────────╮
+hermes ok
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Session:        20260928_080049_4acd19
+Duration:       4s
+Messages:       2 (1 user, 0 tool calls)
 ```
+
+That run used a throwaway `HOME` whose `config.yaml` was the eleven lines above
+and nothing else, with no credentials anywhere in it. That is the point: if it
+needed something else from my home directory, it would have failed rather than
+answering in four seconds. The anonymous `custom` form answers the same way.
 
 Launch the desktop app from the same install (it picks up the same config):
 
@@ -528,7 +647,10 @@ and re-authenticating through MFA on hotel wifi is exactly the friction this
 setup was supposed to remove.
 
 The fix is to stop treating the laptop as the host. I run the whole stack on a
-stationary Mac that never sleeps, and attach to it from the laptop:
+stationary Mac that never sleeps, and attach to it from the laptop with
+[`herdr`][herdr], a terminal workspace manager with a remote-attach mode:
+
+[herdr]: https://github.com/herdrdev/herdr
 
 ```
         laptop (travels)                stationary host (always on)
@@ -678,25 +800,110 @@ In `~/.hermes/config.yaml`:
 ```yaml
 model:
     base_url: 'http://127.0.0.1:8765/v1'
-    default: 'anthropic/claude-opus-5'
+    default: 'gpt-5.6-sol'
     provider: 'llm-rosetta'
+    api_mode: chat_completions
+
+providers:
+    llm-rosetta: # as above
+        name: llm-rosetta
+        base_url: http://127.0.0.1:8765/v1
+        model: gpt-5.6-sol
+        discover_models: true
+    argo-shim:
+        name: argo-shim
+        base_url: http://127.0.0.1:25940
+        key_env: ARGO_SHIM_TOKEN
+        api_mode: anthropic_messages
+        context_length: 1000000
+        model: claude-opus-5
 
 fallback_providers:
     - provider: llm-rosetta
-      model: openai/gpt-5.6-sol
+      model: anthropic/claude-opus-5
+    - provider: argo-shim
+      model: GPT-5.6 Sol
+      base_url: http://127.0.0.1:25940/v1
+      key_env: ARGO_SHIM_TOKEN
+      api_mode: chat_completions
+    - provider: argo-shim
+      model: claude-opus-5
+      base_url: http://127.0.0.1:25940
+      key_env: ARGO_SHIM_TOKEN
+      api_mode: anthropic_messages
     - provider: llm-rosetta
       model: alcf-minerva/inkling-bf16
 ```
 
-Hermes walks that list in order, so a turn degrades Claude → GPT → open model
-rather than failing. Every entry is the same gateway on `:8765`, so each extra
-tier costs nothing to wire up — it's one more model id rosetta already knows.
+`argo-shim` is registered here for the same reason `llm-rosetta` was: the tiers
+below name it, and a name that isn't under `providers:` doesn't resolve. Note
+that `providers:` appears once — this block extends the one from the previous
+section rather than repeating it. Two top-level `providers:` keys in one file
+is the quiet failure: `yaml.safe_load` keeps only the last and drops the
+other's providers without a word, and the ruamel round-trip Hermes writes
+config with raises `DuplicateKeyError` the next time anything edits the file.
 
-You can see it fire in `~/.hermes/logs/agent.log`:
+Hermes walks that list in order, so a turn degrades GPT → Claude → open model
+rather than failing.
+
+Tiers 2 and 3 are the ones worth copying. They name `argo-shim` directly on
+`:25940` instead of going through rosetta, which means they survive a failure
+*of the gateway itself* — not just of an upstream behind it. A chain that
+routes every tier through one process only covers upstream outages; the
+process is still a single point of failure. Skipping it costs four extra lines
+per tier.
+
+Note that the two shim tiers have **different** base URLs, and that is not a
+typo. `argo-shim` serves `/v1/chat/completions` and `/v1/messages`, but the
+Anthropic SDK appends `/v1/messages` to whatever base it is handed. So the
+`chat_completions` tier needs the `/v1` written out and the
+`anthropic_messages` tier must not have it. Hermes normalizes this
+automatically for its OpenCode-family providers and for nothing else, so a
+custom provider is on its own here.
+
+The `api_mode` on tier 2 is load-bearing for the same reason. A tier that
+doesn't declare one inherits the wire from its `providers:` block — and
+`argo-shim` is registered as `anthropic_messages`, so dropping that one line
+sends the `chat_completions` tier down the Messages path instead:
+
+```python
+>>> from agent.chat_completion_helpers import _fallback_api_mode_hint
+>>> tier = {'provider': 'argo-shim', 'model': 'GPT-5.6 Sol',
+...         'base_url': 'http://127.0.0.1:25940/v1',
+...         'api_mode': 'chat_completions'}
+>>> _fallback_api_mode_hint(tier, tier['provider'], tier['base_url'])
+(True, 'chat_completions')
+>>> del tier['api_mode']
+>>> _fallback_api_mode_hint(tier, tier['provider'], tier['base_url'])
+(True, 'anthropic_messages')
+```
+
+Get it wrong in the `chat_completions` direction and the tier 404s — which is
+exactly what mine did, silently, for as long as it had been configured. The
+turn still completed, because the chain just kept walking, and that is the
+whole problem with a quiet fallback: a dead tier and a tier that never gets
+reached look identical from the outside. Worth an actual `curl` per tier:
+
+```zsh
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:25940/v1/chat/completions \
+  -H "Authorization: Bearer $ARGO_SHIM_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"GPT-5.6 Sol","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
+```
+
+You can see the chain fire in `~/.hermes/logs/agent.log`:
 
 ```
-Fallback activated: anthropic/claude-opus-5 → openai/gpt-5.6-sol (llm-rosetta)
+Fallback activated: gpt-5.6-sol → anthropic/claude-opus-5 (llm-rosetta)
+Fallback activated: anthropic/claude-opus-5 → GPT-5.6 Sol (argo-shim)
+Fallback activated: GPT-5.6 Sol → claude-opus-5 (argo-shim)
 ```
+
+Those three are one turn, nine seconds apart, and they are a better
+advertisement for the design than a clean run would be. GPT-5.6 Sol hit a
+`429` token rate limit upstream, Claude came back with an empty stream three
+times, and the chain walked off rosetta and onto the shim on its own.
 
 That line is worth knowing by sight. Fallback is quiet by design — the session
 continues normally — so a model that's silently unavailable looks like a model
@@ -876,13 +1083,19 @@ turn had `tool_turns=10`).
 The culprit was Hermes' `display.interim_assistant_messages: true`, which
 renders the model's _interim commentary between tool calls_ **and** the final
 answer. With a verbose reasoning model (GPT-5.6 Sol) those two are near-identical,
-so you see the reply twice with slightly different wording. The fix is one line
-in `~/.hermes/config.yaml`:
+so you see the reply twice with slightly different wording. Turning that off is
+one line in `~/.hermes/config.yaml`:
 
 ```yaml
 display:
     interim_assistant_messages: false
 ```
+
+**Update (2026-09-27):** treat that as a workaround, not the setting you should
+be running. `true` is the upstream default, and Hermes has since reworked how
+interim commentary is projected across history and tool boundaries. My own
+config has been back on the default for months without me noticing doubled
+replies. Leave it alone unless you actually see the duplication, then flip it.
 
 The meta-lesson, again: when something looks broken, **bisect the layers**.
 A two-minute `curl` against the gateway saved me from "fixing" a proxy that was
@@ -923,13 +1136,15 @@ provider type, not the `google` provider type.
 - `Gemini 2.5 Pro` works through Argo's OpenAI `/chat/completions` path.
 - `Gemini 2.5 Flash` works too.
 - `Gemini 3.5 Flash` also works.
-- `Gemini 3.1 Flash Lite` works **only if the request omits `max_tokens` or
-  uses `max_completion_tokens`**; with the usual OpenAI-style `max_tokens` field
-  it still returns the upstream `NoneType` 500.
+- `Gemini 3.1 Flash Lite` returned the upstream `NoneType` 500 whenever the
+  request carried the usual OpenAI-style `max_tokens` field, and only worked if
+  you omitted it or sent `max_completion_tokens` instead.
 
-So the config includes the working models as `gemini-2.5-pro`,
-`gemini-2.5-flash`, `gemini-3.5-flash`, and their `google/...` aliases, while
-omitting `Gemini 3.1 Flash Lite` until I add a model-specific request transform.
+**Update (2026-09-27):** Argo fixed the last one. `gemini-3.1-flash-lite` now
+answers with `max_tokens` set and without it, so all four are registered as
+bare and `google/...` aliases. The request transform I was going to write
+turned out to be unnecessary — worth re-testing an upstream quirk before
+building around it.
 
 ## Token rotation
 
@@ -1019,6 +1234,84 @@ Or one bundle after an `argo-shim` restart:
 ```bash
 argo-rosetta-sync --with-inference
 ```
+
+### Letting launchd do it
+
+Running that by hand gets old, and it fails in a specific way: the gateway
+substitutes `${ARGO_SHIM_TOKEN}` and `${ALCF_INFERENCE_TOKEN}` into
+`config.jsonc` **once, at startup**. A gateway that is up and listening can
+still be holding two dead tokens. Nothing crashes. Every model just 401s.
+
+So there are two launchd jobs now. `ai.llm-rosetta.gateway` runs the server
+under `KeepAlive` and resolves both credentials on the way up, which is the
+whole point — the restart *is* the refresh mechanism:
+
+```zsh
+# ~/.config/llm-rosetta-gateway/launch-gateway.sh (excerpt)
+cd "$HOME" || exit 1
+
+ARGO_SHIM_TOKEN=$("$PY" -c \
+  "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
+export ARGO_SHIM_TOKEN
+
+ALCF_INFERENCE_TOKEN=$(timeout 120 uv run --with globus-sdk --with openai \
+  "$HELPER" get_access_token 2>/dev/null | tail -1)
+export ALCF_INFERENCE_TOKEN
+
+exec "$HOME/.local/bin/llm-rosetta-gateway" --no-banner --config "$CFG"
+```
+
+Two things in there are load-bearing. `exec` in the foreground, because
+launchd supervises the real process and `nohup`-ing it means `KeepAlive`
+watches a wrapper that already exited. And `cd "$HOME"` before the ALCF
+helper, because `uv run` resolves the enclosing project first — from a repo
+whose `uv.lock` your `uv` is too old to parse, you get a TOML error instead of
+a token.
+
+The second job, `ai.llm-rosetta.gateway.refresh`, is the interesting one. It
+runs every six hours (`StartInterval 21600`) and *probes* both upstreams
+rather than restarting on a schedule:
+
+```zsh
+argo=$(probe "anthropic/claude-haiku-4-5")
+alcf=$(probe "alcf-metis/gpt-oss-120b")
+
+stale=0
+[[ "$argo" == 401 || "$argo" == 400 ]] && stale=1
+[[ "$alcf" == 401 ]] && stale=1
+
+(( stale )) && launchctl kickstart -k "gui/$(id -u)/ai.llm-rosetta.gateway"
+```
+
+A real inference call is the only honest test. `/v1/models` answers fine with
+expired credentials — the catalog is local config, not an upstream query. That
+is the same trap as [gotcha #6](#6-alcf-inference-models-appear-even-when-auth-is-missing),
+just automated.
+
+Note `400` counts as stale for Argo. That one cost me a while: the shim 401s
+without draining the POST body, so the desynced keep-alive stream reports the
+*next* request as `400 Bad request syntax` rather than an auth error. The
+auth failure shows up one request late, wearing a different status code.
+
+The log is boring, which is the goal:
+
+```
+2026-09-27T05:09:49-0500 token-refresh: probe argo=200 alcf=200
+2026-09-27T05:09:49-0500 token-refresh: both upstreams OK
+2026-09-27T11:09:51-0500 token-refresh: probe argo=200 alcf=401
+2026-09-27T11:09:51-0500 token-refresh: ALCF token stale
+2026-09-27T11:09:51-0500 token-refresh: kickstarting ai.llm-rosetta.gateway to re-resolve tokens
+2026-09-27T11:10:18-0500 token-refresh: post-restart argo=200 alcf=200
+```
+
+The Globus token expired, the probe caught it, and the gateway came back with
+a fresh one 27 seconds later. I found out by reading the log afterward.
+
+`argo-shim` itself is still a manual foreground process, since the SSH tunnel
+it owns can need MFA and there is no point supervising something that may stop
+to ask a human a question. The shell functions above all still work, and are
+still what I reach for when I'm actively changing things — launchd handles the
+unattended case, not every case.
 
 ### A regen script
 
