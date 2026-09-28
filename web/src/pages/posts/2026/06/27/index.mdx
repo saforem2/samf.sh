@@ -510,9 +510,9 @@ A few Codex-specific notes:
 - To switch models per session without editing the config, pass them on the
   command line:
 
-```bash
-codex --model claude-opus-5 --model-provider rosetta
-```
+    ```bash
+    codex --model claude-opus-5 --model-provider rosetta
+    ```
 
 Sanity-check that Codex is reaching the gateway. Outside a git repo you need
 `--skip-git-repo-check`, and `< /dev/null` stops `codex exec` from waiting on
@@ -530,21 +530,79 @@ tokens used
 ### 4. Hermes (CLI + `hermes desktop`)
 
 Hermes installs a CLI (`hermes`) and a native Electron app together, and both
-read the same `~/.hermes/config.yaml`. Point the main model at the rosetta
-gateway with a `custom` provider:
+read the same `~/.hermes/config.yaml`. Register the gateway under `providers:`
+and point the main model at it by name:
 
 ```yaml
 model:
-    base_url: 'http://127.0.0.1:8765/v1'
-    default: 'claude-opus-5'
-    provider: 'custom'
+    base_url: http://127.0.0.1:8765/v1
+    default: gpt-5.6-sol
+    provider: llm-rosetta
+    api_mode: chat_completions
+providers:
+    llm-rosetta:
+        name: llm-rosetta
+        base_url: http://127.0.0.1:8765/v1
+        model: gpt-5.6-sol
+        discover_models: true
 ```
 
-`provider: custom` + `base_url` is Hermes' documented path for a self-hosted /
-OpenAI-compatible endpoint (`base_url` takes precedence over any named
-provider). Because the rosetta gateway runs **no-auth** (loopback only), no API
-key is needed. Use any id you registered in the gateway config for `default`
-(`gpt-5.6-sol`, `alcf-sophia/openai/gpt-oss-120b`, …).
+That is what I run, minus a 130-entry `models:` map the `hermes model` wizard
+wrote for itself. You don't need it: `discover_models: true` pulls the catalog
+from the gateway's `/v1/models` at runtime, and a `models:` **dict** is treated
+as per-model metadata rather than an allowlist, so it doesn't narrow anything
+either way. Pin a catalog with `discover_models: false` if you want the
+opposite.
+
+`llm-rosetta` isn't a name Hermes ships with — asking its resolver directly
+gives `Unknown provider 'llm-rosetta'`. Any key under `providers:` becomes a
+usable provider id that resolves internally to the `custom` backend, tagged
+with where it came from:
+
+```python
+>>> from hermes_cli.runtime_provider import resolve_runtime_provider
+>>> resolve_runtime_provider(requested="llm-rosetta")
+{'api_key': 'no-key-required',
+ 'api_mode': 'chat_completions',
+ 'base_url': 'http://127.0.0.1:8765/v1',
+ 'provider': 'custom',
+ 'requested_provider': 'llm-rosetta',
+ 'source': 'custom_provider:llm-rosetta'}
+```
+
+`api_key` answers the other question: the gateway runs **no-auth** (loopback
+only), and Hermes supplies the `no-key-required` placeholder itself rather than
+making you invent one. Use any id you registered in the gateway config for
+`default` (`claude-opus-5`, `alcf-sophia/openai/gpt-oss-120b`, …).
+
+`hermes status` confirms the name landed:
+
+```console
+$ hermes status
+◆ Environment
+  Project:      /Users/sam/.hermes/hermes-agent
+  Python:       3.14.7
+  .env file:    ✗ not found
+  Model:        gpt-5.6-sol
+  Provider:     llm-rosetta
+```
+
+The shorter anonymous form also works, if you'd rather not name a provider:
+
+```yaml
+model:
+    base_url: http://127.0.0.1:8765/v1
+    default: gpt-5.6-sol
+    provider: custom
+    api_mode: chat_completions
+```
+
+Five lines, no `providers:` block. The tradeoff is that `custom` is a single
+anonymous slot, and the fallback chain below refers to `llm-rosetta` and
+`argo-shim` by name. Those names only exist because they are registered — a
+`fallback_providers` entry naming an unregistered provider dies with
+`Unknown provider 'llm-rosetta'`, and giving the tier an inline `base_url`
+does not rescue it.
 
 Prefer to configure it interactively? `hermes model` walks you through adding a
 custom endpoint and writes the same block. Then confirm the CLI reaches the
@@ -554,19 +612,23 @@ exits instead of seeding an interactive session:
 
 ```console
 $ hermes chat -q "Reply with exactly: hermes ok" --oneshot
+Query: Reply with exactly: hermes ok
+Initializing agent...
+────────────────────────────────────────
 
-╭─ ☤ Hermes  07:47─────────────────────────────────────────────────────────────╮
+╭─ ☤ Hermes ───────────────────────────────────────────────────────────────────╮
 hermes ok
 ╰──────────────────────────────────────────────────────────────────────────────╯
 
-Session:        20260928_074752_caf1bc
-Duration:       6s
+Session:        20260928_080049_4acd19
+Duration:       4s
 Messages:       2 (1 user, 0 tool calls)
 ```
 
-That run used `provider: llm-rosetta` rather than the `custom` block above —
-both reach the same gateway, and `custom` is the one to copy if you haven't
-registered a named provider.
+That run used a throwaway `HOME` whose `config.yaml` was the eleven lines above
+and nothing else, with no credentials anywhere in it. That is the point: if it
+needed something else from my home directory, it would have failed rather than
+answering in four seconds. The anonymous `custom` form answers the same way.
 
 Launch the desktop app from the same install (it picks up the same config):
 
