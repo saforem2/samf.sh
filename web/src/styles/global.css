@@ -1949,13 +1949,22 @@ pre.astro-code[data-language='go'] {
     --lang-icon: '\e627';
 }
 
-/* Align code blocks with text after the list marker. */
+/* Align code blocks with the text after the list marker, not with the marker.
+   Both rules need !important: they are unlayered, and `* { margin: 0 }` in
+   @layer base beats them on this property in this project's cascade (the same
+   quirk noted on pre.astro-code's `overflow` above). Without it the declared
+   margin computed to 0px and every nested block on the site sat 11.4px left
+   of its own label — measured across three posts, all identical, so the rule
+   had never once taken effect.
+
+   1.42ch, not 2ch: the marker offset is 11.4px against an 8px ch, and 2ch
+   overshot it by 4.6px. Ordered lists indent by their wider marker. */
 li > pre.astro-code {
-    margin-left: 2ch;
+    margin-left: 1.42ch !important;
 }
 
 ol > li > pre.astro-code {
-    margin-left: 3ch;
+    margin-left: 2.42ch !important;
 }
 
 pre.astro-code > code {
