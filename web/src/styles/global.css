@@ -1949,16 +1949,24 @@ pre.astro-code[data-language='go'] {
     --lang-icon: '\e627';
 }
 
+/* WebTUI's typography.css sets `content: '- '` on `ul li::before` — a
+   descendant selector, so an <ol> nested anywhere inside a <ul> gets the dash
+   on top of its own number and renders `- 1.`. Suppress it on ol items only,
+   so top-level ul items keep their bullet. slides.css already carries this
+   same fix scoped to slides; this is the document-scope copy. No !important
+   needed: the package rule is in @layer components and this one is unlayered. */
+ol > li::before {
+    content: none;
+}
+
 /* Align code blocks with the text after the list marker, not with the marker.
    Both rules need !important: they are unlayered, and `* { margin: 0 }` in
    @layer base beats them on this property in this project's cascade (the same
    quirk noted on pre.astro-code's `overflow` above). Without it the declared
-   margin computed to 0px and every nested block on the site sat 11.4px left
-   of its own label — measured across three posts, all identical, so the rule
-   had never once taken effect.
+   margin computed to 0px and every nested block sat left of its own label.
 
-   1.42ch, not 2ch: the marker offset is 11.4px against an 8px ch, and 2ch
-   overshot it by 4.6px. Ordered lists indent by their wider marker. */
+   Sized off the rendered marker advance, not a round number: 11.36px for a ul
+   bullet and 19.36px for an `N. ` decimal, against an 8px ch. */
 li > pre.astro-code {
     margin-left: 1.42ch !important;
 }
