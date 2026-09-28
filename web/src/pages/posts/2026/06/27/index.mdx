@@ -687,7 +687,7 @@ fallback_providers:
       model: anthropic/claude-opus-5
     - provider: argo-shim
       model: GPT-5.6 Sol
-      base_url: http://127.0.0.1:25940
+      base_url: http://127.0.0.1:25940/v1
       key_env: ARGO_SHIM_TOKEN
       api_mode: chat_completions
     - provider: argo-shim
@@ -709,17 +709,40 @@ routes every tier through one process only covers upstream outages; the
 process is still a single point of failure. Skipping it costs four extra lines
 per tier.
 
-You can see it fire in `~/.hermes/logs/agent.log`:
+Note that the two shim tiers have **different** base URLs, and that is not a
+typo. `argo-shim` serves `/v1/chat/completions` and `/v1/messages`, but the
+Anthropic SDK appends `/v1/messages` to whatever base it is handed. So the
+`chat_completions` tier needs the `/v1` written out and the
+`anthropic_messages` tier must not have it. Hermes normalizes this
+automatically for its OpenCode-family providers and for nothing else, so a
+custom provider is on its own here.
+
+Get it wrong in the `chat_completions` direction and the tier 404s — which is
+exactly what mine did, silently, for as long as it had been configured. The
+turn still completed, because the chain just kept walking, and that is the
+whole problem with a quiet fallback: a dead tier and a tier that never gets
+reached look identical from the outside. Worth an actual `curl` per tier:
+
+```zsh
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  http://127.0.0.1:25940/v1/chat/completions \
+  -H "Authorization: Bearer $ARGO_SHIM_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"GPT-5.6 Sol","messages":[{"role":"user","content":"hi"}],"max_tokens":5}'
+```
+
+You can see the chain fire in `~/.hermes/logs/agent.log`:
 
 ```
-Fallback activated: openai/gpt-5.6-sol → anthropic/claude-opus-5 (llm-rosetta)
+Fallback activated: gpt-5.6-sol → anthropic/claude-opus-5 (llm-rosetta)
+Fallback activated: anthropic/claude-opus-5 → GPT-5.6 Sol (argo-shim)
 Fallback activated: GPT-5.6 Sol → claude-opus-5 (argo-shim)
 ```
 
-Those two lines are from the same minute, and together they show the design
-working: the first tier stepped down inside rosetta, and when rosetta itself
-went away the chain kept going straight to the shim. The gateway was
-restarting to pick up a refreshed token.
+Those three are one turn, nine seconds apart, and they are a better
+advertisement for the design than a clean run would be. GPT-5.6 Sol hit a
+`429` token rate limit upstream, Claude came back with an empty stream three
+times, and the chain walked off rosetta and onto the shim on its own.
 
 That line is worth knowing by sight. Fallback is quiet by design — the session
 continues normally — so a model that's silently unavailable looks like a model
@@ -1114,7 +1137,7 @@ The log is boring, which is the goal:
 2026-09-27T05:09:49-0500 token-refresh: both upstreams OK
 2026-09-27T11:09:51-0500 token-refresh: probe argo=200 alcf=401
 2026-09-27T11:09:51-0500 token-refresh: ALCF token stale
-2026-09-27T11:09:51-0500 token-refresh: kickstarting ai.llm-rosetta.gateway
+2026-09-27T11:09:51-0500 token-refresh: kickstarting ai.llm-rosetta.gateway to re-resolve tokens
 2026-09-27T11:10:18-0500 token-refresh: post-restart argo=200 alcf=200
 ```
 
