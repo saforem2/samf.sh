@@ -528,7 +528,10 @@ and re-authenticating through MFA on hotel wifi is exactly the friction this
 setup was supposed to remove.
 
 The fix is to stop treating the laptop as the host. I run the whole stack on a
-stationary Mac that never sleeps, and attach to it from the laptop:
+stationary Mac that never sleeps, and attach to it from the laptop with
+[`herdr`][herdr], a terminal workspace manager with a remote-attach mode:
+
+[herdr]: https://github.com/herdrdev/herdr
 
 ```
         laptop (travels)                stationary host (always on)
