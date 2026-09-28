@@ -295,6 +295,28 @@ Export the token so `{env:ARGO_SHIM_TOKEN}` resolves (see
 export ARGO_SHIM_TOKEN=$(python3 -c "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
 ```
 
+Then prove it end-to-end rather than trusting the config. `--standalone` keeps
+this out of the background service, so it exercises the provider block as
+written:
+
+```console
+$ opencode run --standalone -m argo/claude-opus-5 "Reply with exactly: rosetta ok"
+rosetta ok
+```
+
+Once the gateway in step 2 is up, the same command reaches it through the
+`llm-rosetta` provider, which is the OpenAI-format path rather than the
+Anthropic one:
+
+```console
+$ opencode run --standalone -m llm-rosetta/anthropic/claude-opus-5 "Reply with exactly: gateway ok"
+gateway ok
+```
+
+Both were run against OpenCode `v2.0.18`. The model key in `models` is the id
+sent upstream, so `claudeopus5` and `claude-opus-5` both work here only because
+the shim normalizes the name — don't count on that with other providers.
+
 ### 2. `llm-rosetta` gateway (for OpenAI-only clients)
 
 Install the gateway. Same reasoning as `argo-shim`: it is a daemon you
@@ -453,15 +475,30 @@ model_provider = "rosetta"
 
 [model_providers.rosetta]
 name = "ALCF via llm-rosetta"
-# wire_api = "chat" → OpenAI Chat Completions (what rosetta exposes on /v1).
-# The default "responses" wire API would hit /v1/responses, which the gateway
-# doesn't serve.
 base_url = "http://127.0.0.1:8765/v1"
-wire_api = "chat"
+# Either wire API works: the gateway serves both /v1/chat/completions and
+# /v1/responses. "responses" is Codex's default and what I actually run.
+wire_api = "responses"
 # No env_key: the gateway is loopback-only and runs no-auth, so there's no key
 # to supply (same reason Codex's built-in Ollama provider omits it). Codex is
 # happy without one against a local endpoint.
 ```
+
+> **Correction (2026-09-28).** An earlier version of this post set
+> `wire_api = "chat"` and claimed the gateway doesn't serve `/v1/responses`.
+> That was wrong — I never tested it. It serves both:
+>
+> ```console
+> $ curl -s -X POST http://127.0.0.1:8765/v1/responses \
+>     -H 'Content-Type: application/json' \
+>     -d '{"model":"gpt-5.6-sol","input":"Reply with exactly: responses ok"}' \
+>   | python3 -c 'import json,sys; d=json.load(sys.stdin); print([c["text"] for o in d["output"] for c in o.get("content",[]) if c.get("type")=="output_text"][0])'
+> responses ok
+> ```
+>
+> The `400` I originally read as "no such route" was upstream rejecting my
+> request body: `/v1/responses` wants `input`, not `messages`. A `400` means
+> the route exists and disliked what you sent; a missing route gives `404`.
 
 A few Codex-specific notes:
 
@@ -477,11 +514,17 @@ A few Codex-specific notes:
 codex --model claude-opus-5 --model-provider rosetta
 ```
 
-Sanity-check that Codex is reaching the gateway (this hits the same
-`/v1/chat/completions` the earlier `curl` did, just through Codex's config):
+Sanity-check that Codex is reaching the gateway. Outside a git repo you need
+`--skip-git-repo-check`, and `< /dev/null` stops `codex exec` from waiting on
+stdin:
 
-```bash
-codex exec --model gpt-5.6-sol --model-provider rosetta "say hi"
+```console
+$ codex exec --skip-git-repo-check --model gpt-5.6-sol "Reply with exactly: codex responses ok" < /dev/null
+codex
+codex responses ok
+
+tokens used
+19,817
 ```
 
 ### 4. Hermes (CLI + `hermes desktop`)
@@ -505,11 +548,25 @@ key is needed. Use any id you registered in the gateway config for `default`
 
 Prefer to configure it interactively? `hermes model` walks you through adding a
 custom endpoint and writes the same block. Then confirm the CLI reaches the
-gateway:
+gateway. Note the `-q`: `hermes chat` takes its prompt as a flag, and a bare
+positional string exits with `unrecognized arguments`. `--oneshot` answers and
+exits instead of seeding an interactive session:
 
-```bash
-hermes chat "say hi"
+```console
+$ hermes chat -q "Reply with exactly: hermes ok" --oneshot
+
+╭─ ☤ Hermes  07:47─────────────────────────────────────────────────────────────╮
+hermes ok
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Session:        20260928_074752_caf1bc
+Duration:       6s
+Messages:       2 (1 user, 0 tool calls)
 ```
+
+That run used `provider: llm-rosetta` rather than the `custom` block above —
+both reach the same gateway, and `custom` is the one to copy if you haven't
+registered a named provider.
 
 Launch the desktop app from the same install (it picks up the same config):
 
