@@ -1248,6 +1248,8 @@ whole point — the restart *is* the refresh mechanism:
 
 ```zsh
 # ~/.config/llm-rosetta-gateway/launch-gateway.sh (excerpt)
+cd "$HOME" || exit 1
+
 ARGO_SHIM_TOKEN=$("$PY" -c \
   "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
 export ARGO_SHIM_TOKEN
