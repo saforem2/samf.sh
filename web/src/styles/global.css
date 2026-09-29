@@ -1500,9 +1500,13 @@ html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
    floor. Capping lightness keeps the hue (In stays blue, Out stays red) while
    clearing AA. Scoped to the light themes on purpose: the dark ones already
    measure 7.40 / 6.14, and darkening there would make it worse. */
-html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt,
+html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt {
+    color: oklch(from var(--blue) calc(l * 0.78) c h);
+}
 
-html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt,
+html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt {
+    color: oklch(from var(--red) calc(l * 0.82) c h);
+}
 
 /* Bind the output to its cell. The tint plus the accent rail is what makes
    the pair read as one unit rather than two loose blocks; without it the
@@ -1728,7 +1732,23 @@ pre.astro-code::after {
     /* Gap either side so the top border (below) breaks cleanly around the
        label instead of running into it. */
     padding-inline: 0.6ch;
-    color: var(--lang-badge, var(--material-pink));
+    /* Contrast comes from the TEXT, not the hue. The material colours are
+       tuned as accents: measured as label text on the light page they run
+       1.22 (js) to 4.37 (toml) and 10 of 11 miss the 4.5 AA floor, with the
+       yellows nowhere close. Darkening the hue itself to fix that turns
+       yellow into olive and orange into brown -- a different palette, not a
+       dimmer one.
+
+       So the chip carries the hue as a faint wash and the label is set at a
+       FIXED lightness, keeping each language's own hue and chroma. One
+       declaration per theme rather than eleven hand-tuned pairs, and a new
+       language inherits a passing colour automatically.
+
+       0.48 on light / 0.80 on dark: worst case measures 4.94 (json) and
+       4.88 (js) respectively, every language clearing AA with margin. The
+       badge is ~16px and not bold, so 4.5 is the bar -- the 3.0 large-text
+       exemption needs 18.7px, or 14px bold. */
+    color: oklch(from var(--lang-badge, var(--material-pink)) 0.48 c h);
     /* Page background, not a tint: the badge has to mask the border it
        sits on so the rule appears to break around it, which is the whole
        ASCII-box effect. A translucent wash would let the line show
@@ -1739,10 +1759,19 @@ pre.astro-code::after {
        page-coloured rectangle behind the label. --code-mask-bg is set by any
        container with its own fill (see .callout below); it falls back to the
        page background everywhere else. */
-    /* Tint layer over page layer (see --code-mask-bg on .callout). Outside a
-       callout --code-mask-bg is unset, so this collapses to the page
-       background alone -- the original behaviour. */
+    /* Three layers, top to bottom: the language wash that makes the chip
+       read as this language, the container tint (see --code-mask-bg on
+       .callout), then the opaque page surface. The bottom layer is what
+       masks the border, so the wash sits ON an opaque base rather than
+       replacing it -- a translucent badge would let the rule show through
+       and lose the notched-frame effect. 16% is a wash, not a fill: the
+       frame still visibly breaks around the chip rather than being covered
+       by a solid block. */
     background:
+        linear-gradient(
+            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
+            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
+        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
@@ -1752,6 +1781,12 @@ pre.astro-code::after {
     user-select: none;
     pointer-events: none;
     z-index: 2;
+}
+
+/* Dark inverts the direction: the label lightens instead of darkening, so
+   the same hue reads against the dark chip. */
+html[data-webtui-theme='custom-dark'] pre.astro-code::after {
+    color: oklch(from var(--lang-badge, var(--material-pink)) 0.8 c h);
 }
 
 /* The box the badge breaks. Now that the block carries no background fill,
@@ -1812,6 +1847,10 @@ pre.astro-code .code-copy-btn::before {
     /* Same border-masking as the language badge above; same reason it must
        follow the container surface rather than the page background. */
     background:
+        linear-gradient(
+            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
+            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
+        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
