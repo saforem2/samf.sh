@@ -3,15 +3,15 @@ layout: '@/layouts/Doc.astro'
 title: 'A Small Service Mesh for My Macs and Supercomputers'
 date: 2026-09-25
 date-created: 2026-09-25
-date-modified: today
-description: 'How I run local dashboards, shared agent memory, terminal history, notes, SSH forwards, and a remote-session relay across two Macs and ALCF systems using loopback services, launchd, Tailscale Serve, SSH, Tailcat, and Cloudflare Tunnel.'
+date-modified: 2026-09-29
+description: 'How I run local dashboards, separate personal and agent knowledge vaults, shared agent memory, email, terminal history, model gateways, and persistent agent sessions across two Macs and ALCF systems -- with one health checker for the whole stack.'
 ---
 
 I have accumulated a surprising number of small web services around my daily
-work: a training dashboard, terminal history, two views of my notes, an agent
-memory API, and a relay for attaching to persistent remote sessions. None is a
-large application. The interesting part is making each one available in the
-right places without making everything public.
+work: a training dashboard, terminal history, separate personal and agent
+knowledge vaults, an agent memory API, an email API, a model gateway, and
+persistent agent sessions. None is a large application. The interesting part is
+making each one available in the right places without making everything public.
 
 This post is an inventory of that system: what each service does, how the
 network paths fit together, and the commands and `launchd` patterns I use to
@@ -32,12 +32,15 @@ Anywhere][working-anywhere], which explains the larger remote-work design.
 >   it.
 > - A listening process is not a health check. I verify the final URL from the
 >   machine that will consume it.
+> - One deterministic checker now verifies **14 contracts** across the local
+>   services, private routes, MCP connections, schedulers, and agent panes.
 
 ## The topology
 
-The always-on MacBook, `mbph`, is the hub. A second MacBook, `mbpr`, is often on
-campus networks and acts as both a client and, for one service, the public edge.
-Aurora and CELS are remote compute environments behind SSH bastions.
+The always-on MacBook, `mbph`, is the hub and the public edge for the one service
+published through Cloudflare. A second MacBook, `mbpr`, is often on campus
+networks and acts as a client. Aurora and CELS are remote compute environments
+behind SSH bastions.
 
 ```text
                       mbpr (mobile Mac)
@@ -47,15 +50,11 @@ Aurora and CELS are remote compute environments behind SSH bastions.
                        mbph (home Mac)
       ┌────────────┬──────────┴─────────┬─────────────────┐
       │            │                    │                 │
-  Tailscale    localhost            SSH jump         herdr relay
-    Serve      services               hosts             :8375
-      │            │                    │                 │  Cloudflare Tunnel
+  Tailscale    localhost            SSH jump          herdr
+    Serve      services               hosts           server
+      │            │                    │                 │
       ▼            ▼                    ▼                 ▼
-  browsers      agents            Aurora / CELS     relay.sf.onl
-                                                  Cloudflare Access
-                                                          │
-                                                          ▼
-                                                       browser
+  browsers      agents            Aurora / CELS    Heeler / relay
 ```
 
 Here is the concrete inventory. Ports are included because they make debugging
@@ -67,7 +66,12 @@ far easier than descriptions like “the notes service.”
 | SilverBullet      | `mbph:3000`       | Tailscale HTTPS `:9443`                                   | Human-friendly editing of the shared agent-memory Markdown     |
 | ai-memory         | `mbph:49375`      | Tailscale HTTPS `:8443` and Tailcat                       | One persistent memory/MCP service for agents on every machine  |
 | AGPT dashboard    | `mbph:8720`       | Tailscale HTTPS `:8720` and an SSH forward to `mbpr:8720` | Monitor AuroraGPT runs from a browser                          |
-| VaultServe        | `mbph:8891`       | Tailscale HTTPS `:443`                                    | Read-only browsing and search for my Obsidian vault            |
+| Personal vault    | `mbph:8891`       | Tailscale HTTPS `:443`                                    | Read-only browsing and search for my Obsidian vault            |
+| Agent vault       | loopback          | Separate private Tailscale route                          | Git-backed history, evidence, and generated agent notes        |
+| llm-rosetta       | `mbph:8765`       | Loopback; clients reach it through the host               | One OpenAI-compatible endpoint for local and ALCF models       |
+| Hermes gateway    | local IPC         | Local clients and configured messaging transports         | Routes prompts, tools, MCP servers, cron, and notifications    |
+| AgentMail MCP     | subprocess/API    | Hermes MCP only                                           | Dedicated agent inbox, drafts, send, receive, and replies      |
+| Herdr             | local socket      | Local clients and the separately authenticated relay      | Persistent panes, process detection, and agent status          |
 | Aurora data API   | Aurora `:8712`    | SSH local forward to `mbph:8712`                          | Feed live training data into the AGPT dashboard                |
 | Argo / CELS       | CELS HTTPS `:443` | SSH jump forward to `mbph:25939`                          | Reach the internal model gateway from local clients            |
 | Tailcat SSH       | `mbph:22`         | `mbpr:2222`                                               | A backup path to SSH when Tailscale is unavailable             |
@@ -140,8 +144,8 @@ go to stable files instead of disappearing with a terminal window.
 ## Private web apps with Tailscale Serve
 
 [Tailscale Serve][tailscale-serve] terminates HTTPS on the tailnet hostname and
-proxies to a loopback HTTP server. For example, these are the five routes on
-`mbph`:
+proxies to a loopback HTTP server. These are the public-safe route definitions
+from `mbph`; the agent-vault route stays in private configuration:
 
 ```bash
 tailscale serve --bg --https=10443 http://127.0.0.1:8766   # Scrollback
@@ -149,7 +153,6 @@ tailscale serve --bg --https=9443  http://127.0.0.1:3000   # SilverBullet
 tailscale serve --bg --https=8443  http://127.0.0.1:49375  # ai-memory
 tailscale serve --bg --https=8720  http://127.0.0.1:8720   # AGPT dashboard
 tailscale serve --bg --https=443   http://127.0.0.1:8891   # VaultServe
-
 tailscale serve status
 ```
 
@@ -315,6 +318,39 @@ VAULT_PORT=8891 \
 This is useful on devices where I want to consult notes without installing or
 synchronizing the full Obsidian vault. The default Tailscale HTTPS route proxies
 to it, but it remains tailnet-only.
+
+### Two vaults, two trust boundaries
+
+The personal vault and the agent vault use the same small Python server, but
+they are separate services with separate roots, repositories, ports, and sync
+rules.
+
+The personal service on `8891` reads my Obsidian tree. Automation treats that
+tree as read-only. The agent service on `8892` serves a private Git repository
+containing curated memory, compiled session evidence, project histories, and a
+generated index of recently modified notes. Its daily sync job stages only the
+paths it owns; it cannot sweep an unrelated hand-edited history page into an
+automated commit.
+
+This split is simpler than teaching one application which pages are personal,
+generated, editable, or publishable. A route now implies one source tree and one
+policy.
+
+### Hermes, AgentMail, and Herdr
+
+The browser services are only half of the stack. `Hermes` runs the agent control
+plane: model routing, MCP servers, scheduled jobs, and notifications. A dedicated
+`AgentMail` inbox is connected through an MCP subprocess with a narrow tool
+allowlist. I verified the full loop with one outbound message, one inbound reply,
+and one threaded reply. Credentials stay in a protected environment file; the
+mailbox address and provider identifiers do not belong in public configuration.
+
+`Herdr` owns persistent terminal panes and reports process state to `Heeler`.
+Current `Hermes` processes start through a Python bootstrap, so process detection
+has to recognize the bootstrap signature rather than only a binary named
+`hermes`. The local detector now does that without treating arbitrary Python
+source containing `hermes_cli` as an agent. The three HPC panes remain attached
+while `Herdr` reports each as `hermes` instead of `unknown`.
 
 ## Bringing HPC services home with SSH
 
@@ -497,7 +533,7 @@ ssh newhost 'chmod 600 ~/.cloudflared/cert.pem; chmod 400 ~/.cloudflared/*.json'
 
 If the two machines have different usernames — mine do — every absolute path in
 the config, the env files, and the LaunchAgent plists has to be rewritten, and
-then *verified*, because a plist with a bad path fails quietly:
+then _verified_, because a plist with a bad path fails quietly:
 
 ```bash
 sed 's#/Users/olduser#/Users/newuser#g' config.env > /tmp/config.env
@@ -550,10 +586,10 @@ mv com.herdr-remote.relay.plist com.herdr-remote.relay.plist.migrated-YYYYMMDD
 One log line will look alarming and is not: the relay throws a zeroconf
 `NonUniqueNameException` if anything else on the LAN still advertises that mDNS
 name. It runs in a daemon thread, and the relay logs `relay on :8375` and
-`Polling: local` immediately afterwards. Read the lines *after* the traceback
+`Polling: local` immediately afterwards. Read the lines _after_ the traceback
 before concluding anything is broken.
 
-## Starting the whole stack
+## Starting and checking the whole stack
 
 I used to keep this as a list of `launchctl kickstart` lines per machine, and
 copy-pasted the relevant block. That was a bad habit for the reason this whole
@@ -561,13 +597,15 @@ post keeps circling: kickstarting an agent only asks `launchd` to run something.
 It says nothing about whether the service came back. The list also drifted — I
 added the spool drainer and the export job and never updated the snippet.
 
-So the commands live in one `start-services` script that restarts each agent
-**and then probes the port a real consumer would use**:
+So restart commands live in one `start-services` script, while a separate
+`check-services.py` verifies the steady state without changing it:
 
 ```bash
 start-services            # restart everything, then verify
 start-services --check    # verify only, change nothing
 start-services --serve    # also re-declare the Tailscale Serve routes
+~/.hermes/scripts/check-services.py
+~/.hermes/scripts/check-services.py --json
 ```
 
 It picks its service list from `hostname -s`, so the same script is correct on
@@ -606,42 +644,54 @@ instead of a PID between runs, which is healthy rather than missing. And the
 probe URL has to be a path the service actually routes: ai-memory answers `404`
 on `/` and `401` on `/mcp`, so probing `/` reports a false failure.
 
-The script exits with the number of failed checks, which makes it usable from
-`cron` or a healthcheck as well as by hand:
+The checker has explicit contracts for the `Hermes` gateway, `AgentMail` MCP,
+`ai-memory` MCP, `llm-rosetta`, both vaults, `SilverBullet`, the required
+Tailscale Serve routes, `Herdr`, the three HPC agent panes, the `Hermes` cron
+scheduler, the AGPT dashboard, and Scrollback. The local `Hermes` dashboard is
+optional. A required failure exits `1`; an optional failure does not change the
+exit status.
+
+The important distinction is **protocol health versus port health**. The two MCP
+checks perform real MCP connection tests. The Tailscale check parses the route
+table and confirms each backend is listening. The `Herdr` check requires a
+compatible live server, then verifies that the Aurora, Sunspot, and Polaris
+panes are still classified as `hermes` rather than `unknown`.
+
+The current result is **14 OK, 0 warnings, 0 failures**:
 
 ```text
-host: mbph
-
-verifying
-  Scrollback terminal history        ok (HTTP 200)
-  SilverBullet                       ok (HTTP 200)
-  ai-memory server                   ok (HTTP 401)
-  VaultServe                         ok (HTTP 200)
-  Tailcat listener                   ok (pid 95304)
-  Herdr relay                        ok (HTTP 401)
-  Cloudflare tunnel                  ok (pid 46219)
-  ai-memory spool drainer            ok (periodic, idle)
-  ai-memory -> SilverBullet export   ok (periodic, idle)
-
-all checks passed
+OK   Hermes gateway
+OK   AgentMail MCP
+OK   ai-memory MCP
+OK   llm-rosetta
+OK   personal vault
+OK   agent vault
+OK   SilverBullet
+OK   Tailscale
+OK   Herdr
+OK   Hermes HPC panes
+OK   Hermes cron
+OK   AGPT dashboard
+OK   Scrollback viewer
+OK   Hermes dashboard [optional]
+SUMMARY ok=14 warn=0 fail=0
 ```
 
-The AGPT dashboard and the Aurora/CELS forwards are still started when I need
-them. The LaunchAgent-managed services return after login without an open
-terminal. The dashboard could use the same LaunchAgent template once I decide it
-should be truly always-on.
+The same checker runs twice daily. Its wrapper prints nothing when every contract
+is healthy, so the notification path stays quiet unless there is a warning or
+failure. The JSON form carries the same verdict for other automation.
 
 > [!WARNING]
 > Restarting a service restarts everything downstream of it, and the downstream
 > side may not notice. When I restarted `ai-memory` on the hub, the Tailcat
 > forward on the other Mac kept listening on its local port while its far end
 > was gone — `launchctl list` reported the forward as `-9`, and a request
-> through it hung instead of failing. Run `start-services --check` on *both*
+> through it hung instead of failing. Run `start-services --check` on _both_
 > machines after restarting anything shared.
 
 ## Verify paths, not processes
 
-This stack recently produced three instructive failures:
+This stack recently produced five instructive failures:
 
 - Tailscale Serve was healthy but proxied the AGPT URL to stale port `8726`
   instead of the live dashboard on `8720`.
@@ -649,11 +699,14 @@ This stack recently produced three instructive failures:
   request without sending a response.
 - An SSH control master owned `mbpr:8720`, while the LaunchAgent that was
   supposed to own the forward was not actually running.
-- The Herdr relay served `relay.sf.onl` correctly from the *wrong machine* for
+- The Herdr relay served `relay.sf.onl` correctly from the _wrong machine_ for
   weeks. Every probe passed, because the public URL returns an identical
   Cloudflare Access `302` no matter which host is behind the tunnel.
+- `llm-rosetta` answered correctly on IPv4 while a stale review server owned the
+  same port on IPv6. `127.0.0.1` returned the model list; `localhost` resolved to
+  the other process and returned `404`.
 
-All four could look “up” in a process list. The acceptance checks need to cross
+All five could look “up” in a process list. The acceptance checks need to cross
 the same boundary as the real consumer:
 
 ```bash
@@ -673,6 +726,10 @@ ssh mbpr 'curl --fail http://127.0.0.1:8720/'
 # Inspect ownership as well as presence
 lsof -nP -iTCP:8720 -sTCP:LISTEN
 launchctl print gui/$(id -u)/sh.samf.agpt-forward-mbph
+
+# Check both address families when localhost and 127.0.0.1 disagree
+curl --fail http://127.0.0.1:8765/v1/models
+curl --fail http://[::1]:8765/v1/models
 ```
 
 For an authenticated API, `401` proves that TLS, routing, proxying, and the
