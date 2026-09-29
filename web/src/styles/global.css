@@ -1757,15 +1757,20 @@ pre.astro-code::after {
 /* The box the badge breaks. Now that the block carries no background fill,
    all four edges are drawn: with no panel to bound it, a lone top rule left
    the code floating. Tinted to the language hue and held back from full
-   strength so it reads as structure rather than as a second accent — though
-   stronger than the 0.28 the top-only rule used, since a border is now the
-   only thing separating code from page. */
+   strength so it reads as structure rather than as a second accent.
+
+   0.4, down from 0.9. At full strength the frame competed with the code it
+   was framing: on a page of ten blocks the borders read as the content and
+   the code as what sat between them. The badge still carries the language
+   hue at full strength, so the colour coding survives -- it just stops being
+   stated twice on every block. The border only has to say where the block
+   ends. */
 pre.astro-code::before {
     content: '';
     position: absolute;
     inset: 0;
     border: 1px solid
-        oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.9);
+        oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.4);
     pointer-events: none;
     z-index: 1;
 }
