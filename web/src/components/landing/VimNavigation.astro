@@ -96,13 +96,8 @@ const { showHL = false } = Astro.props as Props
         window.addEventListener('keydown', (e) => {
             if (e.defaultPrevented || isUserTyping()) return
             if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
-            if (
-                e.key !== 'j' &&
-                e.key !== 'k' &&
-                e.key !== 'ArrowDown' &&
-                e.key !== 'ArrowUp'
-            )
-                return
+            // j/k only -- the arrows belong to the browser so they scroll.
+            if (e.key !== 'j' && e.key !== 'k') return
             if (!content) return
 
             const active = document.activeElement
@@ -156,9 +151,9 @@ const { showHL = false } = Astro.props as Props
             buttonH?.setAttribute('variant-', 'foreground0')
         } else if (event.key === 'l' || event.key === 'ArrowRight') {
             buttonL?.setAttribute('variant-', 'foreground0')
-        } else if (event.key === 'j' || event.key === 'ArrowDown') {
+        } else if (event.key === 'j') {
             buttonJ.setAttribute('variant-', 'foreground0')
-        } else if (event.key === 'k' || event.key === 'ArrowUp') {
+        } else if (event.key === 'k') {
             buttonK.setAttribute('variant-', 'foreground0')
         }
     })
@@ -173,9 +168,9 @@ const { showHL = false } = Astro.props as Props
         } else if (event.key === 'l' || event.key === 'ArrowRight') {
             buttonL?.setAttribute('variant-', 'background1')
             buttonL?.click()
-        } else if (event.key === 'j' || event.key === 'ArrowDown') {
+        } else if (event.key === 'j') {
             buttonJ.setAttribute('variant-', 'background1')
-        } else if (event.key === 'k' || event.key === 'ArrowUp') {
+        } else if (event.key === 'k') {
             buttonK.setAttribute('variant-', 'background1')
         }
     })

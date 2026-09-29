@@ -279,8 +279,11 @@ export function applyVimNavigation(
         const activeElements = reattachTabbableElements()
         if (activeElements.length === 0) return
 
-        const isNextKey = e.key === 'j' || e.key === 'ArrowDown'
-        const isPrevKey = e.key === 'k' || e.key === 'ArrowUp'
+        // j/k only, not the arrows: this is a document-wide handler, so
+        // binding the arrows took page scrolling away from every visitor,
+        // vim user or not.
+        const isNextKey = e.key === 'j'
+        const isPrevKey = e.key === 'k'
         const isFirstKey = e.key === 'g'
         const isLastKey = e.key === 'G'
 

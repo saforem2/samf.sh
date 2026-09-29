@@ -474,7 +474,11 @@ const articleSchema =
                 </header>
                 <row gap-="1" self-="grow">
                     <div id="scroll-progress" aria-hidden="true"></div>
-                    <div id="scroll-container">
+                    <!-- tabindex="-1": in reader view this element, not
+                         #main-content, is the document scroller, and the
+                         browser only sends arrow / PageDown keys to a
+                         focused scroll box. Not tabbable, just focusable. -->
+                    <div id="scroll-container" tabindex="-1">
                         <!-- tabindex="-1": makes the skip-link target
                              programmatically focusable (a bare <main> is not,
                              which Lighthouse flags as "no skip link target")
@@ -861,6 +865,35 @@ const articleSchema =
         return mc || sc
     }
 
+    // Give the scroll box focus on load so the arrow keys, PageUp/PageDown
+    // and Home/End reach it. The browser scrolls the FOCUSED scroller, and
+    // the document scroller here is a <main> rather than the page itself,
+    // so with focus left on <body> those keys had nothing to act on and a
+    // reader pressing Down got nothing. tabindex="-1" is already on the
+    // element, so this takes it out of the tab order, not into it.
+    //
+    // preventScroll because focus() would otherwise jump to the element's
+    // top -- fine at scrollTop 0, wrong when the browser is restoring a
+    // scroll position on back/forward.
+    {
+        const focusScroller = () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const el = (window as any).getDocScroller?.() as HTMLElement | null
+            if (!el) return
+            if (
+                document.activeElement &&
+                document.activeElement !== document.body
+            )
+                return
+            el.focus({ preventScroll: true })
+        }
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', focusScroller, {
+                once: true,
+            })
+        else focusScroller()
+    }
+
     const navbar = document.getElementById('top-navbar') as HTMLElement | null
     const sidebar = document.getElementById('sidebar') as HTMLElement | null
     const tocSidebar = document.getElementById(
@@ -935,17 +968,15 @@ const articleSchema =
         )
     }
 
+    // j/k only, NOT the arrow keys. Arrows stay with the browser so they
+    // scroll the page, which is what every reader expects them to do and
+    // the only keyboard scroll a non-vim visitor will reach for. j/k are
+    // opt-in: you press them because you know the convention.
     const isPlainPrevKey = (event: KeyboardEvent) =>
-        (event.key === 'k' || event.key === 'ArrowUp') &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.altKey
+        event.key === 'k' && !event.ctrlKey && !event.metaKey && !event.altKey
 
     const isPlainNextKey = (event: KeyboardEvent) =>
-        (event.key === 'j' || event.key === 'ArrowDown') &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.altKey
+        event.key === 'j' && !event.ctrlKey && !event.metaKey && !event.altKey
 
     const applyMainContentTabIndex = () => {
         // List containers are navigated via their <li> children,
@@ -1110,14 +1141,18 @@ const articleSchema =
             !e.altKey &&
             !e.shiftKey
         ) {
-            if (e.key === 'j' || e.key === 'ArrowDown') {
+            // j/k only. This branch runs when nothing is focused -- the
+            // state every page starts in -- so binding the arrows here
+            // meant a fresh page swallowed the first Down press instead
+            // of scrolling.
+            if (e.key === 'j') {
                 e.preventDefault()
                 const firstEl =
                     getVisibleMainElements()[0] ?? findFirstFocusableElement()
                 if (firstEl) vimFocusElement(firstEl)
                 return
             }
-            if (e.key === 'k' || e.key === 'ArrowUp') {
+            if (e.key === 'k') {
                 e.preventDefault()
                 const elements = getVisibleMainElements()
                 const lastEl = elements[elements.length - 1]
