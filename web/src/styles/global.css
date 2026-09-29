@@ -1624,12 +1624,22 @@ pre.astro-code {
        on the first line of code. 0.5lh was half a blank row top and bottom,
        which read as padding rather than as a frame around the code. */
     padding: 0.25lh 0;
-    /* Extra headroom (vs the 0.5lh below) so the language badge, which
-       sits in this gap, clears whatever is above — including the last line
-       of an immediately-preceding code block, where 0.5lh left the badge
-       overlapping the code. A whole line is enough for that; 1.1lh was
-       overshoot. */
-    margin-block: 1lh 0.5lh;
+    /* Tighter above than below, because a code block is nearly always
+       introduced by the line right before it ("Install deps:") and belongs
+       with it. The reverse (1lh 0.5lh) put 25px above each block and 12px
+       below, so in a list the block sat closer to the NEXT item's label
+       than to its own — the grouping read backwards.
+
+       0.5lh still clears the badge straddling the top edge: it is 16px
+       tall and centred on the border, so it needs 9.6px and gets 13px.
+       The one case that wanted a full line — a block immediately after
+       another block, badge landing on the previous block's last line —
+       does not occur in prose (measured: 0 adjacent pairs), and the 1lh
+       below now covers it anyway.
+
+       Notebooks (.nb-body, zeroed) and slides (0.9lh 0.5lh) set their own
+       and are unaffected. */
+    margin-block: 0.5lh 1lh;
     align-self: start;
     /* No fill: the block is defined by its border, not a tinted panel.
        --pre-background is the token every other rule reads (webtui's base
@@ -1939,13 +1949,30 @@ pre.astro-code[data-language='go'] {
     --lang-icon: '\e627';
 }
 
-/* Align code blocks with text after the list marker. */
+/* WebTUI's typography.css sets `content: '- '` on `ul li::before` — a
+   descendant selector, so an <ol> nested anywhere inside a <ul> gets the dash
+   on top of its own number and renders `- 1.`. Suppress it on ol items only,
+   so top-level ul items keep their bullet. slides.css already carries this
+   same fix scoped to slides; this is the document-scope copy. No !important
+   needed: the package rule is in @layer components and this one is unlayered. */
+ol > li::before {
+    content: none;
+}
+
+/* Align code blocks with the text after the list marker, not with the marker.
+   Both rules need !important: they are unlayered, and `* { margin: 0 }` in
+   @layer base beats them on this property in this project's cascade (the same
+   quirk noted on pre.astro-code's `overflow` above). Without it the declared
+   margin computed to 0px and every nested block sat left of its own label.
+
+   Sized off the rendered marker advance, not a round number: 11.36px for a ul
+   bullet and 19.36px for an `N. ` decimal, against an 8px ch. */
 li > pre.astro-code {
-    margin-left: 2ch;
+    margin-left: 1.42ch !important;
 }
 
 ol > li > pre.astro-code {
-    margin-left: 3ch;
+    margin-left: 2.42ch !important;
 }
 
 pre.astro-code > code {

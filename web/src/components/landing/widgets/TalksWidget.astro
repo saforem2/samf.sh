@@ -66,6 +66,12 @@ function formatDate(date: Date): string {
 
     .tw-list {
         gap: 0;
+        /* Rows sat flush (19px pitch) against the last.fm list's 32px, which
+           reads noticeably airier. The box height is fixed and already
+           scrolls, so gap trades visible rows for breathing room: matching
+           32px outright would drop 11.5 visible rows to 6.8. 0.25lh lands at
+           23.8px and keeps 9.2. */
+        row-gap: 0.25lh;
         flex: 1;
         overflow-y: auto;
         min-height: 0;
