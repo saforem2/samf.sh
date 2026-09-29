@@ -4,26 +4,24 @@ title: 'Local AI Apps on ALCF: Argo, Inference Endpoints, and One Gateway'
 date: 2026-06-27
 date-created: 2026-06-27
 date-modified: today
-description: 'Wiring Claude Code, OpenCode, Codex, and Hermes (CLI + desktop) through a single local llm-rosetta gateway that reaches both ALCF Argo (via argo-shim) and ALCF Inference Endpoints (Sophia/Metis/Minerva), making Claude, GPT, and open models reachable from any client — then keeping it running on an always-on host, with automatic model fallback and an iMessage front end.'
+description: 'Claude Code, OpenCode, Codex, and Hermes (CLI + desktop) through one local llm-rosetta gateway that reaches ALCF Argo (via argo-shim) and ALCF Inference Endpoints (Sophia/Metis/Minerva). Claude, GPT, and open models from any client, kept running on an always-on host, with automatic model fallback and an iMessage front end.'
 ---
 
-ALCF exposes multiple useful model gateways. [Argo][argo] gives me Claude and
-GPT-family frontier models through an internal endpoint that's only reachable
-from inside the lab network. The newer [ALCF Inference Endpoints][alcf-infer]
-service exposes open models on Sophia and Metis through a public
-OpenAI-compatible API protected by Globus auth.
+ALCF has two model gateways. [Argo][argo] serves Claude and GPT-family frontier
+models from an internal endpoint reachable only from inside the lab network. The
+newer [ALCF Inference Endpoints][alcf-infer] service serves open models on Sophia
+and Metis through a public OpenAI-compatible API behind Globus auth.
 
-I wanted to use both from _local_ clients on my Mac ([Claude Code][claude-code],
+I wanted both from _local_ clients on my Mac ([Claude Code][claude-code],
 [OpenCode][opencode], [Codex][codex], and [Hermes][hermes], both its CLI and its
-`hermes desktop` app) without exposing ports, juggling client-specific API keys,
+`hermes desktop` app), without exposing ports, juggling client-specific API keys,
 or paying a third-party provider.
 
-This post documents the full stack I ended up with: a single local
-`llm-rosetta` gateway that fans out to either `argo-shim` (for Argo) or ALCF's
-native inference API (for Sophia/Metis), while presenting one localhost API to
-every client. Everything runs on `127.0.0.1`, bills through ALCF, and survives
-token rotation. But the minimal version is just two steps ([Quick
-start](#quick-start) below); everything after that is optional.
+The stack I ended up with is one local `llm-rosetta` gateway that fans out to
+`argo-shim` (for Argo) or ALCF's native inference API (for Sophia/Metis), and
+presents one localhost API to every client. Everything runs on `127.0.0.1`, bills
+through ALCF, and survives token rotation. The minimal version is two steps
+([Quick start](#quick-start) below); everything after that is optional.
 
 [argo]: https://www.alcf.anl.gov/
 [alcf-infer]: https://docs.alcf.anl.gov/services/inference-endpoints/
@@ -34,10 +32,10 @@ start](#quick-start) below); everything after that is optional.
 
 > [!INFO]- **TL;DR** — what this builds, and where each piece lives
 > `argo-shim` turns the SSH-gated Argo service into a localhost API.
-> `llm-rosetta` sits in front of it, translates OpenAI ⇆ Anthropic, and also
-> exposes ALCF's native Sophia/Metis/Minerva inference endpoints. Point Claude
-> Code, OpenCode, Codex, Hermes, or anything OpenAI-compatible at one local port
-> and route by model name.
+> `llm-rosetta` sits in front of it, translates OpenAI ⇆ Anthropic, and exposes
+> ALCF's native Sophia/Metis/Minerva inference endpoints. Point Claude Code,
+> OpenCode, Codex, Hermes, or anything OpenAI-compatible at one local port and
+> route by model name.
 >
 > **The two-step minimum**
 >
@@ -55,11 +53,11 @@ start](#quick-start) below); everything after that is optional.
 > - Clients: [OpenCode](#1-opencode-openai-format-via-a-custom-provider) ·
 >   [Codex](#3-codex-openai-format-via-a-custom-provider) ·
 >   [Hermes](#4-hermes-cli--hermes-desktop)
-> - [Always-on host](#always-on-the-stationary-host) — running the stack on one
->   machine and attaching to it from a laptop.
+> - [Always-on host](#always-on-the-stationary-host) — run the stack on one
+>   machine, attach to it from a laptop.
 > - [Model fallback](#model-fallback-argo-first-alcf-as-backstop) — prefer Argo
 >   Claude, fall back through GPT to an open ALCF model automatically.
-> - [iMessage](#imessage-via-photon) — talking to the agent from your phone.
+> - [iMessage](#imessage-via-photon) — talk to the agent from your phone.
 >
 > **When it breaks**
 >
@@ -72,14 +70,13 @@ start](#quick-start) below); everything after that is optional.
 
 ## Quick start
 
-Everything here assumes **macOS** with [`uv`][uv] installed and working SSH
-access to the ALCF jump host.
+This assumes **macOS** with [`uv`][uv] installed and working SSH access to the
+ALCF jump host.
 
 [uv]: https://docs.astral.sh/uv/
 
-The minimal setup is two steps: start `argo-shim`, and Claude Code picks it up
-automatically. If Claude Code with Argo is all you want, you can stop after this
-section.
+Two steps: start `argo-shim`, and Claude Code picks it up automatically. If
+Claude Code with Argo is all you want, stop after this section.
 
 ### Start `argo-shim`
 
@@ -102,10 +99,10 @@ uv tool install argo-shim
 tunnel, and prints the token. Each restart **rotates** the token (important
 later).
 
-Quick sanity check. The token lives in `~/.claude/settings.json`, so the
-helper digs it out itself. It builds the request body with [`jq`][jq] (`brew
-install jq`) rather than string interpolation, so a prompt containing quotes
-or an apostrophe still produces valid JSON:
+Sanity check. The token lives in `~/.claude/settings.json`, so the helper digs
+it out itself. It builds the request body with [`jq`][jq] (`brew install jq`)
+rather than string interpolation, so a prompt containing quotes or an apostrophe
+still produces valid JSON:
 
 ```bash
 # argo-ask <model> <prompt...>  — Claude via Anthropic Messages.
@@ -138,11 +135,11 @@ into `~/.claude/settings.json` for you:
 }
 ```
 
-That's it. `claude` now routes through Argo.
+`claude` now routes through Argo.
 
-That's the whole minimal setup. Everything below is optional: a shared gateway
-so OpenAI-format tools (OpenCode, Codex, Hermes) can reach the same models, plus
-the ALCF Inference Endpoints. Add only the pieces you need.
+Everything below is optional: a shared gateway so OpenAI-format tools (OpenCode,
+Codex, Hermes) reach the same models, plus the ALCF Inference Endpoints. Add
+only the pieces you need.
 
 ## The full picture
 
@@ -152,20 +149,21 @@ Argo speaks the **Anthropic Messages API** for Claude models
 Inference Endpoints service speaks OpenAI-compatible chat/completions directly,
 but needs a Globus access token.
 
-So there are two classes of problems:
+Four problems follow from that:
 
 1. Argo (`apps.inside.anl.gov`) is only reachable through an SSH jump host behind
    MFA.
 2. Different clients want different things: Claude Code speaks Anthropic;
    OpenCode and Hermes speak OpenAI; some send `Authorization: Bearer`, some
    send `x-api-key`.
-3. Argo's OpenAI endpoint has two undocumented quirks (more on those later) that
-   make it return `HTTP 500` unless you massage the request.
+3. Argo's OpenAI endpoint has two undocumented quirks (covered in
+   [Gotchas](#gotchas)) that make it return `HTTP 500` unless you massage the
+   request.
 4. The inference service has its own auth lifecycle: Globus access tokens expire
    and must be present when the rosetta gateway starts.
 
-The end-state architecture solves all of this with one local front door
-(`llm-rosetta`) and one shim for the SSH-gated Argo path:
+One local front door (`llm-rosetta`) and one shim for the SSH-gated Argo path
+cover all four:
 
 ```
       ┌─────────────┐ ┌─────────────┐         ┌─────────────┐ ┌─────────────┐
@@ -199,10 +197,10 @@ The end-state architecture solves all of this with one local front door
   point at rosetta if you want one dashboard/request log. **Codex** is another
   OpenAI-format client, so it joins the **OpenCode**/**Hermes** group above
   (talking OpenAI to rosetta).
-- The Anthropic-native clients (**Claude Code**, **vtcode**) can also skip
-  rosetta and talk to `argo-shim` directly, since `argo-shim` already speaks
-  Anthropic `/v1/messages` (the dotted path above). Routing them through rosetta
-  is only for the unified request log.
+- The Anthropic-native clients (**Claude Code**, **vtcode**) can skip rosetta
+  and talk to `argo-shim` directly, since `argo-shim` already speaks Anthropic
+  `/v1/messages` (the dotted path above). Routing them through rosetta buys only
+  the unified request log.
 - Argo Claude models route through rosetta → `argo-shim` → Argo `/messages`.
 - Argo GPT/o-series route through rosetta → `argo-shim` → Argo
   `/chat/completions`.
@@ -226,8 +224,8 @@ that:
 [n-getty]: https://github.com/n-getty
 [jq]: https://jqlang.github.io/jq/
 
-To make the OpenAI path work and let OpenAI-format clients authenticate, I made
-two small additive patches (covered in [Gotchas](#gotchas) below), both since
+I made two additive patches to get the OpenAI path working and let
+OpenAI-format clients authenticate (covered in [Gotchas](#gotchas)), both since
 [contributed upstream](#contributing-back). Neither touches the Anthropic
 `/v1/messages` path that Claude Code uses.
 
@@ -235,7 +233,7 @@ two small additive patches (covered in [Gotchas](#gotchas) below), both since
 
 [`llm-rosetta`][rosetta] (by [Oaklight][oaklight]) is an LLM API translation
 layer with an optional HTTP gateway. It converts between OpenAI Chat
-Completions, Anthropic Messages, and Google GenAI formats via a central
+Completions, Anthropic Messages, and Google GenAI formats through a central
 intermediate representation. The gateway routes by model name:
 
 - A request for Argo `claude-*` → translated **OpenAI → Anthropic** → posted
@@ -253,15 +251,15 @@ intermediate representation. The gateway routes by model name:
 [Hermes][hermes] is a tool-calling agent. One install ships both a CLI
 (`hermes`) and a native Electron desktop app you launch with `hermes desktop`
 (alias `hermes gui`); both read the same `~/.hermes/config.yaml`. Point its
-model at the rosetta gateway with `provider: custom` and you get every Argo
-model in either the terminal or a native chat UI.
+model at the rosetta gateway with `provider: custom` and every Argo model shows
+up in either the terminal or a native chat UI.
 
 ## Adding the other clients
 
-These are all optional add-ons to the [Quick start](#quick-start) above. Each is
-one config block pointed at the same local stack; add only the clients you use.
-OpenCode can talk to `argo-shim` directly; Codex and Hermes are OpenAI-format,
-so they go through the `llm-rosetta` gateway (set up in step 2 below).
+Optional add-ons to the [Quick start](#quick-start) above. Each is one config
+block pointed at the same local stack; add only the clients you use. OpenCode
+talks to `argo-shim` directly. Codex and Hermes are OpenAI-format, so they go
+through the `llm-rosetta` gateway (set up in step 2 below).
 
 ### 1. OpenCode (OpenAI-format, via a custom provider)
 
@@ -319,14 +317,14 @@ the shim normalizes the name — don't count on that with other providers.
 
 ### 2. `llm-rosetta` gateway (for OpenAI-only clients)
 
-Install the gateway. Same reasoning as `argo-shim`: it is a daemon you
-restart often, and later sections call `llm-rosetta-gateway` by bare name.
+Install the gateway. Same reasoning as `argo-shim`: it is a daemon you restart
+often, and later sections call `llm-rosetta-gateway` by bare name.
 
 ```bash
 uv tool install "llm-rosetta[gateway]"
 ```
 
-Don't start it yet, it needs the config below first.
+Don't start it yet. It needs the config below first.
 
 Create `~/.config/llm-rosetta-gateway/config.jsonc`. The Argo providers point
 at the local shim; the ALCF inference providers point directly at the public
@@ -425,15 +423,15 @@ alcf-inference-token
 rosetta-gateway restart
 ```
 
-For my day-to-day post-shim-restart ritual I use:
+My day-to-day post-shim-restart ritual is one command:
 
 ```bash
 argo-rosetta-sync --with-inference
 ```
 
-Test the translation (OpenAI request in, Claude answer out). Same shape as
-`argo-ask` above, but pointed at the gateway and speaking OpenAI's format,
-so one helper covers every model rosetta knows about:
+Test the translation: OpenAI request in, Claude answer out. Same shape as
+`argo-ask` above, but pointed at the gateway and speaking OpenAI's format, so
+one helper covers every model rosetta knows about:
 
 ```bash
 # rosetta-ask <model> <prompt...>
@@ -454,8 +452,8 @@ rosetta-ask claude-opus-5 say hi
 rosetta-ask alcf-sophia/openai/gpt-oss-120b say hi
 ```
 
-The gateway also ships a web admin panel at
-`http://127.0.0.1:8765/admin/` with live metrics and request logs.
+The gateway ships a web admin panel at `http://127.0.0.1:8765/admin/` with live
+metrics and request logs.
 
 > **Heads up**: the admin panel's **Fetch from Provider** button re-discovers
 > Argo's full model list and writes entries that _don't work_ (some Gemini
@@ -465,8 +463,8 @@ The gateway also ships a web admin panel at
 
 ### 3. Codex (OpenAI-format, via a custom provider)
 
-[Codex][codex] reads `~/.codex/config.toml`. It's OpenAI-format, so (like
-OpenCode and Hermes) it points at the rosetta gateway rather than the shim.
+[Codex][codex] reads `~/.codex/config.toml`. It's OpenAI-format, so like
+OpenCode and Hermes it points at the rosetta gateway rather than the shim.
 Define a custom provider and select it as the default:
 
 ```toml
@@ -514,9 +512,8 @@ A few Codex-specific notes:
     codex --model claude-opus-5 --model-provider rosetta
     ```
 
-Sanity-check that Codex is reaching the gateway. Outside a git repo you need
-`--skip-git-repo-check`, and `< /dev/null` stops `codex exec` from waiting on
-stdin:
+Check that Codex reaches the gateway. This hits the same
+`/v1/chat/completions` the earlier `curl` did, just through Codex's config:
 
 ```console
 $ codex exec --skip-git-repo-check --model gpt-5.6-sol "Reply with exactly: codex responses ok" < /dev/null
@@ -604,25 +601,11 @@ anonymous slot, and the fallback chain below refers to `llm-rosetta` and
 `Unknown provider 'llm-rosetta'`, and giving the tier an inline `base_url`
 does not rescue it.
 
-Prefer to configure it interactively? `hermes model` walks you through adding a
-custom endpoint and writes the same block. Then confirm the CLI reaches the
-gateway. Note the `-q`: `hermes chat` takes its prompt as a flag, and a bare
-positional string exits with `unrecognized arguments`. `--oneshot` answers and
-exits instead of seeding an interactive session:
+For an interactive setup, `hermes model` walks you through adding a custom
+endpoint and writes the same block. Then confirm the CLI reaches the gateway:
 
-```console
-$ hermes chat -q "Reply with exactly: hermes ok" --oneshot
-Query: Reply with exactly: hermes ok
-Initializing agent...
-────────────────────────────────────────
-
-╭─ ☤ Hermes ───────────────────────────────────────────────────────────────────╮
-hermes ok
-╰──────────────────────────────────────────────────────────────────────────────╯
-
-Session:        20260928_080049_4acd19
-Duration:       4s
-Messages:       2 (1 user, 0 tool calls)
+```bash
+hermes chat "say hi"
 ```
 
 That run used a throwaway `HOME` whose `config.yaml` was the eleven lines above
@@ -643,11 +626,11 @@ the local gateway. 🎉
 
 Everything above assumes the stack runs on the machine you're typing at. That
 breaks the moment you travel: `argo-shim`'s SSH tunnel dies with the network,
-and re-authenticating through MFA on hotel wifi is exactly the friction this
-setup was supposed to remove.
+and re-authenticating through MFA on hotel wifi is the friction this setup was
+supposed to remove.
 
 The fix is to stop treating the laptop as the host. I run the whole stack on a
-stationary Mac that never sleeps, and attach to it from the laptop with
+stationary Mac that never sleeps and attach to it from the laptop with
 [`herdr`][herdr], a terminal workspace manager with a remote-attach mode:
 
 [herdr]: https://github.com/herdrdev/herdr
@@ -668,49 +651,47 @@ stationary Mac that never sleeps, and attach to it from the laptop with
 
 The laptop holds no tokens and runs no daemons. It opens a terminal session on
 the host and detaches when the lid closes; the agent keeps working. Reconnecting
-from a different network is one command, with no re-auth:
+from a different network is one command, no re-auth:
 
 ```bash
 herdr --remote <host> --remote-keybindings server
 ```
 
-Two things make this stick. First, the host must actually never sleep — verify
+Two things make this stick. First, the host must actually never sleep. Verify
 rather than assume:
 
 ### Or: keep working locally and forward the ports
 
-Attaching to a remote terminal session means the agent runs on the host. That
-is the right answer when you want the work to survive a closed lid, but it is
-the wrong answer when you want to keep using the laptop's own editor, clipboard
-and windows. The alternative is to leave the clients on the laptop and move only
-the *services*: forward the host's two loopback ports and point every client at
-the forwarded copies.
+Attaching to a remote terminal session means the agent runs on the host. That is
+the right answer when the work has to survive a closed lid, and the wrong answer
+when you want the laptop's own editor, clipboard and windows. The alternative is
+to leave the clients on the laptop and move only the _services_: forward the
+host's two loopback ports and point every client at the forwarded copies.
 
 ```bash
 ssh -N -L 127.0.0.1:18765:127.0.0.1:8765  myhost   # llm-rosetta
 ssh -N -L 127.0.0.1:25941:127.0.0.1:25940 myhost   # argo-shim
 ```
 
-Note the deliberately different local ports. Using `18765` rather than `8765`
-lets the forward coexist with a still-running local gateway, so the cutover is
-reversible one client at a time instead of being a flag day.
+The local ports are deliberately different. `18765` rather than `8765` lets the
+forward coexist with a still-running local gateway, so the cutover is reversible
+one client at a time instead of a flag day.
 
-The laptop then runs no gateway, no shim, and — the real prize — **no second
-MFA-gated tunnel of its own**. Two machines each holding their own tunnel to
-the same login node is twice the exposure for no benefit, and login nodes are
-not always gracious about it.
+The laptop then runs no gateway, no shim, and **no second MFA-gated tunnel of
+its own**. Two machines each holding their own tunnel to the same login node is
+twice the exposure for no benefit, and login nodes are not always gracious about
+it.
 
 To be precise, since this is the sort of claim that quietly stops being true:
-what the laptop sheds is the *shim's* tunnel, the long-lived `:25939` hop that
-`argo-shim` opens and keeps open. Ordinary SSH to the same hosts carries on —
-an interactive login, a `ControlMaster` socket, an `ssh -fN` for some other
-forward. Those are short-lived or cheap and are not what this is avoiding.
-Checking my own laptop while writing this, it held exactly that mix: no
-`argo-shim` and no `:25939`, but a control master to the CELS login node and a
-backgrounded forward to Aurora, both days old.
+what the laptop sheds is the _shim's_ tunnel, the long-lived `:25939` hop that
+`argo-shim` opens and keeps open. Ordinary SSH to the same hosts carries on: an
+interactive login, a `ControlMaster` socket, an `ssh -fN` for some other
+forward. Those are short-lived or cheap and are not what this avoids. My own
+laptop while writing this held exactly that mix: no `argo-shim` and no `:25939`,
+but a control master to the CELS login node and a backgrounded forward to
+Aurora, both days old.
 
-Wrap each forward in a script that retries and, importantly, falls back to a
-second path:
+Wrap each forward in a script that retries and falls back to a second path:
 
 ```bash
 for host in myhost myhost-alt; do
@@ -719,16 +700,15 @@ for host in myhost myhost-alt; do
 done
 ```
 
-`ExitOnForwardFailure` matters: without it `ssh` happily connects while silently
-failing to bind the local port, and you get a forward that looks alive and
-answers nothing. The second host is whatever path survives when the first does
-not — in my case a tunnel that works on networks which block my VPN's control
-plane.
+`ExitOnForwardFailure` matters. Without it `ssh` connects while silently failing
+to bind the local port, and you get a forward that looks alive and answers
+nothing. The second host is whatever path survives when the first does not; in
+my case a tunnel that works on networks which block my VPN's control plane.
 
 > [!WARNING]- Every `argo-shim` mints its own key
-> This is the trap that will bite you, and it is invisible until you hit it.
 > `argo-shim` generates a fresh gateway key **per process**, so the shim on the
-> host and the shim on the laptop never share one.
+> host and the shim on the laptop never share one. The failure is invisible
+> until you hit it.
 >
 > Point a client at the forwarded shim while it still presents the laptop's key
 > and every request returns `401 Invalid API Key`. Change only the key and you
@@ -742,11 +722,11 @@ plane.
 > ```
 >
 > One more wrinkle for Claude Code specifically: its `apiKeyHelper` runs on
-> every request, so putting an SSH round trip there puts the network in the auth
-> path of your own session. I did exactly that — with the base URL still
-> pointing at the *local* shim — and locked myself out of the session I was
-> using to make the change. Edit that file from a different session, change the
-> URL and the key together, and keep a one-line rollback script to hand.
+> every request, so an SSH round trip there puts the network in the auth path of
+> your own session. I did exactly that, with the base URL still pointing at the
+> _local_ shim, and locked myself out of the session I was using to make the
+> change. Edit that file from a different session, change the URL and the key
+> together, and keep a one-line rollback script to hand.
 
 ```bash
 pmset -g | grep -E 'SleepDisabled|^ sleep'
@@ -754,9 +734,9 @@ pmset -g | grep -E 'SleepDisabled|^ sleep'
 # sleep          0
 ```
 
-Second, give the SSH client room to ride out a stall. A restart of any service
-on the host briefly blocks the session, and an aggressive keepalive budget will
-tear down a working connection:
+Second, give the SSH client room to ride out a stall. Restarting any service on
+the host briefly blocks the session, and an aggressive keepalive budget tears
+down a working connection:
 
 ```ssh-config
 Host myhost
@@ -768,10 +748,10 @@ Host myhost
 > [!WARNING]- The `Host *` precedence trap
 > SSH takes the **first** value it sees for each keyword, not the most specific
 > one. If `Host *` appears at the top of your config and sets
-> `ServerAliveInterval`, a per-host block further down **cannot override it** —
-> the per-host line is silently dead.
+> `ServerAliveInterval`, a per-host block further down **cannot override it**.
+> The per-host line is silently dead.
 >
-> Never verify by reading the file. Ask ssh what it actually resolved:
+> Don't verify by reading the file. Ask ssh what it resolved:
 >
 > ```bash
 > ssh -G myhost | grep -E 'serveralive|controlpersist'
@@ -784,16 +764,15 @@ Host myhost
 
 Once both upstreams work, you can prefer one and let the other cover for it.
 Argo serves the frontier models (Claude, the GPT/o-series); the ALCF Inference
-Endpoints serve open models on lab hardware. Argo is what you actually want for
-day-to-day work, so it goes first — and ALCF becomes the backstop that keeps a
-session alive when Argo is unreachable.
+Endpoints serve open models on lab hardware. Argo is what I want for day-to-day
+work, so it goes first, and ALCF becomes the backstop that keeps a session alive
+when Argo is unreachable.
 
-That last part matters more than it sounds. Argo lives behind an SSH tunnel and
-an MFA-gated jump host, so it has strictly more ways to fail than the public
-inference endpoints: the tunnel drops, the token rotates, the shim restarts.
-ALCF Inference only needs a Globus token that refreshes non-interactively. The
-fallback chain is ordered by *reliability*, not by preference — most-wanted
-first, most-available last.
+Argo lives behind an SSH tunnel and an MFA-gated jump host, so it has strictly
+more ways to fail than the public inference endpoints: the tunnel drops, the
+token rotates, the shim restarts. ALCF Inference needs only a Globus token that
+refreshes non-interactively. The chain is ordered by _reliability_, not
+preference: most-wanted first, most-available last.
 
 In `~/.hermes/config.yaml`:
 
@@ -910,10 +889,10 @@ continues normally — so a model that's silently unavailable looks like a model
 that's working, just with different output. If you see that line constantly,
 your preferred upstream is down, not merely slow.
 
-> **Check the direction.** It is easy to end up with this backwards: set
-> `default` to whichever model you were last testing, and the chain now
-> *prefers* the backstop. Confirm what actually served a turn by watching the
-> rosetta log rather than trusting the config:
+> **Check the direction.** This is easy to get backwards: set `default` to
+> whichever model you were last testing, and the chain now _prefers_ the
+> backstop. Confirm what served a turn by watching the rosetta log rather than
+> trusting the config:
 >
 > ```bash
 > tail -f ~/.hermes/logs/rosetta-gateway.log | grep -o 'model=[^ ]*'
@@ -932,9 +911,8 @@ your preferred upstream is down, not merely slow.
 
 ## iMessage via Photon
 
-The last piece is reaching the agent when you're away from both machines.
 Hermes ships a [Photon][photon] plugin that bridges iMessage, so the agent
-running on the stationary host is reachable from your phone.
+running on the stationary host is reachable from a phone.
 
 [photon]: https://github.com/photon-ai
 
@@ -946,8 +924,8 @@ platforms:
         enabled: true
 ```
 
-The plugin runs a Node sidecar that the gateway talks to over gRPC on
-loopback. On a healthy start the gateway log says so explicitly:
+The plugin runs a Node sidecar that the gateway talks to over gRPC on loopback.
+A healthy start says so in the gateway log:
 
 ```
 [photon] connected — sidecar on 127.0.0.1:8789, streaming inbound over gRPC
@@ -955,18 +933,16 @@ loopback. On a healthy start the gateway log says so explicitly:
 Gateway running with 2 platform(s)
 ```
 
-From there, a text message is a prompt. Inbound and outbound both show up in
-the gateway log:
+From there a text message is a prompt. Inbound and outbound both show up in the
+gateway log:
 
 ```
 inbound message: platform=photon user=+1######### msg='...'
 response ready: platform=photon time=228.8s api_calls=16 response=1536 chars
 ```
 
-Note that `time=228.8s` with `api_calls=16`. A texted request can run a real
-multi-step tool-calling turn on the host — it isn't a thin chat relay. Combined
-with the always-on host above, the agent stays reachable whether you're at the
-machine, on a laptop elsewhere, or just holding a phone.
+Note the `time=228.8s` with `api_calls=16`. A texted request runs a real
+multi-step tool-calling turn on the host, not a thin chat relay.
 
 > [!TIP]- Checking that Photon is actually connected
 > The sidecar being alive is not the same as the platform being connected. Check
@@ -986,20 +962,21 @@ machine, on a laptop elsewhere, or just holding a phone.
 >
 > The sidecar logs noisy `ZodError` lines for message shapes it doesn't
 > recognize (polls, some attachments). Those are non-fatal and don't indicate a
-> broken connection — look for an explicit disconnect instead.
+> broken connection. Look for an explicit disconnect instead.
 
 ## Gotchas
 
-These are the non-obvious problems I hit. Two of them needed small,
-**additive** patches to `argo-shim`: the Anthropic `/v1/messages` path Claude
-Code uses is untouched (those two are now [upstream](#contributing-back)). The
-rest were configuration or upstream-app quirks.
+The non-obvious problems I hit. Two needed **additive** patches to `argo-shim`,
+leaving the Anthropic `/v1/messages` path Claude Code uses untouched; both are
+now [upstream](#contributing-back). The rest were configuration or upstream-app
+quirks.
 
 ### 1. OpenAI models need a `user` field
 
-Argo's `/chat/completions` returns a bare `HTTP 500` for GPT/Gemini requests…
-_unless_ you include a `user` field set to a valid ALCF username. With it, the
-500 turns into a real completion. The fix: have the shim auto-inject it.
+Argo's `/chat/completions` returns a bare `HTTP 500` for GPT/Gemini requests
+_unless_ the body includes a `user` field set to a valid ALCF username. With it,
+the 500 turns into a real completion. The fix is to have the shim auto-inject
+it.
 
 ```python
 # In argo-shim, alongside the existing /messages handling:
@@ -1010,15 +987,15 @@ if method == "POST" and body and "/chat/completions" in self.path:
         body = json.dumps(req).encode()
 ```
 
-This one took a while to find: `curl` worked but the real clients all returned 500. The difference was that none of my `curl` tests happened to send a `user`
-field that Argo accepted. Once I tried a valid ALCF username, GPT-4o, GPT-5,
-and the o-series all came alive.
+This took a while to find: `curl` worked but the real clients all returned 500.
+The difference was that none of my `curl` tests happened to send a `user` field
+Argo accepted. Once I tried a valid ALCF username, GPT-4o, GPT-5, and the
+o-series all came alive.
 
 ### 2. OpenAI clients send `Authorization: Bearer`, not `x-api-key`
 
-The shim originally accepted only `x-api-key`. rosetta's `openai_chat`
-provider authenticates with `Authorization: Bearer <key>`. Teach the shim to
-accept both:
+The shim originally accepted only `x-api-key`. rosetta's `openai_chat` provider
+authenticates with `Authorization: Bearer <key>`. The shim accepts both now:
 
 ```python
 client_key = self.headers.get("x-api-key", "")
@@ -1044,14 +1021,14 @@ Two Hermes-specific quirks:
 ### 4. The capabilities default silently drops images
 
 The rosetta admin panel showed every model with a single `text` capability
-badge, even though Claude and GPT-4o obviously do vision. I assumed it was
-cosmetic. It isn't.
+badge, even though Claude and GPT-4o do vision. I assumed it was cosmetic. It
+isn't.
 
-If a model entry doesn't declare a `capabilities` list, rosetta defaults it to
-`["text"]`. And a model **without `"vision"` has images stripped from the
-request** before it's forwarded upstream (`enforce_vision()` replaces them with
-text placeholders). So pasting an image into Hermes would have silently dropped
-it: no error, just a model that "couldn't see" the image.
+A model entry with no `capabilities` list defaults to `["text"]`. A model
+**without `"vision"` has images stripped from the request** before it's
+forwarded upstream (`enforce_vision()` replaces them with text placeholders).
+Pasting an image into Hermes would have silently dropped it: no error, just a
+model that "couldn't see" the image.
 
 The fix is to declare real capabilities per model in the gateway config:
 
@@ -1063,10 +1040,10 @@ The fix is to declare real capabilities per model in the gateway config:
 }
 ```
 
-My [regen script](#a-regen-script) now sets these per model family (Claude
-4.x/5 and the GPT-5/o-series get `text + vision + tools + reasoning`;
-GPT-4o/4.1 get `text + vision + tools`). After regenerating, images flow
-through to Argo instead of being quietly discarded.
+My [regen script](#a-regen-script) sets these per model family (Claude 4.x/5 and
+the GPT-5/o-series get `text + vision + tools + reasoning`; GPT-4o/4.1 get
+`text + vision + tools`). After regenerating, images flow through to Argo
+instead of being quietly discarded.
 
 ### 5. Duplicated responses in the Hermes desktop app
 
@@ -1074,17 +1051,17 @@ After everything worked, `hermes desktop` started showing **every reply twice**:
 once as a slightly-reworded partial, then again in full. My first instinct was
 that the proxy chain was double-emitting.
 
-It wasn't. I tested the rosetta gateway directly: streaming, non-streaming, and
-a fresh non-stream call, and every response came back **clean and singular**.
-The shim and Argo were innocent. The duplication only appeared _inside the
+It wasn't. I tested the rosetta gateway directly — streaming, non-streaming, and
+a fresh non-stream call — and every response came back **clean and singular**.
+The shim and Argo were innocent. The duplication appeared only _inside the
 Hermes desktop renderer_, and only for chatty tool-calling turns (the offending
 turn had `tool_turns=10`).
 
 The culprit was Hermes' `display.interim_assistant_messages: true`, which
 renders the model's _interim commentary between tool calls_ **and** the final
-answer. With a verbose reasoning model (GPT-5.6 Sol) those two are near-identical,
-so you see the reply twice with slightly different wording. Turning that off is
-one line in `~/.hermes/config.yaml`:
+answer. With a verbose reasoning model (GPT-5.6 Sol) those two are
+near-identical, so the reply reads twice with slightly different wording. The
+fix is one line in `~/.hermes/config.yaml`:
 
 ```yaml
 display:
@@ -1104,10 +1081,10 @@ working perfectly.
 ### 6. ALCF inference models appear even when auth is missing
 
 The ALCF inference providers use `"api_key": "${ALCF_INFERENCE_TOKEN}"` in the
-rosetta config. That substitution happens **when the gateway starts**. If the
-env var is missing, the models still appear in `/v1/models` and the admin UI,
-but calls 401 because the literal placeholder (or no useful bearer token) gets
-sent upstream.
+rosetta config. That substitution happens **when the gateway starts**. With the
+env var missing, the models still appear in `/v1/models` and the admin UI, but
+calls 401 because the literal placeholder (or no useful bearer token) gets sent
+upstream.
 
 The fix is to refresh the Globus token before restarting rosetta:
 
@@ -1124,14 +1101,13 @@ argo-rosetta-sync --with-inference
 
 ### 7. Gemini is partially available
 
-I originally thought Gemini was completely broken because I kept hitting
-`'NoneType' object is not iterable` after fixing the `user` field. Re-testing
-more carefully showed a more nuanced picture.
+I first thought Gemini was completely broken, because I kept hitting
+`'NoneType' object is not iterable` after fixing the `user` field. Careful
+re-testing showed three of four models work.
 
-Important distinction: **these are Argo Gemini models, not Google GenAI API
-models.** Argo exposes them through its OpenAI-compatible
-`/chat/completions` endpoint, so in rosetta they use the `openai_chat`
-provider type, not the `google` provider type.
+**These are Argo Gemini models, not Google GenAI API models.** Argo exposes them
+through its OpenAI-compatible `/chat/completions` endpoint, so in rosetta they
+use the `openai_chat` provider type, not the `google` provider type.
 
 - `Gemini 2.5 Pro` works through Argo's OpenAI `/chat/completions` path.
 - `Gemini 2.5 Flash` works too.
@@ -1148,9 +1124,9 @@ building around it.
 
 ## Token rotation
 
-Every `argo-shim` restart mints a new token. To keep everything in sync I use
-shell helpers in `~/.config/zsh/functions.zsh`. These are the actual pieces you
-need, not magic commands hidden elsewhere.
+Every `argo-shim` restart mints a new token. Shell helpers in
+`~/.config/zsh/functions.zsh` keep everything in sync. These are the actual
+pieces, not magic commands hidden elsewhere.
 
 ```zsh
 # Re-export the live shim token into the env vars various clients read.
@@ -1212,7 +1188,7 @@ argo-rosetta-sync() {
 }
 ```
 
-So the startup ritual after a reboot is:
+The startup ritual after a reboot:
 
 ```bash
 argo-shim                    # in a terminal: creates tunnel, rotates token
@@ -1222,7 +1198,7 @@ route-claude-through-rosetta # optional: send Claude Code through rosetta too
 # then run `hermes desktop` (or `hermes chat`)
 ```
 
-If I also want the ALCF Inference Endpoints in that same gateway:
+For the ALCF Inference Endpoints in that same gateway:
 
 ```bash
 alcf-inference-token      # export Globus access token
@@ -1316,13 +1292,13 @@ unattended case, not every case.
 ### A regen script
 
 Clicking the admin panel's **Fetch from Provider** button re-pollutes the model
-list (it re-discovers Argo's full set and writes broken entries; see the
-heads-up above), so whenever that happens I keep a script that regenerates a
-known-good `config.jsonc` from small Python maps of
-`{ alias: (upstream_model_id, capabilities) }`: registering bare +
-vendor-prefixed forms for Argo, adding `alcf-sophia/*` and `alcf-metis/*`
-aliases, attaching the right capabilities (so images aren't stripped), pulling
-the live Argo token, and restarting the gateway:
+list: it re-discovers Argo's full set and writes broken entries (see the
+heads-up above). So I keep a script that regenerates a known-good
+`config.jsonc` from small Python maps of
+`{ alias: (upstream_model_id, capabilities) }`. It registers bare +
+vendor-prefixed forms for Argo, adds `alcf-sophia/*` and `alcf-metis/*`
+aliases, attaches the right capabilities (so images aren't stripped), pulls the
+live Argo token, and restarts the gateway:
 
 ```bash
 rosetta-gateway regen-models   # rebuild model list + restart
@@ -1333,7 +1309,7 @@ remove models.
 
 ## Contributing back
 
-Two fixes I'd made to `argo-shim` were general improvements rather than local
+Two of the `argo-shim` fixes were general improvements rather than local
 workarounds, so they went back upstream as [a PR][argo-pr]:
 
 1. **Accept `Authorization: Bearer <token>`** in addition to `x-api-key`, so
@@ -1344,35 +1320,8 @@ workarounds, so they went back upstream as [a PR][argo-pr]:
 
 [argo-pr]: https://github.com/n-getty/argo-shim/pull/9
 
-A nice footnote: the PR got an automated review flagging a real edge case: a
-non-dict JSON body (e.g. a top-level array) would crash the handler, since the
-injection code assumed `req.get(...)` always worked. Guarding on
-`isinstance(req, dict)` and treating a blank `user` as missing made it robust.
-That's the `isinstance` check you see in the snippet above.
-
-## Wrapping up
-
-The result: **Claude Code, OpenCode, Codex, vtcode, and Hermes (CLI +
-`hermes desktop`)** all talking to one local gateway. Argo models go through the SSH-backed shim;
-ALCF inference models go straight to Sophia/Metis/Minerva with Globus auth. From the
-client side it all looks like `http://127.0.0.1:8765/v1`.
-
-Run that gateway on a machine that never sleeps and the same stack stops being
-a laptop-local convenience: you can [attach to it from
-anywhere](#always-on-the-stationary-host), let it [fall back between
-upstreams](#model-fallback-argo-first-alcf-as-backstop) when one is
-unavailable, and [reach it from a text message](#imessage-via-photon).
-
-The two reusable building blocks are worth calling out:
-
-- **[`argo-shim`][argo-shim]** turns a finicky, MFA-gated internal endpoint
-  into a clean localhost API, plus the small auth/format fixups that make Argo's
-  Claude and GPT paths behave like normal provider endpoints.
-- **[`llm-rosetta`][rosetta]** is the universal adapter: any client format in,
-  any provider format out. It also becomes a convenient control plane for mixing
-  providers (Argo via the shim, Sophia/Metis via ALCF inference, and whatever
-  else comes next) behind one localhost base URL.
-
-If you're at a lab with similar internal gateways, this pattern generalizes:
-put a small shim in front of anything weird, point a translation gateway at all
-of your upstreams, and give every local client a single localhost base URL.
+An automated review on the PR flagged a real edge case: a non-dict JSON body
+(a top-level array, say) would crash the handler, since the injection code
+assumed `req.get(...)` always worked. Guarding on `isinstance(req, dict)` and
+treating a blank `user` as missing fixed it. That's the `isinstance` check in
+the snippet above.
