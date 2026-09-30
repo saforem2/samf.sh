@@ -204,19 +204,21 @@ Scaling an inefficient run scales the inefficiency.
 The job we profile later this hour is idle **90.7%** of every step. Another
 512 nodes buys 90.7% idle on 512 more nodes. Same fraction, bigger bill.
 
-<figure>
-    <img
-        src="/talks/2026-06-03/figures/2b-mds-tokens-vs-time.svg"
-        alt="Consumed tokens against calendar date for the 2B-MDS production chain, three coloured stages rising from zero to 7.77 trillion tokens between October 2025 and March 2026. The curve is a staircase: sloped segments where training progressed, long flat segments where it did not."
-    />
-    <figcaption>7.77T tokens, five calendar months. The flat stretches are the hours that computed nothing.</figcaption>
-</figure>
+That idle is **inside the step** — the GPU sitting between kernels while
+one rank waits. It is not queue time, not a dead node, not walltime you
+lost to the scheduler. Nodes do not touch it.
 
 > [!IMPORTANT]+ First question, before any change
 > Is the GPU busy?
 
 <SpeakerNotes>
-Everything else hangs off this. Short slide, let the figure carry it.
+No figure here on purpose. The obvious candidate was the 2B-MDS
+tokens-vs-calendar chart, but its flat stretches are queue waits and
+outages -- which more nodes genuinely would help with, so it argues the
+opposite of this slide. The picture that does make this case is the
+A/E trace pair later; do not spend it early.
+
+Everything hangs off this slide. Keep it short and land the 90.7%.
 </SpeakerNotes>
 
 </Slide>
