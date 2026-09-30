@@ -569,22 +569,22 @@ A real one, from the job behind this talk — Aurora, 2 nodes, 12 tiles:
 | | |
 | --- | --- |
 | trace events | **373,458** |
-| XPU kernels | 11,247 across 48 streams |
-| device time | 115.0 ms |
-| busiest stream | **5.9% busy, 94.1% idle** |
-| gaps over 2 ms | **87** |
-| largest gap | **9.5 ms** |
+| steps captured | `ProfilerStep#9/10/11` |
+| step wall-clock | 439 / 442 / 448 ms |
+| device busy, per step | 41.3 ms |
+| **device idle** | **90.6%** |
+| largest single gap | **9.1 ms** |
 
 > [!IMPORTANT]+ That is the whole talk in one row
-> Not a warmup artifact — the 87 gaps are spread through the run. This job
-> is starved, and no amount of extra nodes fixes it.
+> The GPU is doing nothing for nine tenths of every step. No number of
+> extra nodes changes that fraction.
 
 <figure>
     <img
-        src="/talks/2026-10-15/figures/trace-step.png"
-        alt="Perfetto timeline of one Aurora training step, ProfilerStep#10. CPU thread rows on top show dense nested operator frames; twelve XPU device stream rows below show sparse kernel activity, with Stream 64 the only heavily populated one and visible whitespace between bursts on every stream."
+        src="/talks/2026-10-15/figures/trace-gap.png"
+        alt="Perfetto timeline zoomed to a 17 ms window inside ProfilerStep#10 on Aurora. The CPU main-thread row is packed with nested operator frames including FSDP::pre_forward, FSDP::all_gather, c10d::_allgather_base_ and xccl::_all_gather. The three XPU device rows, Stream 64, 65 and 66, are blank across the middle of the window: the GPU is idle while the CPU works."
     />
-    <figcaption>One step, <code>ProfilerStep#10</code>. Dense on the CPU rows, sparse on the device rows. The whitespace is the GPU waiting.</figcaption>
+    <figcaption>17 ms inside one step. CPU packed, <code>Stream 64/65/66</code> blank. That whitespace is the GPU waiting on <code>all_gather</code>.</figcaption>
 </figure>
 
 </Slide>
