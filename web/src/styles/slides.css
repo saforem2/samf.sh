@@ -1447,7 +1447,10 @@ body.slides-print-mode [is-~='slide']::after {
         )
         [is-~='presentation']:has(#title-slide[data-current])
         .deck-corner-logo-light,
-    :root:is([data-webtui-theme='custom-dark'], [data-webtui-theme='catppuccin'])
+    :root:is(
+            [data-webtui-theme='custom-dark'],
+            [data-webtui-theme='catppuccin']
+        )
         [is-~='presentation']:has(#title-slide[data-current])
         .deck-corner-logo-dark {
         display: block !important;
