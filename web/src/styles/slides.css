@@ -1554,6 +1554,13 @@ body.slides-print-mode [is-~='slide']::after {
     text-indent: 0;
     max-width: min(60ch, calc(100vw - 6ch));
     width: max-content;
+    /* Cap to the gap the positioner measured and scroll the rest. Without
+       this a long footnote opened near the bottom of a slide ran off the
+       screen with its tail unreachable -- the box has no page to continue
+       onto. Fallback keeps it on-screen if the JS has not run yet. */
+    max-height: var(--popover-max-h, calc(100vh - 4lh));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     /* Break long tokens (URLs, citation titles, etc) instead of
        overflowing past the right border. */
     overflow-wrap: anywhere;

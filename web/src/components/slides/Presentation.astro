@@ -564,7 +564,28 @@ const canonical = `samf.sh${url}`
                 const maxLeft = window.innerWidth - w - 8
                 if (left > maxLeft) left = Math.max(8, maxLeft)
                 dlg.style.setProperty('--popover-left', `${left}px`)
-                dlg.style.setProperty('--popover-top', `${r.bottom}px`)
+
+                // Vertical: this used to always open downward from the
+                // trigger, so a long footnote near the bottom of a slide ran
+                // straight off the screen with its tail unreachable. Give it
+                // the larger of the two gaps, cap its height to that gap, and
+                // let the CSS scroll what does not fit.
+                const PAD = 8
+                const below = window.innerHeight - r.bottom - PAD
+                const above = r.top - PAD
+                const h = content.offsetHeight
+                if (h <= below || below >= above) {
+                    dlg.style.setProperty('--popover-top', `${r.bottom}px`)
+                    dlg.style.setProperty('--popover-max-h', `${below}px`)
+                } else {
+                    // open upward, bottom-aligned to just above the trigger
+                    const boxH = Math.min(h, above)
+                    dlg.style.setProperty(
+                        '--popover-top',
+                        `${Math.max(PAD, r.top - boxH)}px`,
+                    )
+                    dlg.style.setProperty('--popover-max-h', `${above}px`)
+                }
             }
             dlg.addEventListener('mouseenter', () => {
                 setOpen(true)
