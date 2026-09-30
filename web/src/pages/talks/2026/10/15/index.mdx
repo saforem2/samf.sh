@@ -539,13 +539,26 @@ maps cuda/xpu to their column and everything else to CPU.
 `--profile` drops `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
 [Perfetto](https://ui.perfetto.dev) or `chrome://tracing`.
 
-What you are looking at: CPU rows on top (what Python asked for), device rows
-below (what actually ran). A **gap in the device row is the GPU waiting.**
+CPU rows on top (what Python asked for), device rows below (what ran). A
+**gap in the device row is the GPU waiting.**
 
-Find one step boundary, then measure the gaps inside it.
+A real one, from the job behind this talk — Aurora, 2 nodes, 12 tiles:
 
-TODO: real Aurora trace, screenshotted. This is the slide people photograph;
-a borrowed one undercuts the session.
+| | |
+| --- | --- |
+| trace events | **373,458** |
+| XPU kernels | 11,247 across 48 streams |
+| device time | 115.0 ms |
+| busiest stream | **5.9% busy, 94.1% idle** |
+| gaps over 2 ms | **87** |
+| largest gap | **9.5 ms** |
+
+> [!IMPORTANT]+ That is the whole talk in one row
+> Not a warmup artifact — the 87 gaps are spread through the run. This job
+> is starved, and no amount of extra nodes fixes it.
+
+TODO: screenshot this in Perfetto. The numbers are real; the picture is what
+people photograph.
 
 </Slide>
 
@@ -562,6 +575,16 @@ a borrowed one undercuts the session.
 | idle at the **start** of every step | data stall | dataloader, FS |
 | idle **mid**-step, regular | communication | collective, overlap |
 | **busy** but throughput low | kernel efficiency | precision, fusion, shapes |
+
+Where the device time went in that same Aurora trace:
+
+| | |
+| --- | --- |
+| `gemm_kernel` | 11.2% |
+| `oneccl_allgatherv_large` | 9.8% |
+| `oneccl_reduce_scatter_large` | 7.3% |
+| **collectives, combined** | **25.1%** |
+| compute | 74.9% |
 
 That is the whole diagnostic. Everything after this slide is one of three
 branches.
