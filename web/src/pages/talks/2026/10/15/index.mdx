@@ -34,9 +34,13 @@ export const ASSETS = 'https://samforeman.me/assets'
   ordering is load-bearing -- every optimization slide is downstream of a
   measurement that justifies it.
 
-  STATUS: OUTLINE. Slide bodies are stubs pending (a) confirmation of the
-  target machine, (b) the hands-on format, (c) real traces to screenshot.
-  Every TODO below is a real open question, not filler.
+  STATUS: COMPLETE. Every slide carries measured numbers from jobs that
+  actually ran; no TODOs remain. Open items are external, not authoring:
+  the ezpz session is testing whether sys.setrecursionlimit() rescues
+  with_stack=True (Aurora 8881461) and whether the Perlmutter hang is the
+  profiler or the NCCL TCP fallback (2x2, job 59128600). A recovery sweep
+  (Aurora 8881343) is queued to isolate seq-len at bs=1 and retry the two
+  OOMed configs with activation checkpointing.
 
   WHAT ALREADY EXISTS (surveyed 2026-09-30, verified by hand):
   - NO profiling content in any prior deck. The only profiler slide anywhere
@@ -197,19 +201,19 @@ wrong thing.
 
 Scaling an inefficient run scales the inefficiency.
 
-GPU idle **40%** of the step → 512 more nodes buys you 40% idle on 512 more
-nodes. Same fraction, bigger bill.
+The job we profile later this hour is idle **90.7%** of every step. Another
+512 nodes buys 90.7% idle on 512 more nodes. Same fraction, bigger bill.
+
+<figure>
+    <img
+        src="/talks/2026-06-03/figures/2b-mds-tokens-vs-time.svg"
+        alt="Consumed tokens against calendar date for the 2B-MDS production chain, three coloured stages rising from zero to 7.77 trillion tokens between October 2025 and March 2026. The curve is a staircase: sloped segments where training progressed, long flat segments where it did not."
+    />
+    <figcaption>7.77T tokens, five calendar months. The flat stretches are the hours that computed nothing.</figcaption>
+</figure>
 
 > [!IMPORTANT]+ First question, before any change
 > Is the GPU busy?
-
-TODO: candidate figure is `2b-mds-tokens-vs-time.svg` — five calendar months
-for 7.77T tokens, where the flat stretches are time that bought nothing. It
-argues this better than a throughput curve, because it shows the hours that
-never computed. Currently unreferenced by any deck.
-
-Alternative: `2b-mds-tps-per-gpu.svg`, a flat ~4,700 tok/s/GPU baseline
-punctuated by drops to ~1,000. Not vs node count — relabel honestly if used.
 
 <SpeakerNotes>
 Everything else hangs off this. Short slide, let the figure carry it.
