@@ -55,9 +55,14 @@ export const ASSETS = 'https://samforeman.me/assets'
                              --rank-zero-only, --pytorch-profiler-{wait,
                              warmup,active,repeat}, --record-shapes,
                              --with-stack, --with-flops, --profile-memory
-    => the hands-on can be `ezpz launch python3 -m ezpz.examples.fsdp_tp
-       --profile --rank-zero-only` with NO new code. Confirm on the target
-       machine before promising it in the room.
+    => VERIFIED ON AURORA 2026-09-30, and the bare command FAILS: with
+       --with-stack defaulting True, trace_handler dies with RecursionError
+       in key_averages() (profile.py:140), which runs BEFORE
+       export_chrome_trace (:148), so both the table and the trace are lost
+       and the run exits 143. Working form adds --no-with-stack. PBS script
+       needs #!/bin/bash -l. ezpz_setup_env does not install ezpz.
+       Upstream fix worth filing: export the trace before building the
+       table, and/or default --with-stack to False.
   - REUSE from the ATPESC deck (2026/08/03) rather than rewriting: MFU
     results (2186), critical batch (1122), ZeRO trade (810), async ckpt
     (1621), Lustre import melt (452), parallelism menu (595) + cartoons
@@ -264,9 +269,19 @@ mfu = compute_mfu(flops, step_duration)            # peak auto-detected
 AuroraGPT production chains: 20B at **17-22%**, 2B at **9-12%**. Bigger
 model, better utilization, same machine.
 
+Measured on Aurora for the demo job itself — 125M params, seq 1024, `tp=2`
+across 24 ranks — **MFU 0.55%**. Not a typo:
+
+| `c10d::_allgather_base_` | 12.6% of device time |
+| --- | --- |
+| `c10d::_reduce_scatter_base_` | 11.4% |
+| `oneccl_*` kernels | 15.8% |
+| **FSDP communication, total** | **~40%** |
+
 > [!WARNING]+ Published MFU assumes dense transformers
-> Your model probably is not one. Compare against your own baseline, not a
-> paper.
+> Your model probably is not one. A small model sharded wide is
+> communication-bound by construction. Compare against your own baseline,
+> not a paper.
 
 <SpeakerNotes>
 The 20B/2B inversion surprises people: the bigger model is "slower" in
@@ -336,8 +351,15 @@ Defaults: `wait=1 warmup=2 active=3 repeat=5`.
 > [!IMPORTANT]+ Profiling the warmup is the classic mistake
 > Step 1 is allocator churn and autotuning. It is not your training step.
 
-TODO: verify the defaults against the torch version installed on Aurora. A
-wrong flag in a live demo costs the room ten minutes.
+**And profiling is not free.** Measured on Aurora, same job with and without:
+
+| | baseline | profiled |
+| --- | --- | --- |
+| step time | 0.221 s | **0.346 s** (+57%) |
+| tokens/s/GPU | 2,318 | 1,484 |
+| the two export steps | — | **14.1 s and 16.2 s** |
+
+Writing a 101 MiB trace stalls the step **~65×**. Budget for it.
 
 </Slide>
 
@@ -745,16 +767,27 @@ Adam, per parameter: **2** (bf16 param) + **2** (grad) + **12** (fp32 master
 No new code. The flags already exist.
 
 ```bash
-# 0 · environment + install (same four lines as the ATPESC deck)
+# 0 · setup, then install -- setup_env does NOT install ezpz
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
-uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
+python3 -m pip install "git+https://github.com/saforem2/ezpz"
 
 # 1 · baseline: how fast is it now?
-ezpz launch python3 -m ezpz.examples.fsdp_tp
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --model small --dataset random --train-iters 12
 
 # 2 · same run, instrumented
-ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --model small --dataset random --train-iters 12 \
+    --profile --rank-zero-only --no-with-stack
 ```
+
+> [!WARNING]+ `--no-with-stack` is not optional today
+> Without it the trace-ready callback dies with `RecursionError` in
+> `key_averages()` — and that call sits *before* `export_chrome_trace`, so
+> you lose the table **and** the trace, and the run exits 143. The PBS
+> script also needs `#!/bin/bash -l` or `module` is not found.
+
+Measured: **144 s** wall, two traces, full table.
 
 Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
 Perfetto or `chrome://tracing` and you are looking at your own trace.
@@ -879,7 +912,9 @@ OOM at >64 GB/tile to ~14 GB/tile.
 
 ```bash
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
-ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+python3 -m pip install "git+https://github.com/saforem2/ezpz"
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --profile --rank-zero-only --no-with-stack
 ```
 
 Find me in the self-progress block.
