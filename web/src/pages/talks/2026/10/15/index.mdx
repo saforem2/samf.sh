@@ -389,27 +389,82 @@ cannot see why.
 
 **Aurora** · Intel Max 1550
 
-- `unitrace` — ALCF's wrapper, closest to `nsys`
-- VTune — hotspots, memory access
-- PTI / Level Zero tracing
+```bash
+module load frameworks/2026.1.0
+unitrace -d -h \
+  --chrome-itt-logging \
+  --chrome-kernel-logging \
+  -o utrace python step.py
+```
 
 </Col>
 <Col>
 
 **Polaris · Perlmutter** · NVIDIA
 
-- `nsys` — timeline, the usual first stop
-- `ncu` — per-kernel counters, occupancy
-- `nsys profile -t cuda,nvtx,osrt`
+```bash
+module load pytorch/2.13.0
+nsys profile -t cuda,nvtx,osrt \
+  -o step_trace \
+  --force-overwrite true \
+  python step.py
+```
 
 </Col>
 </Cols>
 
-TODO: one worked invocation per side, verified on the machine. A wrong flag
-here costs the room ten minutes.
+> [!WARNING]+ Do not `module load pti-gpu`
+> `frameworks/2026.1.0` already loads `pti-gpu/0.17.0` and puts `unitrace`
+> 2.3.0 on PATH. Loading `pti-gpu/1.0.1-rc1` on top breaks torch outright:
+> `ImportError: libpti_view.so.0: cannot open shared object file`.
 
-TODO: NVTX/ITT range annotation — worth a mention? It is what makes a vendor
-timeline readable against your own phase names.
+<SpeakerNotes>
+unitrace ran on Sunspot (byte-identical stack to Aurora, rc=0); nsys ran on
+a Perlmutter login GPU, 2.1 MB .nsys-rep. ncu is compute-node only -- on a
+shared node the driver refuses counters. Trace selectors drift between nsys
+versions: Polaris 2025.5.1 has cuda-hw, Perlmutter 2026.2.1 has cuda-sw and
+nccl. cuda,nvtx,osrt is valid in every build checked, which is why it is the
+one on the slide.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10c · annotation
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="annotation">
+
+## Name your own phases
+
+A vendor timeline shows kernels. **Annotation** makes it show *your* phases.
+
+| | NVIDIA | Intel |
+| --- | --- | --- |
+| API | `torch.cuda.nvtx` | `torch.profiler.itt` |
+| `range_push` / `pop` | yes | yes |
+| `range_start` / `end` | yes | **no** |
+| on the other vendor | **raises** | no-ops |
+
+```python
+nvtx = torch.cuda.is_available()
+push = torch.cuda.nvtx.range_push if nvtx else torch.profiler.itt.range_push
+pop  = torch.cuda.nvtx.range_pop  if nvtx else torch.profiler.itt.range_pop
+```
+
+> [!NOTE]+ Annotate once, behind a shim
+> NVTX **raises** on XPU — `RuntimeError: NVTX functions not installed`. ITT
+> no-ops on CUDA. So the shim only has to guard one direction.
+
+`ezpz` has the profiler wrapper but **no annotation** — `record_function` is
+imported-and-commented at `profile.py:49`. This is the gap.
+
+<SpeakerNotes>
+Verified both reach the trace, which is the claim that matters. Perlmutter
+`nsys stats --report nvtx_sum` showed :forward, :backward, :optimizer and
+train_step_0..4 alongside real CUDA kernels. Sunspot unitrace JSON contained
+the same ranges. --chrome-itt-logging is the flag that makes ITT ranges land.
+</SpeakerNotes>
 
 <SpeakerNotes>
 Aurora is the primary target; Polaris and Perlmutter are here because
@@ -556,13 +611,31 @@ Measured on Aurora, 8 → 4096 nodes: per-node env cost **8.7 s → 0.18 s**
 
 - **Overlap** — the framework probably already does it; confirm in the trace
   before tuning anything
-- **Bucket size** — too small is latency-bound, too large delays overlap
 - **TP across nodes** is usually the bug, not a tuning problem
 
 Keep `TP` on-node. `DP` is nearly free; `TP` is chatty.
 
-TODO: oneCCL knobs for Aurora, NCCL for Polaris/Perlmutter. Env-var names
-verified on each machine, not copied from a blog post.
+**Turn the logs on before you tune anything:**
+
+| | Aurora | Polaris · Perlmutter |
+| --- | --- | --- |
+| verbosity | `CCL_LOG_LEVEL=info` | `NCCL_DEBUG=INFO` |
+| narrow it | — | `NCCL_DEBUG_SUBSYS=INIT,COLL,NET` |
+| one file per rank | — | `NCCL_DEBUG_FILE=nccl.%h.%p.log` |
+| who hung | `TORCH_NCCL_DESYNC_DEBUG=1` | same |
+
+> [!IMPORTANT]+ Aurora ships quieter than the library default
+> oneCCL defaults to `warn`; the setup lowers it to `ERROR`. You are getting
+> *less* diagnostic output than the library would give you.
+
+<SpeakerNotes>
+Verified live by strings against the installed libs: oneCCL 2022.1.0 on
+Aurora, NCCL 2.28.3 Polaris, 2.29.2 Perlmutter. Aurora arrives with 31
+collective vars pre-set; Polaris arrives with ZERO -- that contrast is worth
+saying out loud. TORCH_NCCL_DESYNC_DEBUG is the highest-value one: it prints
+"[0,1,2,...] joined but didn't finish collective #39", which answers "did a
+rank die or is the network stuck" in one line.
+</SpeakerNotes>
 
 </Slide>
 
