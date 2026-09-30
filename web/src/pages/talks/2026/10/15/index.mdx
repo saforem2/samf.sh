@@ -105,22 +105,20 @@ _{new Date(frontmatter.date).toISOString().slice(0, 10)} · Genesis Mission Hack
 
 ## Roadmap
 
-**Measure, localize, fix — in that order.** Ninety minutes, then a
-self-progress block where you do it to your own run.
+**Measure → localize → fix.** The order is the content.
 
-1. **Baseline** _(~15 min)_ — what number are you optimizing, and what is the
-   ceiling? Tokens/sec, MFU, and the roofline that says how much is left.
-2. **Instrument** _(~25 min)_ — `torch.profiler` on a real run. What to
-   capture, what to leave off, and how not to profile the warmup.
-3. **Read the trace** _(~25 min)_ — separate compute from communication from
-   data stalls. The three shapes you will actually see.
-4. **Fix, in order** _(~25 min)_ — each optimization tied to the measurement
-   that justifies it. Stop when the measurement says stop.
+| | | |
+| --- | --- | :--- |
+| 1 | **Baseline** | tokens/sec, MFU, and the ceiling — 15 min |
+| 2 | **Instrument** | `torch.profiler` on a real run — 25 min |
+| 3 | **Read the trace** | compute vs comms vs data — 25 min |
+| 4 | **Fix** | one measurement per fix — 25 min |
+
+Then the self-progress block, where you run it on your own model.
 
 <SpeakerNotes>
-The ordering is the content. Most teams arrive having already applied fixes
-from step 4 without doing steps 1-3, which is why their speedups did not
-materialize.
+Most teams arrive having already done step 4 without steps 1-3. That is why
+their speedups did not show up.
 </SpeakerNotes>
 
 </Slide>
@@ -133,22 +131,20 @@ materialize.
 
 ## Who this is for
 
-You have a training workload that **runs**. It is slower than you think it
-should be, and you are not sure whether the fix is code, configuration, or
-more nodes.
+Your run works. It is slower than it should be. You do not know whether that
+is code, config, or nodes.
 
-This session is about answering that question with a measurement instead of a
-guess.
+- **Assumed:** a run that launches, an allocation, willingness to read a trace
+- **Not covered:** getting off the ground, failures, checkpointing
 
-**What we assume:** a working run, an allocation, and a willingness to look at
-a trace.
-
-**What we do not cover:** getting a run off the ground in the first place, or
-the failure/checkpointing story. TODO: link the ATPESC deck for both.
+> [!NOTE]+ If your run does not launch yet
+> Wrong session. The self-progress block is a better use of the next 90
+> minutes, and [ATPESC 2026](https://samf.sh/talks/2026/08/03) covers getting
+> started and staying alive.
 
 <SpeakerNotes>
-Say plainly: if your run does not yet launch, this session is the wrong one
-and the self-progress block after it is a better use of your time.
+Say this out loud rather than letting someone sit through 90 minutes of the
+wrong thing.
 </SpeakerNotes>
 
 </Slide>
@@ -159,22 +155,22 @@ and the self-progress block after it is a better use of your time.
 
 <Slide id="thesis">
 
-## More nodes is not a performance fix
+## More nodes is not a fix
 
-Scaling an inefficient run scales the inefficiency with it.
+Scaling an inefficient run scales the inefficiency.
 
-TODO: the one figure that carries this slide. Candidate: measured
-tokens/sec/GPU vs node count for a run with a dataloader bottleneck, showing
-the curve flattening while cost stays linear. Pull from an existing AuroraGPT
-scaling sweep if one has this shape; otherwise generate from real numbers
-only — no schematic pretending to be data.
+GPU idle **40%** of the step → 512 more nodes buys you 40% idle on 512 more
+nodes. Same fraction, bigger bill.
 
-**The question to answer first:** is the GPU busy? If it is idle 40% of the
-time, another 512 nodes buys you 40% idle on more hardware.
+> [!IMPORTANT]+ First question, before any change
+> Is the GPU busy?
+
+TODO: one figure — measured tokens/sec/GPU vs node count on a run with a data
+stall, curve flattening while cost stays linear. Real numbers or nothing; a
+schematic here would be a lie about data.
 
 <SpeakerNotes>
-This is the slide the rest of the talk hangs off. Keep it short and let the
-figure do the work.
+Everything else hangs off this. Short slide, let the figure carry it.
 </SpeakerNotes>
 
 </Slide>
@@ -189,18 +185,21 @@ figure do the work.
 
 <Slide id="what-to-measure">
 
-## What number are you optimizing?
+## Pick the number first
 
-TODO. Content plan:
+| Metric | What it tells you | Use it for |
+| --- | --- | --- |
+| **tokens/sec/GPU** | what you are paying | the headline |
+| **step time** | decomposes into phases | debugging |
+| **MFU** | how much machine is left | knowing when to stop |
 
-- **Tokens/sec/GPU** — the number that pays the bill. Sensitive to everything.
-- **Step time** — decomposable, which makes it the useful one for debugging.
-- **MFU** — tokens/sec against the hardware peak. Says how much is left.
+The trap: **2× on a kernel that is 15% of the step is a 7% win.** Speed up
+the thing that dominates, or do not bother.
 
-The trap: optimizing a number that is not the bottleneck. A 2x kernel speedup
-on a 15%-of-step-time kernel is a 7% win.
-
-TODO: Amdahl framing — worth a small figure or just a worked line of arithmetic?
+<SpeakerNotes>
+Amdahl, without naming him. Worth writing the arithmetic on the board if the
+room looks unconvinced -- 0.15/2 + 0.85 = 0.925.
+</SpeakerNotes>
 
 </Slide>
 
@@ -212,28 +211,31 @@ TODO: Amdahl framing — worth a small figure or just a worked line of arithmeti
 
 ## MFU: how much of the machine are you using?
 
-$$\text{MFU} = \frac{\text{model FLOPs per step}}{\text{peak FLOP/s per device} \times \text{step time}}$$
+$$\text{MFU} = \frac{\text{model FLOPs}}{\text{peak FLOP/s} \times \text{step time}}$$
 
-Both quantities are **per-device**, so `world_size` does not appear — in
-data-parallel training every rank does the same work.
+Both per-device, so `world_size` drops out. Every rank does the same work.
 
-You do not have to derive the numerator by hand. `ezpz` counts it with
-PyTorch's `FlopCounterMode` (actual ops, not a $6ND$ estimate) and looks up
-the peak, including a dynamically computed one for Intel PVC:
+Do not hand-derive the numerator. `ezpz` counts it with `FlopCounterMode`
+(real ops, not $6ND$) and looks up the peak, computing Intel PVC dynamically:
 
 ```python
 from ezpz.flops import estimate_model_flops, compute_mfu
-flops = estimate_model_flops(model, input_shape)     # measured, not estimated
-mfu = compute_mfu(flops, step_duration)              # peak auto-detected
+flops = estimate_model_flops(model, input_shape)   # counted, not estimated
+mfu = compute_mfu(flops, step_duration)            # peak auto-detected
 ```
 
-Real anchor (ATPESC deck, AuroraGPT production chains): 20B ran **17-22%
-MFU**, 2B ran **9-12%** — bigger model, better utilization, same machine.
+AuroraGPT production chains: 20B at **17-22%**, 2B at **9-12%**. Bigger
+model, better utilization, same machine.
 
-TODO: the honest caveat. Published MFU numbers assume dense transformers.
-Most attendees' models are not that, so say what a *reasonable* MFU looks
-like for an irregular scientific workload — or say plainly that the useful
-comparison is against your own baseline, not a paper.
+> [!WARNING]+ Published MFU assumes dense transformers
+> Your model probably is not one. Compare against your own baseline, not a
+> paper.
+
+<SpeakerNotes>
+The 20B/2B inversion surprises people: the bigger model is "slower" in
+tokens/sec/GPU and better in MFU, because bigger matmuls keep the XPUs busy.
+Source: ATPESC deck, all-production-perf.svg.
+</SpeakerNotes>
 
 </Slide>
 
@@ -245,13 +247,17 @@ comparison is against your own baseline, not a paper.
 
 ## The ceiling: roofline
 
-TODO. Arithmetic intensity vs achievable FLOP/s; where a training step sits;
-memory-bound vs compute-bound and why the answer changes what you should fix.
+Arithmetic intensity (FLOP per byte) against achievable FLOP/s. Two regimes,
+two different fixes:
 
-TODO: generate a roofline figure for the target machine with the deck chart
-style (`scripts/gen-*.mjs` pattern, `svg-font.mjs`, transparent bg, landscape
-+ mobile variants). Needs real peak numbers for whichever machine — do not
-ship a generic textbook roofline.
+- **Memory-bound** — left of the ridge. Fusion, precision, layout.
+- **Compute-bound** — right of it. Bigger matmuls, better kernels.
+
+Knowing which side you are on tells you which half of this talk applies.
+
+TODO: generate for Intel Max 1550 with real peak numbers, deck chart style
+(`scripts/gen-*.mjs`, `svg-font.mjs`, transparent bg, landscape + mobile).
+A textbook roofline with made-up axes is worse than no figure.
 
 </Slide>
 
@@ -265,24 +271,24 @@ ship a generic textbook roofline.
 
 <Slide id="torch-profiler">
 
-## Instrumenting a real run
+## Instrument it
 
-The four decisions that make a profile useful, and the flag for each:
+Four decisions, four flags:
 
-| Decision                     | Why it matters                              | Flag                            |
-| ---------------------------- | ------------------------------------------- | ------------------------------- |
-| **Skip the warmup**          | step 1 is allocator + autotune, not your run | `--pytorch-profiler-wait/warmup`|
-| **Capture a few steps**      | one step is noise; 100 is gigabytes          | `--pytorch-profiler-active`     |
-| **One rank, not all of them**| 2048 ranks writing traces to Lustre          | `--rank-zero-only`              |
-| **Pay only for what you read**| shapes/stack/memory each cost overhead      | `--record-shapes` etc.          |
+| Decision | Why | Flag |
+| --- | --- | --- |
+| skip the warmup | step 1 is allocator + autotune | `--pytorch-profiler-warmup` |
+| capture a few steps | 1 is noise, 100 is gigabytes | `--pytorch-profiler-active` |
+| one rank | 2048 ranks × traces → Lustre | `--rank-zero-only` |
+| pay for what you read | shapes/stack/memory cost | `--record-shapes`, ... |
 
-TODO: this is `ezpz`'s existing surface (`src/ezpz/cli/flags.py`), and the
-defaults are wait=1 warmup=2 active=3 repeat=5 — VERIFY those numbers on the
-target machine's installed version before showing them.
+Defaults: `wait=1 warmup=2 active=3 repeat=5`.
 
-TODO: show the underlying `torch.profiler` call too, for teams not using
-`ezpz` — `get_profiling_context()` in `src/ezpz/profile.py` is the worked
-example to adapt.
+> [!IMPORTANT]+ Profiling the warmup is the classic mistake
+> Step 1 is allocator churn and autotuning. It is not your training step.
+
+TODO: verify the defaults against the torch version installed on Aurora. A
+wrong flag in a live demo costs the room ten minutes.
 
 </Slide>
 
@@ -294,19 +300,24 @@ example to adapt.
 
 ## Before you reach for the profiler
 
-A profiler changes the thing it measures and produces gigabytes you then have
-to interpret. A per-phase timer answers "which quarter of the step" in five
-minutes, and often that is the whole answer.
+A profiler perturbs what it measures and hands you gigabytes to interpret. A
+timer around each phase answers *which quarter of the step* in five minutes.
 
-`ezpz` already ships these — verified present, never presented:
+Often that is the whole answer.
 
-- `StopWatch` (`history.py`) — context manager, logs the delta, optional wandb
-- `timeitlogit` (`distributed.py`) — decorator, logs per-rank under `timeit/`
-- `History.update()` — the source of the `dt= dtf= dtb= sps= tps= mfu=`
-  per-step lines in the older decks
+```python
+from ezpz.history import StopWatch
+with StopWatch("fwd", iter=step):
+    loss = model(batch)
+```
 
-TODO: pick ONE of these to demo. Showing three ways to time a function is
-worse than showing one that works.
+`ezpz` also has `timeitlogit` (decorator, logs per-rank) and `History.update()`,
+which is where the `dt= dtf= dtb= sps= tps= mfu=` log lines come from.
+
+<SpeakerNotes>
+Demo exactly one of these. Three ways to time a function is worse than one
+that works.
+</SpeakerNotes>
 
 </Slide>
 
@@ -316,12 +327,13 @@ worse than showing one that works.
 
 <Slide id="vendor-tools">
 
-## When you need the vendor tools
+## Vendor tools
 
-**`torch.profiler` tells you _which op_. The vendor tool tells you _why that
-op is slow_** — occupancy, memory bandwidth, which collective algorithm got
-picked. Most people never need this level. Go here when the trace says a
-kernel is slow and you cannot see why.
+**`torch.profiler` says _which op_. The vendor tool says _why that op is
+slow_** — occupancy, bandwidth, which collective algorithm got picked.
+
+Most people never need this. Go here when the trace blames a kernel and you
+cannot see why.
 
 <Cols>
 <Col>
@@ -364,28 +376,27 @@ works on all three.
 
 <Slide id="portability">
 
-## The same command, three machines
+## Same command, three machines
 
-The reason the portable layer is worth using: `ezpz` swaps the profiler
-activity and the sort column per device, so **one invocation** works
-everywhere.
+| Machine | Device | Activity | Sorts by |
+| --- | --- | --- | --- |
+| **Aurora** | Max 1550 | `XPU` | `self_xpu_time_total` |
+| **Polaris** | A100 | `CUDA` | `self_cuda_time_total` |
+| **Perlmutter** | A100 | `CUDA` | `self_cuda_time_total` |
 
-| Machine        | Accelerator     | Activity added        | Sorts by               |
-| -------------- | --------------- | --------------------- | ---------------------- |
-| **Aurora**     | Intel Max 1550  | `ProfilerActivity.XPU`  | `self_xpu_time_total`  |
-| **Polaris**    | NVIDIA A100     | `ProfilerActivity.CUDA` | `self_cuda_time_total` |
-| **Perlmutter** | NVIDIA A100     | `ProfilerActivity.CUDA` | `self_cuda_time_total` |
-
-The sort column is a real portability trap: `key_averages().table()` raises
-`AttributeError` if you ask for a column the profiler never recorded.
+`ezpz` probes the device and picks both. One invocation, no branching:
 
 ```bash
-# identical on all three
 ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
 ```
 
-TODO: actually run this on all three before claiming it. Aurora is primary;
-Polaris and Perlmutter need confirming, not assuming.
+> [!WARNING]+ The sort column is a real trap
+> `key_averages().table(sort_by=...)` raises `AttributeError` on a column the
+> profiler never recorded. Ask for `self_cuda_time_total` on Aurora and it
+> dies.
+
+TODO: run on all three. Aurora primary; the other two get confirmed, not
+assumed.
 
 <SpeakerNotes>
 Source: src/ezpz/profile.py -- activities built by probing
@@ -407,12 +418,16 @@ maps cuda/xpu to their column and everything else to CPU.
 
 ## Reading a trace
 
-TODO. Orient the room in a trace viewer: streams, the CPU/GPU rows, where a
-step boundary is, what a gap means.
+`--profile` drops `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
+[Perfetto](https://ui.perfetto.dev) or `chrome://tracing`.
 
-TODO: capture a REAL trace on the target machine and screenshot it. A
-synthetic or borrowed trace undercuts the whole session — this is the slide
-people will photograph.
+What you are looking at: CPU rows on top (what Python asked for), device rows
+below (what actually ran). A **gap in the device row is the GPU waiting.**
+
+Find one step boundary, then measure the gaps inside it.
+
+TODO: real Aurora trace, screenshotted. This is the slide people photograph;
+a borrowed one undercuts the session.
 
 </Slide>
 
@@ -424,16 +439,19 @@ people will photograph.
 
 ## Three shapes, three fixes
 
-TODO. The diagnostic core of the talk:
+| Trace shows | Diagnosis | Fix section |
+| --- | --- | --- |
+| idle at the **start** of every step | data stall | dataloader, FS |
+| idle **mid**-step, regular | communication | collective, overlap |
+| **busy** but throughput low | kernel efficiency | precision, fusion, shapes |
 
-| What you see                            | What it is        | Where to look            |
-| --------------------------------------- | ----------------- | ------------------------ |
-| GPU idle at the **start** of every step  | data stall        | dataloader, filesystem   |
-| GPU idle **mid**-step, regular           | communication     | collective, overlap      |
-| GPU **busy** but throughput still low    | kernel efficiency | precision, fusion, shape |
+That is the whole diagnostic. Everything after this slide is one of three
+branches.
 
-TODO: one real trace screenshot per row. This table is the thing worth
-remembering — consider making it the handout.
+> [!TIP]+ Take a photo of this one
+> It is the table you will want in front of you at 2am.
+
+TODO: one real trace screenshot per row, from Aurora.
 
 </Slide>
 
@@ -449,13 +467,19 @@ remembering — consider making it the handout.
 
 ## Fix: data stalls
 
-TODO. Usually the cheapest large win on HPC, and the one most teams skip
-because it is not the interesting part.
+Usually the cheapest big win, and the one teams skip because it is not the
+interesting part.
 
-- Workers, prefetch, pinned memory
-- Sharding and the shared-filesystem story — reuse the Lustre material from
-  the ATPESC deck rather than rewriting
-- The "your dataset is 4M small files" problem
+- **Workers, prefetch, pinned memory** — the boring three, in that order
+- **4M small files** is a metadata problem, not a bandwidth problem
+- **Lustre does not like you** — one `stat()` storm × 50k ranks
+
+> [!NOTE]+ Same failure as `import torch` at scale
+> The fix is not a faster filesystem. It is not hitting the filesystem from
+> every rank. See [`ezpz yeet`](https://samf.sh/posts/2026/05/01/).
+
+TODO: pull the measured numbers from the ATPESC Lustre slide rather than
+restating them vaguely.
 
 </Slide>
 
@@ -467,12 +491,15 @@ because it is not the interesting part.
 
 ## Fix: communication
 
-TODO.
+- **Overlap** — the framework probably already does it; confirm in the trace
+  before tuning anything
+- **Bucket size** — too small is latency-bound, too large delays overlap
+- **TP across nodes** is usually the bug, not a tuning problem
 
-- Overlap: what the framework already does, and how to confirm it is happening
-- Bucket sizing
-- When the parallelism strategy itself is the bug (TP across nodes, etc.)
-- TODO: NCCL vs oneCCL tuning knobs — machine-dependent, fill after decision
+Keep `TP` on-node. `DP` is nearly free; `TP` is chatty.
+
+TODO: oneCCL knobs for Aurora, NCCL for Polaris/Perlmutter. Env-var names
+verified on each machine, not copied from a blog post.
 
 </Slide>
 
@@ -484,12 +511,16 @@ TODO.
 
 ## Fix: kernel efficiency
 
-TODO.
+- **Mixed precision** — verify you got it; `bf16` in the config is not proof
+- **`torch.compile`** — helps often, and on AuroraGPT MoE it cost **-35%**
+- **Fused attention / optimizer** — usually free, check availability per device
+- **Shapes** — pad to the tensor-core multiple
 
-- Mixed precision: what it buys, and verifying you actually got it
-- `torch.compile`: when it helps, when it costs more in compile time
-- Flash attention / fused optimizers
-- Shape divisibility and tensor-core alignment
+> [!WARNING]+ `torch.compile` is not free
+> Compile time is real, and it does not always pay back. Measure it like
+> anything else.
+
+TODO: confirm the -35% MoE number and its config from the 2026/07/14 deck.
 
 </Slide>
 
@@ -499,14 +530,15 @@ TODO.
 
 <Slide id="fix-memory">
 
-## When the constraint is memory, not time
+## When the constraint is memory
 
-TODO. Activation checkpointing, ZeRO stages, offload — each trades compute for
-memory, so each is a *slowdown* you accept to fit. Frame honestly: these are
-not speedups, and teams reach for them expecting speedups.
+Activation checkpointing, ZeRO stages, offload. Each buys memory with compute.
 
-TODO: reuse the ZeRO memory figure if one exists
-(`scripts/gen-zero-memory.mjs` suggests it does).
+> [!IMPORTANT]+ These are slowdowns you accept to fit
+> They are not speedups. Teams reach for them expecting speedups.
+
+TODO: reuse `zero-memory.svg` and the per-param 16-byte Adam budget from the
+ATPESC deck.
 
 </Slide>
 
@@ -518,7 +550,7 @@ TODO: reuse the ZeRO memory figure if one exists
 
 ## Hands-on
 
-The good news: this needs **no new code**. The flags already exist.
+No new code. The flags already exist.
 
 ```bash
 # 0 · environment + install (same four lines as the ATPESC deck)
@@ -535,16 +567,13 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
 Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
 Perfetto or `chrome://tracing` and you are looking at your own trace.
 
-**Format:** I drive it live, you follow at your own pace, and the
-self-progress block right after this session is where you run it on *your*
-model. I am still in the building for that block.
+I drive, you follow. Then the self-progress block is where you run it on
+your own model — I am still in the building.
 
-**The exercise:** profile your own run, find which of the three shapes you
-have, change one thing, re-measure. Bring the before/after.
+**The exercise:** profile your run, name which of the three shapes you have,
+change one thing, re-measure. Bring the before/after.
 
-TODO: run all four lines end to end on Aurora before the session, then
-confirm on Polaris and Perlmutter. Note the URL is `ezpz.cool/utils.sh` —
-the canonical one, not the old `bit.ly` shortener.
+TODO: run all four lines end to end on Aurora, then Polaris and Perlmutter.
 
 </Slide>
 
@@ -554,13 +583,13 @@ the canonical one, not the old `bit.ly` shortener.
 
 <Slide id="summary">
 
-## What to take away
+## Takeaways
 
-1. **Measure first.** A baseline and a ceiling, before any change.
-2. **Localize.** The trace tells you which of three problems you have.
-3. **Fix in the order the measurement justifies**, and re-measure after each.
-4. **Stop when the measurement says stop** — not when you run out of ideas.
+1. **Baseline and ceiling before any change.**
+2. **The trace names the problem.** Three shapes, three branches.
+3. **One measurement per fix.** Re-measure after each.
+4. **Stop when the measurement says stop**, not when you run out of ideas.
 
-TODO: QR to the slides + the exercise repo.
+TODO: QR to slides + exercise repo.
 
 </Slide>
