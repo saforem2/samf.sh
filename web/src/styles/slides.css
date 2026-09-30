@@ -332,20 +332,27 @@
        real cue: the theme's own violet, distinct from the blue link/heading
        color, the pink accent, and the diagram greens.
 
-       Use the theme's `--purple` token DIRECTLY — every theme already tunes
-       it to be legible on its own background (dark theme: light purple l~0.7
-       on the near-black base; light theme: deep purple l~0.57 on near-white),
-       so it can never read "out of sync" with that theme's palette. Fill and
-       border are alpha-tinted from the same token. Scoped to inline code only
-       — `pre.astro-code > code` (the shiki codeblock body) keeps its theme. */
+       Earlier this used the theme's `--purple` at full strength with a
+       tinted fill, a 1px border and a 3px radius. That reads as a fourth
+       accent competing with the blue headings, the pink, and the diagram
+       greens, and the rounded chip is the only rounded thing in a deck
+       whose codeblocks, tables and callouts are all square.
+
+       Match the site instead: a flat tint of the page's own surface, no
+       border, no radius, prose color kept. Legibility on a projector comes
+       from the fill being a real step off the background rather than from
+       hue. Scoped to inline code only — `pre.astro-code > code` (the shiki
+       codeblock body) keeps its theme. */
     :is(p, li, td, h1, h2, h3, h4, figcaption) code {
-        --chip: var(--purple, var(--mauve, #8260cc));
-        color: var(--chip);
-        background-color: oklch(from var(--chip) l c h / 0.13);
-        border: 1px solid oklch(from var(--chip) l c h / 0.28);
-        border-radius: 3px;
+        color: inherit;
+        background-color: var(
+            --code-bg,
+            oklch(from var(--foreground0) l c h / 0.08)
+        );
+        border: none;
+        border-radius: 0;
         padding-block: 0.02em;
-        padding-inline: 0.28em;
+        padding-inline: 0.3em;
     }
     /* Codeblocks on slides must never overflow past the slide right
        edge — long shell commands (qsub lines, ezpz launch with
@@ -1357,12 +1364,77 @@ body.slides-print-mode [is-~='slide']::after {
 [is-~='presentation']:has(#title-slide[data-current]) .deck-corner-logo {
     display: none !important;
 }
+/* ...except in print, where there is no "current" slide -- every slide is
+   on its own sheet, so the title page would be the one page with no mark.
+   Re-show it there and let the theme rules pick the right variant. */
+@media print {
+    [is-~='presentation']:has(#title-slide[data-current])
+        .deck-corner-logo-light {
+        display: block !important;
+    }
+}
+body.slides-print-mode
+    [is-~='presentation']:has(#title-slide[data-current])
+    .deck-corner-logo-light {
+    display: block !important;
+}
 /* Hide the persistent logo on mobile — at narrow widths it overlaps
    content rather than tucking into a corner (less horizontal slack
    for content to flow around it). The title slide still shows its
    own bigger logo via the title-specific block below. */
 @media (max-width: 768px) {
     .deck-corner-logo {
+        display: none !important;
+    }
+}
+
+/* The corner logo is position:fixed with nothing reserving space for it,
+   so a wide figcaption or a full-measure paragraph runs underneath. Pad
+   the last flow child of each slide out of the logo's corner instead of
+   moving the logo -- the logo placement is a brand decision, the collision
+   is a layout one. Width covers the mark plus its right offset. */
+[is-~='slide'] .slide-inner > :last-child {
+    padding-inline-end: var(--deck-logo-gutter, 0);
+}
+[is-~='presentation']:not(:has(#title-slide[data-current]))
+    [is-~='slide'][data-current]
+    .slide-inner {
+    --deck-logo-gutter: 9ch;
+}
+@media (max-width: 768px) {
+    /* Logo is hidden here, so no gutter needed. */
+    [is-~='slide'] .slide-inner {
+        --deck-logo-gutter: 0;
+    }
+}
+
+/* Slide number, top-right, linking to the current slide. The status bar
+   at the bottom already carries one, but it is small and easy to miss
+   from the back of a room; this is the one someone photographs to find
+   their place again. Hidden on the title slide, which has its own QR. */
+.deck-slide-number {
+    position: fixed;
+    top: 1lh;
+    right: 1ch;
+    z-index: 6;
+    font-size: 0.72em;
+    color: var(--foreground2);
+    text-decoration: none;
+    padding: 0 0.6ch;
+    border: 1px solid var(--background3, var(--foreground3));
+    border-radius: 2px;
+    background: var(--background0);
+    line-height: 1.4;
+}
+.deck-slide-number:hover {
+    color: var(--foreground0);
+    border-color: var(--foreground2);
+}
+[is-~='presentation']:has(#title-slide[data-current]) .deck-slide-number {
+    display: none !important;
+}
+@media (max-width: 768px) {
+    .deck-slide-number {
         display: none !important;
     }
 }
