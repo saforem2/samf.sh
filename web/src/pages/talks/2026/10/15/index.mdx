@@ -165,9 +165,13 @@ nodes. Same fraction, bigger bill.
 > [!IMPORTANT]+ First question, before any change
 > Is the GPU busy?
 
-TODO: one figure — measured tokens/sec/GPU vs node count on a run with a data
-stall, curve flattening while cost stays linear. Real numbers or nothing; a
-schematic here would be a lie about data.
+TODO: candidate figure is `2b-mds-tokens-vs-time.svg` — five calendar months
+for 7.77T tokens, where the flat stretches are time that bought nothing. It
+argues this better than a throughput curve, because it shows the hours that
+never computed. Currently unreferenced by any deck.
+
+Alternative: `2b-mds-tps-per-gpu.svg`, a flat ~4,700 tok/s/GPU baseline
+punctuated by drops to ~1,000. Not vs node count — relabel honestly if used.
 
 <SpeakerNotes>
 Everything else hangs off this. Short slide, let the figure carry it.
@@ -255,9 +259,16 @@ two different fixes:
 
 Knowing which side you are on tells you which half of this talk applies.
 
-TODO: generate for Intel Max 1550 with real peak numbers, deck chart style
-(`scripts/gen-*.mjs`, `svg-font.mjs`, transparent bg, landscape + mobile).
-A textbook roofline with made-up axes is worse than no figure.
+TODO — **half-blocked.** The FLOP/s axis is solid: `ezpz.flops` computes Max
+1550 from DPAS width, `512 ops x 512 CU x 1300 MHz` = **340.8 TF/s bf16 per
+tile** (298.2 at 448 CU). A100 is **312 TF/s**.
+
+The bytes/s axis is not. No HBM bandwidth number exists anywhere in `ezpz` or
+this repo — it needs an external source before the figure can be honest. A
+textbook roofline with invented axes is worse than no figure.
+
+TODO: house style is `scripts/gen-*.mjs` + `svg-font.mjs`, `#838383` chrome,
+transparent bg, landscape + mobile, output to `public/talks/2026-10-15/figures/`.
 
 </Slide>
 
@@ -471,15 +482,15 @@ Usually the cheapest big win, and the one teams skip because it is not the
 interesting part.
 
 - **Workers, prefetch, pinned memory** — the boring three, in that order
-- **4M small files** is a metadata problem, not a bandwidth problem
+- **Many small files** is a metadata problem, not a bandwidth problem
 - **Lustre does not like you** — one `stat()` storm × 50k ranks
 
 > [!NOTE]+ Same failure as `import torch` at scale
 > The fix is not a faster filesystem. It is not hitting the filesystem from
 > every rank. See [`ezpz yeet`](https://samf.sh/posts/2026/05/01/).
 
-TODO: pull the measured numbers from the ATPESC Lustre slide rather than
-restating them vaguely.
+Measured on Aurora, 8 → 4096 nodes: per-node env cost **8.7 s → 0.18 s**
+(48×). Full-scale pre-launch **12.5 min**, first step at **16 min**.
 
 </Slide>
 
@@ -512,7 +523,7 @@ verified on each machine, not copied from a blog post.
 ## Fix: kernel efficiency
 
 - **Mixed precision** — verify you got it; `bf16` in the config is not proof
-- **`torch.compile`** — helps often, and on AuroraGPT MoE it cost **-35%**
+- **`torch.compile`** — helps often; on AuroraGPT MoE it cost **26% of throughput**
 - **Fused attention / optimizer** — usually free, check availability per device
 - **Shapes** — pad to the tensor-core multiple
 
@@ -520,7 +531,13 @@ verified on each machine, not copied from a blog post.
 > Compile time is real, and it does not always pay back. Measure it like
 > anything else.
 
-TODO: confirm the -35% MoE number and its config from the 2026/07/14 deck.
+Measured: `moe_500m`, Aurora, 2 nodes / 24 tiles, 2026-04-13. TPS 11,200 →
+8,316; TFLOPS 25.22 → 18.70; MFU 8.46% → 6.27%. All three agree on **-26%**,
+which is the same thing as **+35% step time** — quote one, not both.
+
+Compile also used **2.2× less memory** (8.44 → 3.78 GiB). A real trade.
+
+TODO: torch 2.10, never re-measured. Say "as of April" or re-run it.
 
 </Slide>
 
