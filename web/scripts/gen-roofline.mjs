@@ -240,13 +240,20 @@ function buildSVG(cfg) {
     body += readout(MAX1550)
     body += readout(A100)
 
-    // Regime labels. Both sit low, under the diagonal and under the readout
-    // block, so nothing in the upper half competes with the roofs.
-    const regimeY = sy(5.6)
-    body += `<text x="${(ax + 12).toFixed(1)}" y="${regimeY.toFixed(1)}" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#ee8f24">memory-bound</text>`
-    body += `<text x="${(ax + 12).toFixed(1)}" y="${(regimeY + cfg.noteSize + 6).toFixed(1)}" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">HBM sets the limit</text>`
+    // Regime labels pinned to the bottom of the plot. The memory-bound pair
+    // ALSO has to clear the diagonal horizontally: the line reaches the
+    // y-floor at I = peak_floor/bw = 2.44 FLOP/byte, only ~11% across the
+    // plot, so anything anchored at the left edge is struck through no
+    // matter how low it sits. Start it just right of that crossing instead,
+    // which is still well inside the memory-bound region.
+    const regimeBottom = ay + ah - 14
+    const regimeY = regimeBottom - cfg.noteSize - 6
+    const floorCrossX = sx((Y_MIN * 1000) / MAX1550.bw)
+    const memX = floorCrossX + cfg.noteSize * 1.6
+    body += `<text x="${memX.toFixed(1)}" y="${regimeY.toFixed(1)}" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#ee8f24">memory-bound</text>`
+    body += `<text x="${memX.toFixed(1)}" y="${regimeBottom.toFixed(1)}" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">HBM sets the limit</text>`
     body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${regimeY.toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#1da811">compute-bound</text>`
-    body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${(regimeY + cfg.noteSize + 6).toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">DPAS sets the limit</text>`
+    body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${regimeBottom.toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">DPAS sets the limit</text>`
 
     // Bandwidth annotation for the memory diagonal. A plain vertical offset
     // does NOT clear a slope-1 log-log line -- at -10px the line struck
