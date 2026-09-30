@@ -532,11 +532,11 @@ works on all three.
 across machines (md5 verified) — no user branching.
 
 > [!WARNING]+ Profiling is the part that travels badly
-> Completes on **Polaris**. Needs `--no-with-stack` for **FSDP+TP on
-> Aurora** — a shallow model is fine, the deep `cpu_children` tree is what
-> blows the recursion limit. On **Perlmutter** it wedged a collective and
-> hit NCCL's 10-minute watchdog; the same run without `--profile` trained
-> clean. Demo the trace from Polaris or Aurora.
+> **Aurora** needs `--no-with-stack` for FSDP+TP: torch walks the recorded
+> stacks recursively, and deep FSDP2+TP frames blow Python's 1000-frame
+> limit. Not an accelerator thing — **Polaris** ran the same code path
+> *with* stacks and got its traces. On **Perlmutter** it wedged a
+> collective and hit NCCL's 10-minute watchdog. Demo from Polaris or Aurora.
 
 <SpeakerNotes>
 Polaris job 7670657, 4x A100-SXM4-40GB, tp=2 dp_shard=2: MFU 7.7-7.9%, ~849
@@ -557,10 +557,23 @@ inter-node) rather than the fast plugin. If so, drift crossing a watchdog a
 fast fabric would absorb is a transport interaction, not a portability
 property of the profiler. Unresolved; do not overclaim this one.
 
-The Aurora RecursionError is real and reproducible -- job 8880975,
-fsdp_tp --model small --tp 2, log at ~/scratch-profiling-talk/prof_job2.log
--- but it does NOT reproduce on a shallow model, so it is model depth, not
-scale.
+Clean one-variable pair, Aurora job 8881403, same job and allocation,
+fsdp_tp --model small --tp 2, 30 iters, only the flag differing:
+
+  default (with_stack=True)   rc=143   0 traces  (RecursionError)
+  --no-with-stack             rc=0     5 traces
+
+Fails inside torch/autograd/profiler_util.py, reached from key_averages()
+in ezpz's trace handler; none of ezpz's own code is implicated. Also
+reproduced at 12 iters as job 8880975.
+
+The rule is stack DEPTH against a fixed limit, not the accelerator: Polaris
+job 7670657 ran the identical path with stacks on and wrote 5 traces. It
+fails where the frames are deepest, and Aurora reaches that first. If asked
+about a fix: forcing with_stack=False on XPU would be wrong -- it strips
+the most useful part of a profile on a machine where a shallower model
+works fine. Raising the recursion limit around the trace handler is the
+better hypothesis, untested.
 </SpeakerNotes>
 
 <SpeakerNotes>
