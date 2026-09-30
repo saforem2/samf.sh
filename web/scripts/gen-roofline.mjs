@@ -248,12 +248,28 @@ function buildSVG(cfg) {
     body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${regimeY.toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#1da811">compute-bound</text>`
     body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${(regimeY + cfg.noteSize + 6).toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">DPAS sets the limit</text>`
 
-    // Bandwidth annotation riding the primary diagonal, placed above the line
-    // so it stays clear of the memory-bound label sitting below it.
-    const Islope = 9.0
+    // Bandwidth annotation for the memory diagonal. A plain vertical offset
+    // does NOT clear a slope-1 log-log line -- at -10px the line struck
+    // straight through the text. Rotate the label to the diagonal's screen
+    // angle and push it perpendicular, so it rides alongside the line
+    // instead of across it.
+    const Islope = 7.0
     const bx = sx(Islope)
     const by = sy(attainable(MAX1550, Islope))
-    body += `<text x="${(bx + 8).toFixed(1)}" y="${(by - 10).toFixed(1)}" font-family="${FONT}" font-size="${cfg.noteSize}" fill="${MAX1550.color}">${MAX1550.bw.toFixed(1)} GB/s HBM2e</text>`
+    // screen angle of the diagonal, measured from two points on it
+    const x1 = sx(Islope / 2),
+        y1 = sy(attainable(MAX1550, Islope / 2))
+    const x2 = sx(Islope * 2),
+        y2 = sy(attainable(MAX1550, Islope * 2))
+    const angDeg = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
+    // unit normal, pointing up-left away from the line
+    const len = Math.hypot(x2 - x1, y2 - y1)
+    // normal pointing UP-LEFT of the line (screen y grows downward, and the
+    // diagonal rises left-to-right, so this is the empty side)
+    const nx = (y2 - y1) / len,
+        ny = -((x2 - x1) / len)
+    const off = cfg.noteSize * 1.4
+    body += `<text x="${(bx + nx * off).toFixed(1)}" y="${(by + ny * off).toFixed(1)}" transform="rotate(${angDeg.toFixed(2)} ${(bx + nx * off).toFixed(1)} ${(by + ny * off).toFixed(1)})" text-anchor="middle" font-family="${FONT}" font-size="${cfg.noteSize}" fill="${MAX1550.color}">${MAX1550.bw.toFixed(1)} GB/s HBM2e</text>`
 
     // axis labels
     body += `<text x="${(ax + aw / 2).toFixed(1)}" y="${(H - 10).toFixed(1)}" text-anchor="middle" font-family="${FONT}" font-size="${cfg.axisSize}" fill="#838383">arithmetic intensity (FLOP/byte) →</text>`

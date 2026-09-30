@@ -293,14 +293,29 @@ Source: ATPESC deck, all-production-perf.svg.
 
 ## This talk's demo job: **0.55%**
 
-125M params, seq 1024, `tp=2` across 24 ranks.
+125M params, seq 1024, `tp=2` across 24 ranks. Where a 440 ms step goes:
 
-**The GPU is idle 90.6% of every step.** Not because of communication —
-that is only 25% of the device time it *does* spend.
+```mermaid
+flowchart LR
+    S["<span style='font-weight:700'>one step</span><br/><i>440.3 ms</i>"] --> I["<span style='font-weight:700'>idle</span><br/><i>398.7 ms · 90.6%</i>"]
+    S --> B["<span style='font-weight:700'>device busy</span><br/><i>41.5 ms · 9.4%</i>"]
+    B --> C["compute<br/><i>31.9 ms · 7.2%</i>"]
+    B --> M["collectives<br/><i>9.7 ms · 2.2%</i>"]
+    I --> G["<i>3,748 gaps</i><br/>median <b>46 µs</b>"]
+    C --> K["<i>3,749 kernels</i><br/>median <b>4.6 µs</b>"]
 
-It is idle because it runs **3,749 kernels at a 4.6 µs median**, separated
-by **3,748 gaps at a 46 µs median**. Python cannot launch work fast enough
-to keep it fed.
+    classDef step fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef bad  fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    classDef ok   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef note fill:#83838308,stroke:#838383,color:#838383,stroke-width:1.5px
+    class S step
+    class I,G bad
+    class B,C,M ok
+    class K note
+```
+
+**The gaps are bigger than the kernels.** Python cannot launch work fast
+enough to keep the device fed.
 
 <SpeakerNotes>
 Say plainly that this is the job we are about to profile together, and that
