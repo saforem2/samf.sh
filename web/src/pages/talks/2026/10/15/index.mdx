@@ -289,15 +289,22 @@ Source: ATPESC deck, all-production-perf.svg.
 
 125M params, seq 1024, `tp=2` across 24 ranks.
 
-**~40% of device time is FSDP communication.** A small model sharded wide is
-communication-bound by construction.
+**The GPU is idle 90.6% of every step.** Not because of communication —
+that is only 25% of the device time it *does* spend.
+
+It is idle because it runs **3,749 kernels at a 4.6 µs median**, separated
+by **3,748 gaps at a 46 µs median**. Python cannot launch work fast enough
+to keep it fed.
 
 <SpeakerNotes>
 Say plainly that this is the job we are about to profile together, and that
 0.55% is not a mistake -- it is what a 125M model sharded across 24 ranks
 actually does. Better teaching example than a clean number.
-Breakdown: _allgather_base_ 12.6%, _reduce_scatter_base_ 11.4%, oneccl_*
-kernels 15.8%. Source: key_averages() from the Aurora run, 2026-09-30.
+Careful with key_averages() here: summing _allgather_base_ 12.6% +
+_reduce_scatter_base_ 11.4% + oneccl_* 15.8% double-counts, because the
+c10d:: op and the oneccl_* kernel it launches are the same work billed
+twice. Measured from the trace's own kernel intervals, comm is 25%.
+Source: Aurora job 8881266, 2026-09-30.
 </SpeakerNotes>
 
 </Slide>
@@ -925,6 +932,69 @@ OOM at >64 GB/tile to ~14 GB/tile.
 </Slide>
 
 {/*───────────────────────────────────────────────────────────────
+17e · the arc: measured, one lever at a time
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-arc">
+
+## Now do it: one lever at a time
+
+Same job, same 2 nodes, same profiling recipe. Each row is a run.
+
+| | change | **idle** | MFU | tok/s/GPU |
+| --- | --- | --- | --- | --- |
+| **A** | baseline, `bs=1 sl=1024` | **90.7%** | 0.33% | 1,392 |
+| **B** | `--batch-size 8` | **76.4%** | 2.51% | 10,484 |
+| **C** | `--batch-size 16` | **63.8%** | 4.54% | 18,947 |
+| **D** | `+ --seq-len 4096` | **19.1%** | 9.77% | 27,648 |
+| **E** | `+ --tp 1` | **10.1%** | **12.9%** | 36,461 |
+
+One mechanism explains all of it: **give each kernel launch more work.**
+Comm share falls 25% → 2.7% as a *consequence*, not a separate fix.
+
+<SpeakerNotes>
+Aurora job 8881266, 7 configs in one job, 5 succeeded. Per-step spread under
+1pp on every config, so these are stable. A re-run reproduced the deck's
+90.6% baseline at 90.68%.
+
+Caveat E out loud: --tp 1 changes the mesh from (dp_shard=12, tp=2) to
+dp_shard=24, which also doubles global batch. A->B->C->D is the clean
+per-lever story; E is "and stop sharding a 125M model twelve ways".
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17f · where it stops
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-ceiling">
+
+## Where it stops, and why
+
+**90.7% → 10.1% idle. MFU 0.33% → 12.9%, a 39× gain.**
+
+Also still bad — and the trace says why. The residual 188 ms of idle is
+**3,735 gaps at a 23 µs median**. Launch overhead never disappears; it only
+gets amortized.
+
+> [!IMPORTANT]+ The honest ceiling is memory, not cleverness
+> `E` peaks at **55.7 of 64 GiB**. Both bigger-model configs **OOMed**
+> outright. To go further you need a model big enough to justify 24 tiles,
+> which is a different talk.
+
+<SpeakerNotes>
+The OOMs are evidence, not an embarrassment: --model l (495M) at bs16/sl4096
+hit 60.53 GiB and --model xl (1B) at bs8/sl4096 hit 61.84 GiB, both with
+zero iterations. "Just use a bigger model" does not work without also
+cutting batch or adding activation checkpointing. Absolute idle per step
+fell 0.326s -> 0.113s while the work grew 128x -- that is the cleaner
+statement of the mechanism than the percentage.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
 18 · Summary
 ───────────────────────────────────────────────────────────────*/}
 
@@ -933,9 +1003,10 @@ OOM at >64 GB/tile to ~14 GB/tile.
 ## Takeaways
 
 1. **Baseline and ceiling before any change.**
-2. **The trace names the problem.** Three shapes, three branches.
-3. **One measurement per fix.** Re-measure after each.
-4. **Stop when the measurement says stop**, not when you run out of ideas.
+2. **The trace names the problem.** Ours said launch overhead, not comms —
+   and the first guess was wrong.
+3. **One lever per measurement.** 90.7% → 10.1% idle, five runs.
+4. **Stop when the measurement says stop.** Ours stopped at memory.
 
 **Slides:** [samf.sh/talks/2026/10/15](https://samf.sh/talks/2026/10/15)
 
