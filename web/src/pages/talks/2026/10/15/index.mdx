@@ -531,17 +531,6 @@ works on all three.
 `ezpz` probes the device and picks both. `profile.py` is **byte-identical**
 across machines (md5 verified) — no user branching.
 
-The *launch* is not identical, though. Verified on Polaris:
-
-```bash
-export HTTP_PROXY=http://proxy.alcf.anl.gov:3128   # ALCF compute: no internet
-source <(curl -fsSL https://ezpz.cool/utils.sh)
-ezpz_setup_env && ezpz_install                     # install is a SECOND step
-ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
-```
-
-Three things bite, and none are in the docs. Next slide.
-
 > [!WARNING]+ Profiling is the part that travels badly
 > Completes on **Polaris**. Needs `--no-with-stack` for **FSDP+TP on
 > Aurora** — a shallow model is fine, the deep `cpu_children` tree is what
@@ -585,6 +574,31 @@ maps cuda/xpu to their column and everything else to CPU.
 {/*═══════════════════════════════════════════════════════════════
   PART 3 · READ THE TRACE
 ═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+10c-2 · the launch
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-launch">
+
+## The launch is not identical
+
+```bash
+export HTTP_PROXY=http://proxy.alcf.anl.gov:3128   # ALCF compute: no internet
+source <(curl -fsSL https://ezpz.cool/utils.sh)
+ezpz_setup_env && ezpz_install                     # install is a SECOND step
+ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
+```
+
+Verified on Polaris. Three things bite, and none are in the docs.
+
+<SpeakerNotes>
+Each line earns its place: the proxy because ALCF compute has no route out,
+ezpz_install because setup_env does not install ezpz, and the profiler
+example because it is purpose-built for this and finishes fast.
+</SpeakerNotes>
+
+</Slide>
 
 {/*───────────────────────────────────────────────────────────────
 10d · the traps
@@ -826,19 +840,22 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp \
     --profile --rank-zero-only --no-with-stack
 ```
 
-> [!WARNING]+ `--no-with-stack` is not optional today
-> Without it the trace-ready callback dies with `RecursionError` in
-> `key_averages()` — and that call sits *before* `export_chrome_trace`, so
-> you lose the table **and** the trace, and the run exits 143. The PBS
-> script also needs `#!/bin/bash -l` or `module` is not found.
+**144 s**, two traces, full table. Open the JSON in
+[Perfetto](https://ui.perfetto.dev) and you are looking at your own run.
 
-Measured: **144 s** wall, two traces, full table.
+> [!WARNING]+ `--no-with-stack` is not optional for FSDP+TP
+> Without it the callback dies in `key_averages()` — which runs *before*
+> `export_chrome_trace`, so you lose the table **and** the trace.
 
-Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
-Perfetto or `chrome://tracing` and you are looking at your own trace.
+<SpeakerNotes>
+The PBS script also needs #!/bin/bash -l or module is not found. Step 2
+writes the trace as torch-profiler-rank0-step(N)-(timestamp).json into
+the run's own outputs directory.
 
-**The exercise:** profile your run, name which of the three shapes you have,
-change one thing, re-measure.
+The exercise for the self-progress block: profile your run, name which of
+the three shapes you have, change one thing, re-measure. Bring the
+before/after.
+</SpeakerNotes>
 
 </Slide>
 
