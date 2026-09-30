@@ -4,7 +4,7 @@ title: 'Profiling and Optimization of AI Training Workloads'
 shortTitle: 'Profiling AI Training at Scale'
 subtitle: 'Find the bottleneck before you buy more nodes'
 description: 'A hands-on session on instrumenting, profiling, and optimizing AI training workloads on leadership-class HPC. Establish a throughput baseline and a roofline, instrument a real run with torch.profiler, read a trace to separate compute from communication from data stalls, then work the bottlenecks in the order the measurements justify.'
-date: 2026-10-14
+date: 2026-10-15
 location: 'Genesis Mission Hackathon, Argonne National Laboratory'
 ---
 
@@ -19,10 +19,12 @@ export const ASSETS = 'https://samforeman.me/assets'
   Genesis Mission Hackathon 2026 · Advanced track A3
   "Profiling and optimization of AI training workloads for science at scale"
 
-  SLOT: 90 min, Day 1 (Wed 14 Oct) 1:45-3:15pm.
-  NB: the agenda also lists "Advanced A3" at Day 2 9:00am while A2 (Chard,
-  multi-agent) never appears -- almost certainly a typo for A2. CONFIRM with
-  organizers before building a part 2.
+  SLOT: 90 min, Day 2 (Thu 15 Oct) 9:00-10:30am.
+  The agenda prints "Advanced A3" in two slots and never prints A2. Every
+  other slot advances F/I/A in lockstep (F1/I1/A1, F2/I2/A2, ...), so the
+  Day 1 1:45pm entry -- which sits in the F2/I2 row -- is the typo: it
+  should read A2 (Chard, multi-agent). Our slot is the Day 2 9:00am one,
+  in the F3/I3 row. One session, not two.
 
   AUDIENCE: RFA award teams "pushing the frontier" -- they already have a
   training workload that runs. They are not here to learn PyTorch; they are
@@ -103,7 +105,8 @@ _{new Date(frontmatter.date).toISOString().slice(0, 10)} · Genesis Mission Hack
 
 ## Roadmap
 
-**Measure, localize, fix — in that order.** Ninety minutes.
+**Measure, localize, fix — in that order.** Ninety minutes, then a
+self-progress block where you do it to your own run.
 
 1. **Baseline** _(~15 min)_ — what number are you optimizing, and what is the
    ceiling? Tokens/sec, MFU, and the roofline that says how much is left.
@@ -315,14 +318,80 @@ worse than showing one that works.
 
 ## When you need the vendor tools
 
-TODO — **BLOCKED on target machine.** The content forks:
+**`torch.profiler` tells you _which op_. The vendor tool tells you _why that
+op is slow_** — occupancy, memory bandwidth, which collective algorithm got
+picked. Most people never need this level. Go here when the trace says a
+kernel is slow and you cannot see why.
 
-- **Aurora / Intel Max:** unitrace, VTune, PTI
-- **Polaris / NVIDIA A100:** Nsight Systems (`nsys`), Nsight Compute (`ncu`)
+<Cols>
+<Col>
 
-Vendor-neutral framing either way: `torch.profiler` tells you *which op*;
-the vendor tool tells you *why that op is slow* (occupancy, memory bandwidth,
-collective algorithm). Most people never need to go down this level — say so.
+**Aurora** · Intel Max 1550
+
+- `unitrace` — ALCF's wrapper, closest to `nsys`
+- VTune — hotspots, memory access
+- PTI / Level Zero tracing
+
+</Col>
+<Col>
+
+**Polaris · Perlmutter** · NVIDIA
+
+- `nsys` — timeline, the usual first stop
+- `ncu` — per-kernel counters, occupancy
+- `nsys profile -t cuda,nvtx,osrt`
+
+</Col>
+</Cols>
+
+TODO: one worked invocation per side, verified on the machine. A wrong flag
+here costs the room ten minutes.
+
+TODO: NVTX/ITT range annotation — worth a mention? It is what makes a vendor
+timeline readable against your own phase names.
+
+<SpeakerNotes>
+Aurora is the primary target; Polaris and Perlmutter are here because
+attendees have allocations on them and the portable layer above genuinely
+works on all three.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10b · Portability
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="portability">
+
+## The same command, three machines
+
+The reason the portable layer is worth using: `ezpz` swaps the profiler
+activity and the sort column per device, so **one invocation** works
+everywhere.
+
+| Machine        | Accelerator     | Activity added        | Sorts by               |
+| -------------- | --------------- | --------------------- | ---------------------- |
+| **Aurora**     | Intel Max 1550  | `ProfilerActivity.XPU`  | `self_xpu_time_total`  |
+| **Polaris**    | NVIDIA A100     | `ProfilerActivity.CUDA` | `self_cuda_time_total` |
+| **Perlmutter** | NVIDIA A100     | `ProfilerActivity.CUDA` | `self_cuda_time_total` |
+
+The sort column is a real portability trap: `key_averages().table()` raises
+`AttributeError` if you ask for a column the profiler never recorded.
+
+```bash
+# identical on all three
+ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+```
+
+TODO: actually run this on all three before claiming it. Aurora is primary;
+Polaris and Perlmutter need confirming, not assuming.
+
+<SpeakerNotes>
+Source: src/ezpz/profile.py -- activities built by probing
+torch.cuda.is_available() / torch.xpu.is_available(), and _table_sort_key()
+maps cuda/xpu to their column and everything else to CPU.
+</SpeakerNotes>
 
 </Slide>
 
@@ -466,12 +535,16 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
 Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
 Perfetto or `chrome://tracing` and you are looking at your own trace.
 
-TODO — **format still open.** A self-progress block follows this session
-immediately, which argues for: demo live in the room, hand them the commands,
-let them work it in the block while you are still in the building.
+**Format:** I drive it live, you follow at your own pace, and the
+self-progress block right after this session is where you run it on *your*
+model. I am still in the building for that block.
 
-TODO: run all four lines end to end on the target machine before the session.
-Note the URL above is `ezpz.cool/utils.sh`, not the old `bit.ly` shortener.
+**The exercise:** profile your own run, find which of the three shapes you
+have, change one thing, re-measure. Bring the before/after.
+
+TODO: run all four lines end to end on Aurora before the session, then
+confirm on Polaris and Perlmutter. Note the URL is `ezpz.cool/utils.sh` —
+the canonical one, not the old `bit.ly` shortener.
 
 </Slide>
 
