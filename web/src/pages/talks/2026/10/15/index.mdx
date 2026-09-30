@@ -542,11 +542,12 @@ ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
 
 Three things bite, and none are in the docs. Next slide.
 
-> [!WARNING]+ `--profile` itself is not portable
-> It completes on **Polaris**. On **Perlmutter** it wedges a collective and
-> times out after 10 minutes with no trace written; the same run without
-> `--profile` trains fine. Aurora needs `--no-with-stack`. Show a trace from
-> Polaris or Aurora, not Perlmutter.
+> [!WARNING]+ Profiling is the part that travels badly
+> Completes on **Polaris**. Needs `--no-with-stack` for **FSDP+TP on
+> Aurora** — a shallow model is fine, the deep `cpu_children` tree is what
+> blows the recursion limit. On **Perlmutter** it wedged a collective and
+> hit NCCL's 10-minute watchdog; the same run without `--profile` trained
+> clean. Demo the trace from Polaris or Aurora.
 
 <SpeakerNotes>
 Polaris job 7670657, 4x A100-SXM4-40GB, tp=2 dp_shard=2: MFU 7.7-7.9%, ~849
@@ -556,10 +557,21 @@ ReduceScatter.
 Perlmutter is a controlled pair differing by ONE flag: job 59125292 WITH
 --profile hit a 10-min NCCL watchdog timeout on _ALLGATHER_BASE at SeqNum
 619, exit 143, zero traces; job 59126199 WITHOUT it ran 256 iters clean at
-MFU 8.8-9.0%. Ranks timed out on different SeqNums, consistent with the
-rank-0-only profiler desynchronising the group. Throughput is comparable
-across the two machines -- it is profiling, not training, that fails to
-port.
+MFU 8.8-9.0%. Ranks timed out on different SeqNums.
+
+MECHANISM, and a caveat worth stating if asked: get_torch_profiler gives
+rank 0 a real profiler and every peer a nullcontext(), so rank 0 alone pays
+per-step bookkeeping -- an asymmetry that generates drift in a collective
+loop, which is exactly what different-SeqNum timeouts look like. BUT those
+Perlmutter runs may also have been on the NCCL TCP fallback (8.3x slower
+inter-node) rather than the fast plugin. If so, drift crossing a watchdog a
+fast fabric would absorb is a transport interaction, not a portability
+property of the profiler. Unresolved; do not overclaim this one.
+
+The Aurora RecursionError is real and reproducible -- job 8880975,
+fsdp_tp --model small --tp 2, log at ~/scratch-profiling-talk/prof_job2.log
+-- but it does NOT reproduce on a shallow model, so it is model depth, not
+scale.
 </SpeakerNotes>
 
 <SpeakerNotes>
