@@ -549,19 +549,26 @@ works on all three.
 | **Polaris** | A100 | `CUDA` | `self_cuda_time_total` |
 | **Perlmutter** | A100 | `CUDA` | `self_cuda_time_total` |
 
-`ezpz` probes the device and picks both. `profile.py` is **byte-identical**
-across machines (md5 verified) — no user branching.
+`ezpz` probes the device and picks both. **You write one script and it
+runs on all three** — no `if xpu:` in your code, no per-machine config.
 
 > [!WARNING]+ Profiling is the part that travels badly
-> **Aurora** needs `--no-with-stack` for FSDP+TP: torch walks the recorded
-> stacks recursively, and deep FSDP2+TP frames blow Python's 1000-frame
-> limit.[^aurora-stack] Not an accelerator thing — **Polaris** ran the same
-> code path *with* stacks and got its traces. On **Perlmutter** it wedged a
-> collective and hit NCCL's 10-minute watchdog. Demo from Polaris or Aurora.
+> **Aurora** needs `--no-with-stack` for FSDP+TP.[^aurora-stack]
+> **Perlmutter** hangs outright. Demo from Polaris or Aurora.
 
 [^aurora-stack]: `torch.profiler` records a Python stack per op when `with_stack=True` (the default), and `p.key_averages()` then walks those stacks **recursively** in [`torch/autograd/profiler_util.py`](https://github.com/pytorch/pytorch/blob/main/torch/autograd/profiler_util.py) to build the event tree — FSDP2 + TP call stacks are deep enough to exceed Python's default 1000-frame limit, and the run exits 143 having written **zero** traces. Aurora job `8881403` is a one-variable pair (same allocation, same `fsdp_tp --model small --tp 2`): the default writes 0 traces at `rc=143`, `--no-with-stack` writes 5 at `rc=0`. Nothing in `ezpz` is implicated; its frames in the traceback are just the outer call path. This is a **depth threshold, not an Aurora property** — Polaris (job `7670657`) profiled the same example *with* stacks and wrote 5 traces. Aurora crosses the limit first.
 
 <SpeakerNotes>
+Why Aurora needs the flag: torch walks the recorded stacks recursively to
+build the event tree, and deep FSDP2+TP frames blow Python's 1000-frame
+limit. NOT an accelerator property -- Polaris ran the identical code path
+WITH stacks and wrote its traces (job 7670657). Aurora just reaches that
+depth first.
+
+The same ezpz/profile.py is byte-identical across the three installs
+(md5 71a6baf5...), which is how I confirmed there is no hidden per-machine
+branch -- not worth a slide, but it is the evidence if someone asks.
+
 Polaris job 7670657, 4x A100-SXM4-40GB, tp=2 dp_shard=2: MFU 7.7-7.9%, ~849
 tok/s/GPU, step 0.60s, 5 rank-0 traces, top ops ncclDevKernel_AllGather and
 ReduceScatter.
@@ -662,20 +669,25 @@ Aurora without --no-with-stack (8881403). Both pages are being corrected.
 
 <Slide id="setup-traps">
 
-## Three things that bite
+## Four things that bite
 
-| | |
-| --- | --- |
-| **No internet on ALCF compute** | the `curl` fails silently, then `ezpz_setup_env: command not found` |
-| **The venv is named from `cwd`** | `cd` into a project dir → a different, empty environment |
-| **`--hf-limit` defaults to none** | ~6 min tokenizing before step 0, looks exactly like a hang |
+- **`curl` fails, then `ezpz_setup_env: command not found`**
+  → ALCF compute has no route out. `export HTTP_PROXY=http://proxy.alcf.anl.gov:3128`
+- **`ModuleNotFoundError: ezpz`, minutes in**
+  → the venv name comes from `cwd`. Don't `cd` between setup and launch.
+- **Six silent minutes before step 0**
+  → it is tokenizing 5.9 GB. `--hf-limit 512`
+- **`module: command not found` in a PBS job**
+  → `#!/bin/bash -l`, not `#!/bin/bash`
 
-Add `#!/bin/bash -l` to the PBS script or `module` is not found either.
+None of them error where the mistake is. That is what makes them cost an
+afternoon.
 
 <SpeakerNotes>
-All four found the hard way while preparing this talk. The cwd one is the
-nastiest because nothing errors -- you just get a fresh empty venv and a
-ModuleNotFoundError several minutes later.
+All four found the hard way preparing this talk. The cwd one is nastiest:
+nothing errors, you just get a fresh empty venv and a ModuleNotFoundError
+several minutes later. The proxy one is ALCF compute only -- Perlmutter
+needs no proxy.
 </SpeakerNotes>
 
 </Slide>
@@ -1147,5 +1159,26 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp \
 ```
 
 Find me in the self-progress block.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+19 · Acknowledgements
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="acknowledgements">
+
+## Acknowledgements
+
+> This research used resources of the Argonne Leadership Computing Facility
+> at Argonne National Laboratory, which is supported by the Office of
+> Science of the U.S. Department of Energy, Office of Science, under
+> contract number DE-AC02-06CH11357.
+
+<SpeakerNotes>
+CELS-required wording, matching what the other talks were standardised to
+in #35. Every measurement in this deck came from Aurora, Polaris or
+Perlmutter allocations, so this is required, not decorative.
+</SpeakerNotes>
 
 </Slide>
