@@ -534,9 +534,11 @@ across machines (md5 verified) — no user branching.
 > [!WARNING]+ Profiling is the part that travels badly
 > **Aurora** needs `--no-with-stack` for FSDP+TP: torch walks the recorded
 > stacks recursively, and deep FSDP2+TP frames blow Python's 1000-frame
-> limit. Not an accelerator thing — **Polaris** ran the same code path
-> *with* stacks and got its traces. On **Perlmutter** it wedged a
+> limit.[^aurora-stack] Not an accelerator thing — **Polaris** ran the same
+> code path *with* stacks and got its traces. On **Perlmutter** it wedged a
 > collective and hit NCCL's 10-minute watchdog. Demo from Polaris or Aurora.
+
+[^aurora-stack]: `torch.profiler` records a Python stack per op when `with_stack=True` (the default), and `p.key_averages()` then walks those stacks **recursively** in [`torch/autograd/profiler_util.py`](https://github.com/pytorch/pytorch/blob/main/torch/autograd/profiler_util.py) to build the event tree — FSDP2 + TP call stacks are deep enough to exceed Python's default 1000-frame limit, and the run exits 143 having written **zero** traces. Aurora job `8881403` is a one-variable pair (same allocation, same `fsdp_tp --model small --tp 2`): the default writes 0 traces at `rc=143`, `--no-with-stack` writes 5 at `rc=0`. Nothing in `ezpz` is implicated; its frames in the traceback are just the outer call path. This is a **depth threshold, not an Aurora property** — Polaris (job `7670657`) profiled the same example *with* stacks and wrote 5 traces. Aurora crosses the limit first.
 
 <SpeakerNotes>
 Polaris job 7670657, 4x A100-SXM4-40GB, tp=2 dp_shard=2: MFU 7.7-7.9%, ~849
