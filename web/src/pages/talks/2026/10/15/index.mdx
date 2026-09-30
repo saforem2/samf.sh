@@ -952,6 +952,50 @@ Same job, same 2 nodes, same profiling recipe. Each row is a run.
 One mechanism explains all of it: **give each kernel launch more work.**
 Comm share falls 25% → 2.7% as a *consequence*, not a separate fix.
 
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17e-2 · the same window, before and after
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="arc-pictures">
+
+## The same 440 ms
+
+<Cols>
+<Col>
+
+<figure>
+    <img
+        src="/talks/2026-10-15/figures/arc-before.png"
+        alt="Perfetto timeline of a 440 ms window in the baseline run. Stream 64 is a row of thin coloured ticks with visible white gaps between nearly every one; the CPU thread above is densely packed. Twenty-odd one-shot XCCL init streams each occupy a row with a single mark."
+    />
+    <figcaption><strong>A</strong> — 90.7% idle</figcaption>
+</figure>
+
+</Col>
+<Col>
+
+<figure>
+    <img
+        src="/talks/2026-10-15/figures/arc-after.png"
+        alt="Perfetto timeline of the same 440 ms window after batching and sequence-length changes. Stream 64 is nearly continuous, with labelled gemm_kernel and collective blocks wide enough to read, and the CPU thread shows repeating FSDP::pre_forward and FSDP::all_gather spans instead of undifferentiated texture."
+    />
+    <figcaption><strong>E</strong> — 10.1% idle</figcaption>
+</figure>
+
+</Col>
+</Cols>
+
+Same trace viewer, same zoom, same 440 ms. The whitespace is the win.
+
+<SpeakerNotes>
+Both sliced to an identical 440.27 ms window from ProfilerStep#10, because
+E's real step is 1,873 ms -- showing each at its own step boundary would
+make E look denser purely from the zoom. Same window is the honest
+comparison.
+</SpeakerNotes>
+
 <SpeakerNotes>
 Aurora job 8881266, 7 configs in one job, 5 succeeded. Per-step spread under
 1pp on every config, so these are stable. A re-run reproduced the deck's
