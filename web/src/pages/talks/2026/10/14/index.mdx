@@ -35,6 +35,34 @@ export const ASSETS = 'https://samforeman.me/assets'
   STATUS: OUTLINE. Slide bodies are stubs pending (a) confirmation of the
   target machine, (b) the hands-on format, (c) real traces to screenshot.
   Every TODO below is a real open question, not filler.
+
+  WHAT ALREADY EXISTS (surveyed 2026-09-30, verified by hand):
+  - NO profiling content in any prior deck. The only profiler slide anywhere
+    is a pyinstrument dump pasted verbatim into three 2024-era decks. Zero
+    coverage of torch.profiler, nsys/ncu, chrome traces, or roofline. So the
+    instrumentation spine here is entirely net-new.
+  - ezpz ALREADY HAS the tooling, unpresented. Verified in
+    ~/projects/saforem2/ezpz:
+      src/ezpz/profile.py    get_profiling_context / get_torch_profiler,
+                             auto-detects CPU|CUDA|XPU activities, and its
+                             trace_handler already calls export_chrome_trace
+      src/ezpz/flops.py      estimate_model_flops (via FlopCounterMode),
+                             get_peak_flops (incl. dynamic Intel PVC),
+                             compute_mfu
+      src/ezpz/cli/flags.py  --profile, --pyinstrument-profiler,
+                             --rank-zero-only, --pytorch-profiler-{wait,
+                             warmup,active,repeat}, --record-shapes,
+                             --with-stack, --with-flops, --profile-memory
+    => the hands-on can be `ezpz launch python3 -m ezpz.examples.fsdp_tp
+       --profile --rank-zero-only` with NO new code. Confirm on the target
+       machine before promising it in the room.
+  - REUSE from the ATPESC deck (2026/08/03) rather than rewriting: MFU
+    results (2186), critical batch (1122), ZeRO trade (810), async ckpt
+    (1621), Lustre import melt (452), parallelism menu (595) + cartoons
+    (633/730), "Try it yourself" (2412).
+  - Unused figures worth a look: public/talks/2026-06-03/figures/2b-mds-*.svg
+    (tflops, tps-per-gpu, tokens-vs-time, grad-norm) -- real traces, never
+    shown in any deck.
 ═══════════════════════════════════════════════════════════════════════════*/}
 
 {/*───────────────────────────────────────────────────────────────
@@ -181,16 +209,28 @@ TODO: Amdahl framing — worth a small figure or just a worked line of arithmeti
 
 ## MFU: how much of the machine are you using?
 
-TODO. Reuse the MFU definition + arithmetic from the ATPESC deck
-(`2026/08/03`, "What it costs: throughput and MFU") rather than rewriting:
-6ND FLOPs, measured tokens/sec, divided by the vendor peak.
+$$\text{MFU} = \frac{\text{model FLOPs per step}}{\text{peak FLOP/s per device} \times \text{step time}}$$
 
-Real anchor from that deck: 20B chains ran **17-22% MFU**, 2B chains
-**9-12%** — bigger model, better utilization, same machine.
+Both quantities are **per-device**, so `world_size` does not appear — in
+data-parallel training every rank does the same work.
 
-TODO: state the honest range. What counts as "good" MFU on the target machine
-for a science workload that is not a dense transformer? This is where most
-attendees' models live and where published MFU numbers stop applying.
+You do not have to derive the numerator by hand. `ezpz` counts it with
+PyTorch's `FlopCounterMode` (actual ops, not a $6ND$ estimate) and looks up
+the peak, including a dynamically computed one for Intel PVC:
+
+```python
+from ezpz.flops import estimate_model_flops, compute_mfu
+flops = estimate_model_flops(model, input_shape)     # measured, not estimated
+mfu = compute_mfu(flops, step_duration)              # peak auto-detected
+```
+
+Real anchor (ATPESC deck, AuroraGPT production chains): 20B ran **17-22%
+MFU**, 2B ran **9-12%** — bigger model, better utilization, same machine.
+
+TODO: the honest caveat. Published MFU numbers assume dense transformers.
+Most attendees' models are not that, so say what a *reasonable* MFU looks
+like for an irregular scientific workload — or say plainly that the useful
+comparison is against your own baseline, not a paper.
 
 </Slide>
 
@@ -224,16 +264,22 @@ ship a generic textbook roofline.
 
 ## Instrumenting a real run
 
-TODO. The minimal `torch.profiler` recipe that works on a multi-node job:
+The four decisions that make a profile useful, and the flag for each:
 
-- `schedule=` with wait/warmup/active — **profile steady state, not warmup**
-- `on_trace_ready` writing per-rank traces somewhere Lustre tolerates
-- `record_shapes` / `profile_memory` / `with_stack`: what each costs
-- Rank selection: profiling all 2048 ranks produces 2048 useless files
+| Decision                     | Why it matters                              | Flag                            |
+| ---------------------------- | ------------------------------------------- | ------------------------------- |
+| **Skip the warmup**          | step 1 is allocator + autotune, not your run | `--pytorch-profiler-wait/warmup`|
+| **Capture a few steps**      | one step is noise; 100 is gigabytes          | `--pytorch-profiler-active`     |
+| **One rank, not all of them**| 2048 ranks writing traces to Lustre          | `--rank-zero-only`              |
+| **Pay only for what you read**| shapes/stack/memory each cost overhead      | `--record-shapes` etc.          |
 
-TODO: verify every flag against the installed torch version on the target
-machine before shipping. Flags drift between versions and a broken copy-paste
-in a hands-on session costs ten minutes of the room's time.
+TODO: this is `ezpz`'s existing surface (`src/ezpz/cli/flags.py`), and the
+defaults are wait=1 warmup=2 active=3 repeat=5 — VERIFY those numbers on the
+target machine's installed version before showing them.
+
+TODO: show the underlying `torch.profiler` call too, for teams not using
+`ezpz` — `get_profiling_context()` in `src/ezpz/profile.py` is the worked
+example to adapt.
 
 </Slide>
 
@@ -245,14 +291,19 @@ in a hands-on session costs ten minutes of the room's time.
 
 ## Before you reach for the profiler
 
-TODO. The case for plain timers: a profiler changes the thing it measures and
-produces gigabytes you have to interpret. A per-phase timer around
-data/forward/backward/optimizer/collective answers "which quarter of the step"
-in five minutes.
+A profiler changes the thing it measures and produces gigabytes you then have
+to interpret. A per-phase timer answers "which quarter of the step" in five
+minutes, and often that is the whole answer.
 
-TODO: check what `ezpz` already provides here — the repo is at
-`~/projects/saforem2/ezpz`. If there is a timing helper, demo it; if not, show
-the ten-line version. Do not invent an API that does not exist.
+`ezpz` already ships these — verified present, never presented:
+
+- `StopWatch` (`history.py`) — context manager, logs the delta, optional wandb
+- `timeitlogit` (`distributed.py`) — decorator, logs per-rank under `timeit/`
+- `History.update()` — the source of the `dt= dtf= dtb= sps= tps= mfu=`
+  per-step lines in the older decks
+
+TODO: pick ONE of these to demo. Showing three ways to time a function is
+worse than showing one that works.
 
 </Slide>
 
@@ -398,19 +449,29 @@ TODO: reuse the ZeRO memory figure if one exists
 
 ## Hands-on
 
-TODO — **BLOCKED on format decision.** Three candidate shapes:
+The good news: this needs **no new code**. The flags already exist.
 
-1. **Guided exercise:** participants profile a run with a planted bottleneck,
-   find it, fix it, measure the delta. Highest retention, most prep, needs
-   working allocations for everyone.
-2. **Live demo, follow along:** you drive; they replicate at their pace.
-   Degrades gracefully when environments break.
-3. **Repo they take away:** methodology in the room, exercises for the
-   self-progress block that follows.
+```bash
+# 0 · environment + install (same four lines as the ATPESC deck)
+source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
 
-Given the schedule puts a **self-progress block right after** this session,
-option 3 composes well with option 2 — demo live, hand them the repo, they
-work it in the block while you are still in the building.
+# 1 · baseline: how fast is it now?
+ezpz launch python3 -m ezpz.examples.fsdp_tp
+
+# 2 · same run, instrumented
+ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+```
+
+Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
+Perfetto or `chrome://tracing` and you are looking at your own trace.
+
+TODO — **format still open.** A self-progress block follows this session
+immediately, which argues for: demo live in the room, hand them the commands,
+let them work it in the block while you are still in the building.
+
+TODO: run all four lines end to end on the target machine before the session.
+Note the URL above is `ezpz.cool/utils.sh`, not the old `bit.ly` shortener.
 
 </Slide>
 
