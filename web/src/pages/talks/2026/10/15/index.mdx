@@ -571,14 +571,25 @@ Perlmutter is a controlled pair differing by ONE flag: job 59125292 WITH
 619, exit 143, zero traces; job 59126199 WITHOUT it ran 256 iters clean at
 MFU 8.8-9.0%. Ranks timed out on different SeqNums.
 
-MECHANISM, and a caveat worth stating if asked: get_torch_profiler gives
+RESOLVED by a 2x2, Perlmutter job 59132774 -- profiler on/off crossed with
+fast Libfabric vs forced Socket:
+
+  profiler OFF + fast    rc=0
+  profiler ON  + fast    rc=124 HANG      (hangs on the FAST fabric)
+  profiler OFF + Socket  rc=0             (passes on the SLOW one)
+
+So transport is not the variable. --profile alone is sufficient. An
+earlier theory that the slow TCP fallback was the real cause is dead;
+the 8.3x figure is true about the nccl module and irrelevant here.
+
+MECHANISM, offered as hypothesis not measurement: get_torch_profiler gives
 rank 0 a real profiler and every peer a nullcontext(), so rank 0 alone pays
-per-step bookkeeping -- an asymmetry that generates drift in a collective
-loop, which is exactly what different-SeqNum timeouts look like. BUT those
-Perlmutter runs may also have been on the NCCL TCP fallback (8.3x slower
-inter-node) rather than the fast plugin. If so, drift crossing a watchdog a
-fast fabric would absorb is a transport interaction, not a portability
-property of the profiler. Unresolved; do not overclaim this one.
+per-step bookkeeping and the group drifts -- which is what timeouts on
+different SeqNums look like. Suggestive detail: on Aurora, raising the
+recursion limit to dodge the RecursionError produced THIS failure instead
+(job 8881461 -- trains ~54 s, goes silent, killed at timeout, zero traces).
+Both machines land in the same place; Aurora just trips a recursion limit
+before it can drift. Nobody has instrumented per-rank timing to confirm it.
 
 Clean one-variable pair, Aurora job 8881403, same job and allocation,
 fsdp_tp --model small --tp 2, 30 iters, only the flag differing:
