@@ -73,6 +73,17 @@ export const ASSETS = 'https://samforeman.me/assets'
 
 <Slide id="title-slide">
 
+<a
+    class="title-slide-qr"
+    href="https://samf.sh/talks/2026/10/15"
+    aria-label="QR code linking to these slides">
+    <img
+        src="/talks/2026-10-15/figures/qr-slides.svg"
+        alt="QR code linking to samf.sh/talks/2026/10/15"
+    />
+    <span>samf.sh/talks/2026/10/15</span>
+</a>
+
 # <span style="color:var(--foreground0);">Profiling and Optimization of AI Training Workloads</span>
 
 <p class="title-slide-thesis">
@@ -90,8 +101,30 @@ _{new Date(frontmatter.date).toISOString().slice(0, 10)} · Genesis Mission Hack
     font-style: italic;
     color: var(--foreground1);
   }
+  /* QR top-right, big enough to scan from the back, URL underneath. */
+  #title-slide .title-slide-qr {
+    position: absolute;
+    top: 2lh;
+    right: 4ch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25lh;
+    text-decoration: none;
+    color: var(--foreground0);
+  }
+  #title-slide .title-slide-qr img { width: 11ch; height: 11ch; display: block; }
+  #title-slide .title-slide-qr span { font-size: 0.75em; color: var(--foreground1); white-space: nowrap; }
+  /* QR SVG ships stroke=currentColor but as an <img> resolves to black;
+     invert on dark themes so it reads white-on-dark. */
+  html[data-webtui-theme='custom-dark'] .title-slide-qr img,
+  html[data-webtui-theme='catppuccin'] .title-slide-qr img,
+  html[data-webtui-theme='nvim-dark'] .title-slide-qr img {
+    filter: invert(1);
+  }
   @media (max-width: 768px) {
     #title-slide .title-slide-thesis { max-width: 100%; }
+    #title-slide .title-slide-qr { display: none; }
   }
 `}</style>
 
@@ -551,11 +584,33 @@ TODO: torch 2.10, never re-measured. Say "as of April" or re-run it.
 
 Activation checkpointing, ZeRO stages, offload. Each buys memory with compute.
 
-> [!IMPORTANT]+ These are slowdowns you accept to fit
-> They are not speedups. Teams reach for them expecting speedups.
+<Cols>
+<Col width={7}>
 
-TODO: reuse `zero-memory.svg` and the per-param 16-byte Adam budget from the
-ATPESC deck.
+<figure>
+    <picture>
+        <source
+            media="(max-width: 768px)"
+            srcset="/talks/2026-08-03/figures/zero-memory-mobile.svg"
+        />
+        <img
+            src="/talks/2026-08-03/figures/zero-memory.svg"
+            alt="ZeRO / FSDP memory partitioning: horizontal memory-proportional bars per GPU across four stages (Baseline/DDP, ZeRO-1 shard optimizer, ZeRO-2 +gradients, ZeRO-3/FULL_SHARD shard everything). Each stage replaces a full-width component bar with a 1/N per-GPU slice over a greyed freed-memory track, so per-GPU memory drops from 16 GB toward 16/N GB."
+        />
+    </picture>
+</figure>
+
+</Col>
+<Col width={5}>
+
+Adam, per parameter: **2** (bf16 param) + **2** (grad) + **12** (fp32 master
++ two moments) = **16 bytes**. Sharding takes that toward 16/N.
+
+> [!IMPORTANT]+ These are slowdowns you accept to fit
+> Not speedups. Teams reach for them expecting speedups.
+
+</Col>
+</Cols>
 
 </Slide>
 
@@ -700,6 +755,13 @@ OOM at >64 GB/tile to ~14 GB/tile.
 3. **One measurement per fix.** Re-measure after each.
 4. **Stop when the measurement says stop**, not when you run out of ideas.
 
-TODO: QR to slides + exercise repo.
+**Slides:** [samf.sh/talks/2026/10/15](https://samf.sh/talks/2026/10/15)
+
+```bash
+source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
+ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+```
+
+Find me in the self-progress block.
 
 </Slide>
