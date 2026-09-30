@@ -482,14 +482,15 @@ push = torch.cuda.nvtx.range_push if nvtx else torch.profiler.itt.range_push
 pop  = torch.cuda.nvtx.range_pop  if nvtx else torch.profiler.itt.range_pop
 ```
 
-> [!NOTE]+ Annotate once, behind a shim
-> NVTX **raises** on XPU — `RuntimeError: NVTX functions not installed`. ITT
-> no-ops on CUDA. So the shim only has to guard one direction.
+Only one direction needs guarding: NVTX **raises** on XPU, ITT no-ops on
+CUDA. `ezpz` has the wrapper but no annotation yet ([#270]).
 
-`ezpz` has the profiler wrapper but **no annotation** — `record_function` is
-imported-and-commented at `profile.py:49`. This is the gap.
+[#270]: https://github.com/saforem2/ezpz/issues/270
 
 <SpeakerNotes>
+NVTX on XPU raises "RuntimeError: NVTX functions not installed". ITT no-ops
+on CUDA, so the shim guards one direction only. record_function is
+imported-and-commented at profile.py:49.
 Verified both reach the trace, which is the claim that matters. Perlmutter
 `nsys stats --report nvtx_sum` showed :forward, :backward, :optimizer and
 train_step_0..4 alongside real CUDA kernels. Sunspot unitrace JSON contained

@@ -1141,6 +1141,18 @@ body[data-speaker-window] [is-~='notes'] {
     /* default deck mode unchanged */
 }
 
+/* Match the paper to the slide. Without an @page size the browser prints
+   onto whatever default it has (Letter, 1.29:1), while each slide holds its
+   16/9 aspect-ratio -- so a 594px slide lands on 816px of paper and every
+   page carries a ~220px band of white below the content. Sizing the page
+   to the same ratio makes the slide fill the sheet, which is what the
+   vertical centering inside .slide-inner is then centering against.
+   10in x 5.625in is exactly 16/9. */
+@page {
+    size: 10in 5.625in;
+    margin: 0;
+}
+
 @media print {
     body.slides-print-mode\? body {
         background-color: white;
@@ -1185,7 +1197,16 @@ body[data-speaker-window] [is-~='notes'] {
         width: 100% !important;
         height: 100% !important;
         transform: none !important;
-        /* Same scale + clip as the .slides-print-mode ruleset below. */
+        /* Same flex column + centering + scale + clip as the
+           .slides-print-mode ruleset below. This block used to omit the
+           flex properties, so printed slides lost the vertical centering
+           the screen deck has and sat against the bottom-left corner with
+           dead space above. `safe center` degrades to flex-start when a
+           slide overflows, which is what keeps the top from being clipped. */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: safe center !important;
+        padding: 1lh 4ch !important;
         font-size: 1.08em !important;
         overflow: hidden !important;
     }
@@ -1228,6 +1249,12 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
        in inches and the browser shrinks them to tiny thumbnails. */
     display: flex !important;
     flex-direction: column !important;
+    /* Centre the content vertically, as the screen deck does. Without
+       this the block is a flex column anchored at flex-start, so short
+       slides print hard against the top and read as bottom-heavy once
+       the footer stamp lands. */
+    justify-content: safe center !important;
+    padding: 1lh 4ch !important;
     /* Scale print type UP a touch so the exported PDF reads well as a
        handout. The overflow:hidden clip below still catches the rare
        dense slide (timeline tables, long bullet lists); most slides
