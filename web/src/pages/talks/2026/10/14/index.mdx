@@ -1,0 +1,432 @@
+---
+layout: '@/layouts/SlideLayout.astro'
+title: 'Profiling and Optimization of AI Training Workloads'
+shortTitle: 'Profiling AI Training at Scale'
+subtitle: 'Find the bottleneck before you buy more nodes'
+description: 'A hands-on session on instrumenting, profiling, and optimizing AI training workloads on leadership-class HPC. Establish a throughput baseline and a roofline, instrument a real run with torch.profiler, read a trace to separate compute from communication from data stalls, then work the bottlenecks in the order the measurements justify.'
+date: 2026-10-14
+location: 'Genesis Mission Hackathon, Argonne National Laboratory'
+---
+
+import Slide from '@/components/slides/Slide.astro'
+import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
+import Cols from '@/components/slides/Cols.astro'
+import Col from '@/components/slides/Col.astro'
+
+export const ASSETS = 'https://samforeman.me/assets'
+
+{/*═══════════════════════════════════════════════════════════════════════════
+  Genesis Mission Hackathon 2026 · Advanced track A3
+  "Profiling and optimization of AI training workloads for science at scale"
+
+  SLOT: 90 min, Day 1 (Wed 14 Oct) 1:45-3:15pm.
+  NB: the agenda also lists "Advanced A3" at Day 2 9:00am while A2 (Chard,
+  multi-agent) never appears -- almost certainly a typo for A2. CONFIRM with
+  organizers before building a part 2.
+
+  AUDIENCE: RFA award teams "pushing the frontier" -- they already have a
+  training workload that runs. They are not here to learn PyTorch; they are
+  here because their run is slower than they think it should be.
+
+  THESIS: measure before you optimize, and measure the right thing. The
+  ordering is load-bearing -- every optimization slide is downstream of a
+  measurement that justifies it.
+
+  STATUS: OUTLINE. Slide bodies are stubs pending (a) confirmation of the
+  target machine, (b) the hands-on format, (c) real traces to screenshot.
+  Every TODO below is a real open question, not filler.
+═══════════════════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+1 · Title
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="title-slide">
+
+# <span style="color:var(--foreground0);">Profiling and Optimization of AI Training Workloads</span>
+
+<p class="title-slide-thesis">
+    Find the bottleneck before you buy more nodes.
+</p>
+
+**Sam Foreman**, Argonne National Laboratory
+
+_{new Date(frontmatter.date).toISOString().slice(0, 10)} · Genesis Mission Hackathon · Advanced A3_
+
+<style>{`
+  #title-slide .title-slide-thesis {
+    max-width: 44ch;
+    margin-block-start: 0.5lh;
+    font-style: italic;
+    color: var(--foreground1);
+  }
+  @media (max-width: 768px) {
+    #title-slide .title-slide-thesis { max-width: 100%; }
+  }
+`}</style>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+2 · Roadmap
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="roadmap">
+
+## Roadmap
+
+**Measure, localize, fix — in that order.** Ninety minutes.
+
+1. **Baseline** _(~15 min)_ — what number are you optimizing, and what is the
+   ceiling? Tokens/sec, MFU, and the roofline that says how much is left.
+2. **Instrument** _(~25 min)_ — `torch.profiler` on a real run. What to
+   capture, what to leave off, and how not to profile the warmup.
+3. **Read the trace** _(~25 min)_ — separate compute from communication from
+   data stalls. The three shapes you will actually see.
+4. **Fix, in order** _(~25 min)_ — each optimization tied to the measurement
+   that justifies it. Stop when the measurement says stop.
+
+<SpeakerNotes>
+The ordering is the content. Most teams arrive having already applied fixes
+from step 4 without doing steps 1-3, which is why their speedups did not
+materialize.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+3 · Framing / who this is for
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="framing">
+
+## Who this is for
+
+You have a training workload that **runs**. It is slower than you think it
+should be, and you are not sure whether the fix is code, configuration, or
+more nodes.
+
+This session is about answering that question with a measurement instead of a
+guess.
+
+**What we assume:** a working run, an allocation, and a willingness to look at
+a trace.
+
+**What we do not cover:** getting a run off the ground in the first place, or
+the failure/checkpointing story. TODO: link the ATPESC deck for both.
+
+<SpeakerNotes>
+Say plainly: if your run does not yet launch, this session is the wrong one
+and the self-progress block after it is a better use of your time.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+4 · The core claim
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="thesis">
+
+## More nodes is not a performance fix
+
+Scaling an inefficient run scales the inefficiency with it.
+
+TODO: the one figure that carries this slide. Candidate: measured
+tokens/sec/GPU vs node count for a run with a dataloader bottleneck, showing
+the curve flattening while cost stays linear. Pull from an existing AuroraGPT
+scaling sweep if one has this shape; otherwise generate from real numbers
+only — no schematic pretending to be data.
+
+**The question to answer first:** is the GPU busy? If it is idle 40% of the
+time, another 512 nodes buys you 40% idle on more hardware.
+
+<SpeakerNotes>
+This is the slide the rest of the talk hangs off. Keep it short and let the
+figure do the work.
+</SpeakerNotes>
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 1 · BASELINE
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+5 · What to measure
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="what-to-measure">
+
+## What number are you optimizing?
+
+TODO. Content plan:
+
+- **Tokens/sec/GPU** — the number that pays the bill. Sensitive to everything.
+- **Step time** — decomposable, which makes it the useful one for debugging.
+- **MFU** — tokens/sec against the hardware peak. Says how much is left.
+
+The trap: optimizing a number that is not the bottleneck. A 2x kernel speedup
+on a 15%-of-step-time kernel is a 7% win.
+
+TODO: Amdahl framing — worth a small figure or just a worked line of arithmetic?
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+6 · MFU, concretely
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="mfu">
+
+## MFU: how much of the machine are you using?
+
+TODO. Reuse the MFU definition + arithmetic from the ATPESC deck
+(`2026/08/03`, "What it costs: throughput and MFU") rather than rewriting:
+6ND FLOPs, measured tokens/sec, divided by the vendor peak.
+
+Real anchor from that deck: 20B chains ran **17-22% MFU**, 2B chains
+**9-12%** — bigger model, better utilization, same machine.
+
+TODO: state the honest range. What counts as "good" MFU on the target machine
+for a science workload that is not a dense transformer? This is where most
+attendees' models live and where published MFU numbers stop applying.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+7 · Roofline
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="roofline">
+
+## The ceiling: roofline
+
+TODO. Arithmetic intensity vs achievable FLOP/s; where a training step sits;
+memory-bound vs compute-bound and why the answer changes what you should fix.
+
+TODO: generate a roofline figure for the target machine with the deck chart
+style (`scripts/gen-*.mjs` pattern, `svg-font.mjs`, transparent bg, landscape
++ mobile variants). Needs real peak numbers for whichever machine — do not
+ship a generic textbook roofline.
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 2 · INSTRUMENT
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+8 · torch.profiler
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="torch-profiler">
+
+## Instrumenting a real run
+
+TODO. The minimal `torch.profiler` recipe that works on a multi-node job:
+
+- `schedule=` with wait/warmup/active — **profile steady state, not warmup**
+- `on_trace_ready` writing per-rank traces somewhere Lustre tolerates
+- `record_shapes` / `profile_memory` / `with_stack`: what each costs
+- Rank selection: profiling all 2048 ranks produces 2048 useless files
+
+TODO: verify every flag against the installed torch version on the target
+machine before shipping. Flags drift between versions and a broken copy-paste
+in a hands-on session costs ten minutes of the room's time.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+9 · Cheaper instrumentation
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="lightweight-timers">
+
+## Before you reach for the profiler
+
+TODO. The case for plain timers: a profiler changes the thing it measures and
+produces gigabytes you have to interpret. A per-phase timer around
+data/forward/backward/optimizer/collective answers "which quarter of the step"
+in five minutes.
+
+TODO: check what `ezpz` already provides here — the repo is at
+`~/projects/saforem2/ezpz`. If there is a timing helper, demo it; if not, show
+the ten-line version. Do not invent an API that does not exist.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10 · Vendor tools
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="vendor-tools">
+
+## When you need the vendor tools
+
+TODO — **BLOCKED on target machine.** The content forks:
+
+- **Aurora / Intel Max:** unitrace, VTune, PTI
+- **Polaris / NVIDIA A100:** Nsight Systems (`nsys`), Nsight Compute (`ncu`)
+
+Vendor-neutral framing either way: `torch.profiler` tells you *which op*;
+the vendor tool tells you *why that op is slow* (occupancy, memory bandwidth,
+collective algorithm). Most people never need to go down this level — say so.
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 3 · READ THE TRACE
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+11 · Trace anatomy
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="trace-anatomy">
+
+## Reading a trace
+
+TODO. Orient the room in a trace viewer: streams, the CPU/GPU rows, where a
+step boundary is, what a gap means.
+
+TODO: capture a REAL trace on the target machine and screenshot it. A
+synthetic or borrowed trace undercuts the whole session — this is the slide
+people will photograph.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+12 · The three shapes
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="three-shapes">
+
+## Three shapes, three fixes
+
+TODO. The diagnostic core of the talk:
+
+| What you see                            | What it is        | Where to look            |
+| --------------------------------------- | ----------------- | ------------------------ |
+| GPU idle at the **start** of every step  | data stall        | dataloader, filesystem   |
+| GPU idle **mid**-step, regular           | communication     | collective, overlap      |
+| GPU **busy** but throughput still low    | kernel efficiency | precision, fusion, shape |
+
+TODO: one real trace screenshot per row. This table is the thing worth
+remembering — consider making it the handout.
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 4 · FIX, IN ORDER
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+13 · Data stalls
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-data">
+
+## Fix: data stalls
+
+TODO. Usually the cheapest large win on HPC, and the one most teams skip
+because it is not the interesting part.
+
+- Workers, prefetch, pinned memory
+- Sharding and the shared-filesystem story — reuse the Lustre material from
+  the ATPESC deck rather than rewriting
+- The "your dataset is 4M small files" problem
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+14 · Communication
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-comms">
+
+## Fix: communication
+
+TODO.
+
+- Overlap: what the framework already does, and how to confirm it is happening
+- Bucket sizing
+- When the parallelism strategy itself is the bug (TP across nodes, etc.)
+- TODO: NCCL vs oneCCL tuning knobs — machine-dependent, fill after decision
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+15 · Kernel efficiency
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-kernels">
+
+## Fix: kernel efficiency
+
+TODO.
+
+- Mixed precision: what it buys, and verifying you actually got it
+- `torch.compile`: when it helps, when it costs more in compile time
+- Flash attention / fused optimizers
+- Shape divisibility and tensor-core alignment
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+16 · Memory
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-memory">
+
+## When the constraint is memory, not time
+
+TODO. Activation checkpointing, ZeRO stages, offload — each trades compute for
+memory, so each is a *slowdown* you accept to fit. Frame honestly: these are
+not speedups, and teams reach for them expecting speedups.
+
+TODO: reuse the ZeRO memory figure if one exists
+(`scripts/gen-zero-memory.mjs` suggests it does).
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17 · Hands-on
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="hands-on">
+
+## Hands-on
+
+TODO — **BLOCKED on format decision.** Three candidate shapes:
+
+1. **Guided exercise:** participants profile a run with a planted bottleneck,
+   find it, fix it, measure the delta. Highest retention, most prep, needs
+   working allocations for everyone.
+2. **Live demo, follow along:** you drive; they replicate at their pace.
+   Degrades gracefully when environments break.
+3. **Repo they take away:** methodology in the room, exercises for the
+   self-progress block that follows.
+
+Given the schedule puts a **self-progress block right after** this session,
+option 3 composes well with option 2 — demo live, hand them the repo, they
+work it in the block while you are still in the building.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+18 · Summary
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="summary">
+
+## What to take away
+
+1. **Measure first.** A baseline and a ceiling, before any change.
+2. **Localize.** The trace tells you which of three problems you have.
+3. **Fix in the order the measurement justifies**, and re-measure after each.
+4. **Stop when the measurement says stop** — not when you run out of ideas.
+
+TODO: QR to the slides + the exercise repo.
+
+</Slide>
