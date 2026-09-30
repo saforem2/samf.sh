@@ -571,16 +571,17 @@ Perlmutter is a controlled pair differing by ONE flag: job 59125292 WITH
 619, exit 143, zero traces; job 59126199 WITHOUT it ran 256 iters clean at
 MFU 8.8-9.0%. Ranks timed out on different SeqNums.
 
-RESOLVED by a 2x2, Perlmutter job 59132774 -- profiler on/off crossed with
-fast Libfabric vs forced Socket:
+RESOLVED by a full 2x2 in one allocation, Perlmutter job 59132774 --
+profiler on/off crossed with fast Libfabric vs forced Socket:
 
-  profiler OFF + fast    rc=0
-  profiler ON  + fast    rc=124 HANG      (hangs on the FAST fabric)
-  profiler OFF + Socket  rc=0             (passes on the SLOW one)
+  OFF + fast    rc=0        ON + fast    rc=124 hang
+  OFF + Socket  rc=0        ON + Socket  rc=124 hang
 
-So transport is not the variable. --profile alone is sufficient. An
-earlier theory that the slow TCP fallback was the real cause is dead;
-the 8.3x figure is true about the nccl module and irrelevant here.
+Both profiled arms hang, both unprofiled arms pass, and the transport
+column changes nothing. Single variable: --profile. An earlier theory
+that the slow TCP fallback was the real cause is dead; the 8.3x figure
+is true about the nccl module and irrelevant here. Cite 59132774 rather
+than the original pair -- all four cells ran in one allocation.
 
 MECHANISM, offered as hypothesis not measurement: get_torch_profiler gives
 rank 0 a real profiler and every peer a nullcontext(), so rank 0 alone pays
@@ -637,12 +638,20 @@ ezpz_setup_env && ezpz_install                     # install is a SECOND step
 ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
 ```
 
-Verified on Polaris. Three things bite, and none are in the docs.
+Verified on Polaris. Note `examples.profiler` — the small one. Swap in
+`fsdp_tp --tp 2` and you need `--no-with-stack` on Aurora, and it hangs
+outright on Perlmutter.
 
 <SpeakerNotes>
 Each line earns its place: the proxy because ALCF compute has no route out,
 ezpz_install because setup_env does not install ezpz, and the profiler
 example because it is purpose-built for this and finishes fast.
+
+The example choice is load-bearing, not incidental. ezpz.examples.profiler
+is a shallow model and survives --profile on all three machines. The
+published ALCF guide and ezpz docs currently recommend this same flag with
+fsdp_tp --tp 2, which hangs on Perlmutter (59132774) and RecursionErrors on
+Aurora without --no-with-stack (8881403). Both pages are being corrected.
 </SpeakerNotes>
 
 </Slide>
