@@ -292,16 +292,21 @@ two different fixes:
 
 Knowing which side you are on tells you which half of this talk applies.
 
-TODO — **half-blocked.** The FLOP/s axis is solid: `ezpz.flops` computes Max
-1550 from DPAS width, `512 ops x 512 CU x 1300 MHz` = **340.8 TF/s bf16 per
-tile** (298.2 at 448 CU). A100 is **312 TF/s**.
+<figure>
+    <picture>
+        <source
+            media="(max-width: 768px)"
+            srcset="/talks/2026-10-15/figures/roofline-mobile.svg"
+        />
+        <img
+            src="/talks/2026-10-15/figures/roofline.svg"
+            alt="Log-log roofline: arithmetic intensity in FLOP per byte on the x axis against attainable bf16 TFLOP/s on the y. A slope-one memory diagonal rises to meet a flat compute ceiling. Intel Max 1550 per tile peaks at 340.8 TFLOP/s over 1638.4 GB/s HBM2e, ridge at 208 FLOP/byte; NVIDIA A100 40GB peaks at 312 TFLOP/s over 1555 GB/s HBM2, ridge at 201 FLOP/byte. Left of the ridge is memory-bound, right is compute-bound."
+        />
+    </picture>
+</figure>
 
-The bytes/s axis is not. No HBM bandwidth number exists anywhere in `ezpz` or
-this repo — it needs an external source before the figure can be honest. A
-textbook roofline with invented axes is worse than no figure.
-
-TODO: house style is `scripts/gen-*.mjs` + `svg-font.mjs`, `#838383` chrome,
-transparent bg, landscape + mobile, output to `public/talks/2026-10-15/figures/`.
+Both machines ask for roughly the same thing: **~200 FLOP per byte** before
+compute becomes the limit.
 
 </Slide>
 
@@ -420,7 +425,7 @@ works on all three.
 
 <Slide id="portability">
 
-## Same command, three machines
+## One setup function, three schedulers
 
 | Machine | Device | Activity | Sorts by |
 | --- | --- | --- | --- |
@@ -428,19 +433,33 @@ works on all three.
 | **Polaris** | A100 | `CUDA` | `self_cuda_time_total` |
 | **Perlmutter** | A100 | `CUDA` | `self_cuda_time_total` |
 
-`ezpz` probes the device and picks both. One invocation, no branching:
+`ezpz` probes the device and picks both. `profile.py` is **byte-identical**
+across machines (md5 verified) — no user branching.
+
+The *launch* is not identical, though. Verified on Polaris:
 
 ```bash
-ezpz launch python3 -m ezpz.examples.fsdp_tp --profile --rank-zero-only
+export HTTP_PROXY=http://proxy.alcf.anl.gov:3128   # ALCF compute: no internet
+source <(curl -fsSL https://ezpz.cool/utils.sh)
+ezpz_setup_env && ezpz_install                     # install is a SECOND step
+ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
 ```
 
-> [!WARNING]+ The sort column is a real trap
-> `key_averages().table(sort_by=...)` raises `AttributeError` on a column the
-> profiler never recorded. Ask for `self_cuda_time_total` on Aurora and it
-> dies.
+> [!WARNING]+ Three things that bite
+> **No internet on ALCF compute** — the `curl` fails silently, then
+> `ezpz_setup_env: command not found`. **The venv is named from `cwd`** — so
+> `cd` into a project dir and you get a different, empty environment.
+> **`--hf-limit`** defaults to no limit: ~6 min of tokenizing before step 0,
+> which looks exactly like a hang.
 
-TODO: run on all three. Aurora primary; the other two get confirmed, not
-assumed.
+<SpeakerNotes>
+Measured on Polaris, job 7670657, 1 node / 4x A100-SXM4-40GB, tp=2
+dp_shard=2: MFU 7.7-7.9%, ~849 tok/s/GPU, step 0.60s, 5 rank-0 traces at
+~947 MB each, 3.4M events. Top ops were ncclDevKernel_AllGather_RING_LL and
+ReduceScatter -- real NCCL on real A100s. Perlmutter verified identical
+through flags and device detection but the compute job was still queued, so
+no measured numbers from it.
+</SpeakerNotes>
 
 <SpeakerNotes>
 Source: src/ezpz/profile.py -- activities built by probing
