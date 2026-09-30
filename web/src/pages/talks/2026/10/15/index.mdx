@@ -253,7 +253,9 @@ room looks unconvinced -- 0.15/2 + 0.85 = 0.925.
 
 ## MFU: how much of the machine are you using?
 
-$$\text{MFU} = \frac{\text{model FLOPs}}{\text{peak FLOP/s} \times \text{step time}}$$
+$$
+\text{MFU} = \frac{\text{model FLOPs}}{\text{peak FLOP/s} \times \text{step time}}
+$$
 
 Both per-device, so `world_size` drops out. Every rank does the same work.
 
@@ -628,7 +630,11 @@ oneccl_reduce_scatter 7.3% -- collectives 25.1% against 74.9% compute.
 > [!TIP]+ Take a photo of this one
 > It is the table you will want in front of you at 2am.
 
-TODO: one real trace screenshot per row, from Aurora.
+<SpeakerNotes>
+Deliberately one figure, not three. The gap shot two slides back shows row
+1; rows 2 and 3 would need a job engineered to exhibit each shape, which is
+a fabricated example wearing a real trace's clothes.
+</SpeakerNotes>
 
 </Slide>
 
@@ -721,7 +727,7 @@ which is the same thing as **+35% step time** — quote one, not both.
 
 Compile also used **2.2× less memory** (8.44 → 3.78 GiB). A real trade.
 
-TODO: torch 2.10, never re-measured. Say "as of April" or re-run it.
+_As of April 2026, torch 2.10 — not re-measured since._
 
 </Slide>
 
@@ -854,8 +860,16 @@ shepherd-9, gloo peer-closed, and zero-progress hangs.
 > allocation there is nothing to rotate in and the run ends `EXHAUSTED`.
 > Size with `--nhosts` and leave `--spare-nodes`.
 
-TODO: verify this invocation on Aurora. Flag names read off `origin/main`
-`cli/flags.py`; the installed version is what matters in the room.
+`--auto-retry` also flips the idle timeout on: it defaults to **30 min**,
+so a silent `xccl` hang gets killed and retried instead of burning the
+whole walltime.
+
+<SpeakerNotes>
+Flags verified against ezpz 0.29.2 as installed on Aurora, 2026-09-30:
+--auto-retry, --spare-nodes, --nhosts, --max-failover-retries all present.
+The idle-timeout default matches FAILOVER_IDLE_TIMEOUT in
+src/ezpz/bin/failover.sh; pass --timeout 0 to disable it.
+</SpeakerNotes>
 
 </Slide>
 

@@ -344,16 +344,79 @@
        hue. Scoped to inline code only — `pre.astro-code > code` (the shiki
        codeblock body) keeps its theme. */
     :is(p, li, td, h1, h2, h3, h4, figcaption) code {
-        color: inherit;
-        background-color: var(
-            --code-bg,
-            oklch(from var(--foreground0) l c h / 0.08)
-        );
+        /* Derive the chip from whatever it sits in rather than hardcoding
+           a grey. --callout-color is already set per callout variant
+           (red for warning, orange for important, green for tip, ...) and
+           inherits, so a chip inside one picks up that hue for free;
+           outside a callout the chain falls through to --foreground0 and
+           the chip is a neutral tint of the page's own text colour. That
+           makes it self-correcting on light and dark themes -- the tint is
+           always a step off the surface it is on, never a fixed grey that
+           happens to work on one background.
+
+           Relative-colour syntax does the work: same h and c as the
+           source, alpha for the fill, and a lightness nudge for the text
+           so it stays legible on the tint rather than matching it. */
+        --chip: var(--callout-color, var(--foreground0));
+        /* --chip-l is the text lightness, overridden per theme below.
+           Relative-colour `l` is a number in 0..1 here, but min()/max()
+           against it resolved unreliably, so the themes set an explicit
+           value instead of clamping. */
+        color: oklch(from var(--chip) var(--chip-l, 0.42) c h);
+        background-color: oklch(from var(--chip) l c h / 0.1);
         border: none;
         border-radius: 0;
         padding-block: 0.02em;
         padding-inline: 0.3em;
     }
+}
+/* Dark themes invert it: the chip text has to be LIGHTER than the tint,
+   not darker. Scoped on :root (where the theme attribute actually lives)
+   and outside the deck block so it is not fighting specificity. */
+:root[data-webtui-theme='custom-dark'],
+:root[data-webtui-theme='catppuccin'],
+:root[data-webtui-theme='nvim-dark'] {
+    --chip-l: 0.84;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-webtui-theme]) {
+        --chip-l: 0.84;
+    }
+}
+[is-~='presentation'] {
+    /* Display math. KaTeX centres `.katex-display` itself, but the deck's
+       own `p { text-align: ... }` and the slide's flex column can override
+       it, and katex's 1em block margin collapses against adjacent prose so
+       the fraction bar ends up nearly touching the line below. Restate both
+       explicitly, and give it a real line of air on each side. */
+    .katex-display {
+        display: block;
+        text-align: center;
+        margin-block: 1lh;
+        /* No overflow-x:auto here. It forces overflow-y to compute to
+           `auto` as well -- the two axes cannot disagree -- which turns
+           the box into a scroll container that slices a \frac's
+           numerator and denominator off at the edges. A display equation
+           on a slide should shrink to fit rather than scroll, so leave
+           overflow visible and cap the width instead. */
+        padding-block: 0.3lh;
+        max-width: 100%;
+        /* global.css sets overflow-x: auto on .katex-display for narrow
+           article viewports. On a slide that makes the box a scroll
+           container, and since the two axes cannot disagree, overflow-y
+           becomes `auto` too and clips the numerator and denominator of
+           a \frac. Slides are fixed-size: shrink to fit, do not scroll. */
+        overflow: visible !important;
+    }
+    .katex-display > .katex {
+        display: inline-block;
+        text-align: initial;
+    }
+    /* Inline math keeps the prose baseline -- no padding, no centring. */
+    :not(.katex-display) > .katex {
+        padding-inline: 0.1em;
+    }
+
     /* Codeblocks on slides must never overflow past the slide right
        edge — long shell commands (qsub lines, ezpz launch with
        many args) extend past the natural slide width if shiki's
@@ -1334,12 +1397,19 @@ body.slides-print-mode [is-~='slide']::after {
 /* Persistent deck-corner logo: small, tight to the bottom-right corner
    above the status bar, on every slide. Theme-swapped same way as the
    title slide logo. */
+/* Both the position and the SIZE carry !important. The dark variant is
+   hidden by `.deck-corner-logo-dark { display: none !important }` and
+   re-shown by a `:root[data-webtui-theme=...]` rule, which outranks this
+   bare class selector -- so without !important here the dark logo came
+   back visible but UNSIZED and rendered 444px tall across the slide,
+   while the light one (never re-shown by a higher-specificity rule)
+   stayed at its correct 44px. */
 .deck-corner-logo {
-    position: fixed;
-    bottom: calc(1lh + 0.5lh);
-    right: 1ch;
-    height: 1.25lh;
-    width: auto;
+    position: fixed !important;
+    bottom: calc(1lh + 0.5lh) !important;
+    right: 1ch !important;
+    height: 1.25lh !important;
+    width: auto !important;
     /* No opacity dim — the black/white SVG variants already contrast
        appropriately against their respective theme backgrounds. The
        previous opacity:0.5 made both variants look washed-out grey. */
@@ -1366,17 +1436,22 @@ body.slides-print-mode [is-~='slide']::after {
 }
 /* ...except in print, where there is no "current" slide -- every slide is
    on its own sheet, so the title page would be the one page with no mark.
-   Re-show it there and let the theme rules pick the right variant. */
+   Re-show it there, but ONLY the variant the theme has not hidden: an
+   unqualified `.deck-corner-logo-light { display: block }` also overrides
+   the dark-theme hide above, which put a full-size light logo across the
+   middle of every dark slide on screen. Re-assert the theme guards, and
+   keep the sizing the .deck-corner-logo rule already sets. */
 @media print {
-    [is-~='presentation']:has(#title-slide[data-current])
-        .deck-corner-logo-light {
+    :root:not([data-webtui-theme='custom-dark']):not(
+            [data-webtui-theme='catppuccin']
+        )
+        [is-~='presentation']:has(#title-slide[data-current])
+        .deck-corner-logo-light,
+    :root:is([data-webtui-theme='custom-dark'], [data-webtui-theme='catppuccin'])
+        [is-~='presentation']:has(#title-slide[data-current])
+        .deck-corner-logo-dark {
         display: block !important;
     }
-}
-body.slides-print-mode
-    [is-~='presentation']:has(#title-slide[data-current])
-    .deck-corner-logo-light {
-    display: block !important;
 }
 /* Hide the persistent logo on mobile — at narrow widths it overlaps
    content rather than tucking into a corner (less horizontal slack

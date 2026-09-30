@@ -9,6 +9,11 @@
  *  - Keybinds reference
  */
 const themeOptions = {
+    // `auto` was missing here while Filter.astro (which this claims to
+    // mirror) has had it all along -- and the runtime below already
+    // handles it, including the prefers-color-scheme listener that
+    // re-applies on system change. Only the chip was absent.
+    auto: 'Auto (system)',
     'custom-light': 'Light',
     'custom-dark': 'Dark',
     catppuccin: 'Catppuccin Mocha',
