@@ -269,24 +269,33 @@ mfu = compute_mfu(flops, step_duration)            # peak auto-detected
 AuroraGPT production chains: 20B at **17-22%**, 2B at **9-12%**. Bigger
 model, better utilization, same machine.
 
-Measured on Aurora for the demo job itself — 125M params, seq 1024, `tp=2`
-across 24 ranks — **MFU 0.55%**. Not a typo:
-
-| `c10d::_allgather_base_` | 12.6% of device time |
-| --- | --- |
-| `c10d::_reduce_scatter_base_` | 11.4% |
-| `oneccl_*` kernels | 15.8% |
-| **FSDP communication, total** | **~40%** |
-
-> [!WARNING]+ Published MFU assumes dense transformers
-> Your model probably is not one. A small model sharded wide is
-> communication-bound by construction. Compare against your own baseline,
-> not a paper.
-
 <SpeakerNotes>
 The 20B/2B inversion surprises people: the bigger model is "slower" in
 tokens/sec/GPU and better in MFU, because bigger matmuls keep the XPUs busy.
 Source: ATPESC deck, all-production-perf.svg.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+6b · the demo job's own MFU
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="mfu-measured">
+
+## This talk's demo job: **0.55%**
+
+125M params, seq 1024, `tp=2` across 24 ranks.
+
+**~40% of device time is FSDP communication.** A small model sharded wide is
+communication-bound by construction.
+
+<SpeakerNotes>
+Say plainly that this is the job we are about to profile together, and that
+0.55% is not a mistake -- it is what a 125M model sharded across 24 ranks
+actually does. Better teaching example than a clean number.
+Breakdown: _allgather_base_ 12.6%, _reduce_scatter_base_ 11.4%, oneccl_*
+kernels 15.8%. Source: key_averages() from the Aurora run, 2026-09-30.
 </SpeakerNotes>
 
 </Slide>
@@ -351,15 +360,14 @@ Defaults: `wait=1 warmup=2 active=3 repeat=5`.
 > [!IMPORTANT]+ Profiling the warmup is the classic mistake
 > Step 1 is allocator churn and autotuning. It is not your training step.
 
-**And profiling is not free.** Measured on Aurora, same job with and without:
+**Profiling is not free:** step time **+57%**, and writing a 101 MiB trace
+stalls the step **~65×**.
 
-| | baseline | profiled |
-| --- | --- | --- |
-| step time | 0.221 s | **0.346 s** (+57%) |
-| tokens/s/GPU | 2,318 | 1,484 |
-| the two export steps | — | **14.1 s and 16.2 s** |
-
-Writing a 101 MiB trace stalls the step **~65×**. Budget for it.
+<SpeakerNotes>
+Measured on Aurora, same job with and without: step 0.221s -> 0.346s,
+tokens/s/GPU 2318 -> 1484, and the two trace-export steps took 14.1s and
+16.2s against a 0.22s baseline step.
+</SpeakerNotes>
 
 </Slide>
 
@@ -522,12 +530,7 @@ ezpz_setup_env && ezpz_install                     # install is a SECOND step
 ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
 ```
 
-> [!WARNING]+ Three things that bite
-> **No internet on ALCF compute** — the `curl` fails silently, then
-> `ezpz_setup_env: command not found`. **The venv is named from `cwd`** — so
-> `cd` into a project dir and you get a different, empty environment.
-> **`--hf-limit`** defaults to no limit: ~6 min of tokenizing before step 0,
-> which looks exactly like a hang.
+Three things bite, and none are in the docs. Next slide.
 
 <SpeakerNotes>
 Measured on Polaris, job 7670657, 1 node / 4x A100-SXM4-40GB, tp=2
@@ -551,6 +554,30 @@ maps cuda/xpu to their column and everything else to CPU.
 ═══════════════════════════════════════════════════════════════*/}
 
 {/*───────────────────────────────────────────────────────────────
+10d · the traps
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="setup-traps">
+
+## Three things that bite
+
+| | |
+| --- | --- |
+| **No internet on ALCF compute** | the `curl` fails silently, then `ezpz_setup_env: command not found` |
+| **The venv is named from `cwd`** | `cd` into a project dir → a different, empty environment |
+| **`--hf-limit` defaults to none** | ~6 min tokenizing before step 0, looks exactly like a hang |
+
+Add `#!/bin/bash -l` to the PBS script or `module` is not found either.
+
+<SpeakerNotes>
+All four found the hard way while preparing this talk. The cwd one is the
+nastiest because nothing errors -- you just get a fresh empty venv and a
+ModuleNotFoundError several minutes later.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
 11 · Trace anatomy
 ───────────────────────────────────────────────────────────────*/}
 
@@ -564,20 +591,7 @@ maps cuda/xpu to their column and everything else to CPU.
 CPU rows on top (what Python asked for), device rows below (what ran). A
 **gap in the device row is the GPU waiting.**
 
-A real one, from the job behind this talk — Aurora, 2 nodes, 12 tiles:
-
-| | |
-| --- | --- |
-| trace events | **373,458** |
-| steps captured | `ProfilerStep#9/10/11` |
-| step wall-clock | 439 / 442 / 448 ms |
-| device busy, per step | 41.3 ms |
-| **device idle** | **90.6%** |
-| largest single gap | **9.1 ms** |
-
-> [!IMPORTANT]+ That is the whole talk in one row
-> The GPU is doing nothing for nine tenths of every step. No number of
-> extra nodes changes that fraction.
+From the job behind this talk. **The GPU is idle 90.6% of every step.**
 
 <figure>
     <img
@@ -603,18 +617,12 @@ A real one, from the job behind this talk — Aurora, 2 nodes, 12 tiles:
 | idle **mid**-step, regular | communication | collective, overlap |
 | **busy** but throughput low | kernel efficiency | precision, fusion, shapes |
 
-Where the device time went in that same Aurora trace:
+Everything after this slide is one of three branches.
 
-| | |
-| --- | --- |
-| `gemm_kernel` | 11.2% |
-| `oneccl_allgatherv_large` | 9.8% |
-| `oneccl_reduce_scatter_large` | 7.3% |
-| **collectives, combined** | **25.1%** |
-| compute | 74.9% |
-
-That is the whole diagnostic. Everything after this slide is one of three
-branches.
+<SpeakerNotes>
+Device time in the Aurora trace: gemm_kernel 11.2%, oneccl_allgatherv 9.8%,
+oneccl_reduce_scatter 7.3% -- collectives 25.1% against 74.9% compute.
+</SpeakerNotes>
 
 > [!TIP]+ Take a photo of this one
 > It is the table you will want in front of you at 2am.
@@ -792,13 +800,8 @@ Measured: **144 s** wall, two traces, full table.
 Step 2 writes `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
 Perfetto or `chrome://tracing` and you are looking at your own trace.
 
-I drive, you follow. Then the self-progress block is where you run it on
-your own model — I am still in the building.
-
 **The exercise:** profile your run, name which of the three shapes you have,
-change one thing, re-measure. Bring the before/after.
-
-TODO: run all four lines end to end on Aurora, then Polaris and Perlmutter.
+change one thing, re-measure.
 
 </Slide>
 
