@@ -1141,15 +1141,13 @@ body[data-speaker-window] [is-~='notes'] {
     /* default deck mode unchanged */
 }
 
-/* Match the paper to the slide. Without an @page size the browser prints
-   onto whatever default it has (Letter, 1.29:1), while each slide holds its
-   16/9 aspect-ratio -- so a 594px slide lands on 816px of paper and every
-   page carries a ~220px band of white below the content. Sizing the page
-   to the same ratio makes the slide fill the sheet, which is what the
-   vertical centering inside .slide-inner is then centering against.
-   10in x 5.625in is exactly 16/9. */
+/* Paper: zero margins only. Do NOT set an @page `size` here -- Chrome's
+   print dialog keeps whatever paper the user picked, so a hardcoded size
+   is ignored while the slide keeps the height that size implied. A 540px
+   slide on a 1632px Tabloid sheet then breaks across THREE pages, which
+   is how 25 slides became 75. Let the sheet be whatever it is and make
+   the slide fill it (see the height rules below). */
 @page {
-    size: 10in 5.625in;
     margin: 0;
 }
 
@@ -1179,9 +1177,14 @@ body[data-speaker-window] [is-~='notes'] {
         pointer-events: auto !important;
         transform: none !important;
         width: 100%;
-        aspect-ratio: 16 / 9;
+        /* Fill the sheet rather than holding 16/9 against it. With
+           aspect-ratio the slide keeps a height the paper may not share,
+           so it either leaves a band of white (Letter) or spills onto
+           extra pages (Tabloid). 100vh under print media is one page. */
+        height: 100vh;
         page-break-after: always;
         break-after: page;
+        break-inside: avoid;
     }
     [is-~='slide-status'] {
         display: none !important;
@@ -1207,7 +1210,11 @@ body[data-speaker-window] [is-~='notes'] {
         flex-direction: column !important;
         justify-content: safe center !important;
         padding: 1lh 4ch !important;
-        font-size: 1.08em !important;
+        /* Scale type to the sheet, the way the screen deck scales it to
+           the viewport (clamp with a vw term, ~line 123). A flat em here
+           meant the same physical text size on Letter and on Tabloid, so
+           the bigger the paper the more of it sat empty. */
+        font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
         overflow: hidden !important;
     }
 }
@@ -1227,9 +1234,12 @@ body.slides-print-mode [is-~='slide'] {
     pointer-events: auto !important;
     transform: none !important;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    /* See the @media print copy above: fill the sheet, do not impose a
+       ratio the paper does not have. */
+    height: 100vh;
     page-break-after: always;
     break-after: page;
+    break-inside: avoid;
 }
 body.slides-print-mode .skip-link {
     display: none !important;
@@ -1255,11 +1265,10 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
        the footer stamp lands. */
     justify-content: safe center !important;
     padding: 1lh 4ch !important;
-    /* Scale print type UP a touch so the exported PDF reads well as a
-       handout. The overflow:hidden clip below still catches the rare
-       dense slide (timeline tables, long bullet lists); most slides
-       have headroom on fixed paper, so bigger is the better default. */
-    font-size: 1.08em !important;
+    /* Scale type to the sheet rather than fixing it, so the deck reads
+       the same on Letter and Tabloid. The overflow:hidden clip below
+       still catches the rare dense slide. */
+    font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
     /* Clip anything that still overflows rather than letting it
        bleed visibly past the paper edge — better to lose half a
        trailing line than show it sliced in two. */
