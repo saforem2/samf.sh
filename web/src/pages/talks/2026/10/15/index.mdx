@@ -578,6 +578,99 @@ TODO: run all four lines end to end on Aurora, then Polaris and Perlmutter.
 </Slide>
 
 {/*───────────────────────────────────────────────────────────────
+17b · Wasted time: the failure tax
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="failure-tax">
+
+## The other way you lose GPU-hours
+
+Everything so far assumed the run finishes. At scale it does not.
+
+A crash at step 1,900 of 2,000 with a 100-step save interval costs you the
+recompute, the restart, and the queue wait. None of it shows up in a profile.
+
+> [!IMPORTANT]+ Throughput you never used is the same as throughput you never had
+> An 18% MFU run that dies at 90% is a 0% MFU run.
+
+<SpeakerNotes>
+This is the bridge from "make the step fast" to "make sure the steps you paid
+for survive." Keep it to one slide -- ATPESC covers the full failure story.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17c · auto-retry
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="auto-retry">
+
+## `ezpz launch --auto-retry`
+
+On a non-zero exit, scrape the log for known bad-node signatures, retire the
+named host, rotate in a spare, relaunch. No babysitting.
+
+```bash
+ezpz launch --auto-retry --nhosts 8 --spare-nodes 2 -- \
+  python3 -m ezpz.examples.fsdp_tp --model debug \
+    --ckpt-dir ./ckpts --save-interval 100 --train-iters 3000
+```
+
+Catches: watchdog kill (124), walltime-racing crashes (143), Aurora PALS
+shepherd-9, gloo peer-closed, and zero-progress hangs.
+
+> [!WARNING]+ No spare, no retry
+> Every retryable verdict is gated on `has_spares`. If `--np` eats the whole
+> allocation there is nothing to rotate in and the run ends `EXHAUSTED`.
+> Size with `--nhosts` and leave `--spare-nodes`.
+
+TODO: verify this invocation on Aurora. Flag names read off `origin/main`
+`cli/flags.py`; the installed version is what matters in the room.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17d · async checkpointing
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="async-ckpt">
+
+## Checkpointing without paying for it
+
+Sync save blocks training. Async stages to CPU, fans out in a background
+thread, stamps `.complete` last.
+
+| Model | Ckpt | Sync stall | Async stall | |
+| --- | --- | --- | --- | --- |
+| `agpt-2b` | 23 GB | 3.75 s | **1.05 s** | 3.6× |
+| `agpt-20b` | 232 GB | 23.57 s | **5.4 s** | 4.4× |
+
+```bash
+python3 -m ezpz.examples.fsdp_tp \
+    --ckpt-dir /shared/ckpts --async-ckpt \
+    --ckpt-stage-dir /tmp/ezpz-ckpt --save-interval 100
+```
+
+> [!NOTE]+ Two dead ends got there
+> A 5.18 s blocking drain that no metric recorded, then a marker stamped a
+> full interval late — async was durable but not *resumable*. The fix probes
+> on MPI's own communicator, not the training group, so it cannot deadlock
+> against the gradient all-reduce.
+
+[ezpz.cool/guides/checkpoint-restart](https://ezpz.cool/guides/checkpoint-restart/)
+
+<SpeakerNotes>
+The dead ends are the interesting part: both were invisible to the metrics
+being logged at the time. Same lesson as the rest of the talk -- instrument
+the thing you actually care about, or you will optimize a number that is not
+the cost. 20b measured on 4 Sunspot nodes with --meta-init; memory went from
+OOM at >64 GB/tile to ~14 GB/tile.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
 18 · Summary
 ───────────────────────────────────────────────────────────────*/}
 
