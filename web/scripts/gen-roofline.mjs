@@ -241,15 +241,19 @@ function buildSVG(cfg) {
     body += readout(A100)
 
     // Regime labels pinned to the bottom of the plot. The memory-bound pair
-    // ALSO has to clear the diagonal horizontally: the line reaches the
-    // y-floor at I = peak_floor/bw = 2.44 FLOP/byte, only ~11% across the
-    // plot, so anything anchored at the left edge is struck through no
-    // matter how low it sits. Start it just right of that crossing instead,
-    // which is still well inside the memory-bound region.
+    // also has to clear the diagonal HORIZONTALLY, and the clearance has to
+    // be solved at the label's own height rather than at the axis floor.
+    // The line is a ramp: it meets the floor at I = Y_MIN*1000/bw = 2.44
+    // FLOP/byte, but the label block sits ~45px above the floor and by that
+    // height the line has already travelled right. Clearing at the floor
+    // therefore under-clears, and the line cut through "memory-bound"'s
+    // first glyphs. Invert the line at the TOP of the label block -- its
+    // right-most crossing -- and start the text from there.
     const regimeBottom = ay + ah - 14
     const regimeY = regimeBottom - cfg.noteSize - 6
-    const floorCrossX = sx((Y_MIN * 1000) / MAX1550.bw)
-    const memX = floorCrossX + cfg.noteSize * 1.6
+    const memTopY = regimeY - cfg.labelSize
+    const memTopVal = Y_MIN * Math.pow(Y_MAX / Y_MIN, (ay + ah - memTopY) / ah)
+    const memX = sx((memTopVal * 1000) / MAX1550.bw) + cfg.noteSize * 1.2
     body += `<text x="${memX.toFixed(1)}" y="${regimeY.toFixed(1)}" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#ee8f24">memory-bound</text>`
     body += `<text x="${memX.toFixed(1)}" y="${regimeBottom.toFixed(1)}" font-family="${FONT}" font-size="${cfg.noteSize}" fill="#838383">HBM sets the limit</text>`
     body += `<text x="${(ax + aw - 12).toFixed(1)}" y="${regimeY.toFixed(1)}" text-anchor="end" font-family="${FONT}" font-size="${cfg.labelSize}" font-weight="700" fill="#1da811">compute-bound</text>`
