@@ -671,23 +671,32 @@ Aurora without --no-with-stack (8881403). Both pages are being corrected.
 
 ## Four things that bite
 
-- **`curl` fails, then `ezpz_setup_env: command not found`**
-  → ALCF compute has no route out. `export HTTP_PROXY=http://proxy.alcf.anl.gov:3128`
-- **`ModuleNotFoundError: ezpz`, minutes in**
-  → the venv name comes from `cwd`. Don't `cd` between setup and launch.
-- **Six silent minutes before step 0**
-  → it is tokenizing 5.9 GB. `--hf-limit 512`
-- **`module: command not found` in a PBS job**
-  → `#!/bin/bash -l`, not `#!/bin/bash`
+1. **ALCF compute has no route out.**
+   Set `HTTP_PROXY=http://proxy.alcf.anl.gov:3128`
+2. **The venv is named after `cwd`.**
+   Don't `cd` between setup and launch.
+3. **It tokenizes 5.9 GB before step 0.**
+   Pass `--hf-limit 512`.
+4. **PBS jobs need a login shell.**
+   `#!/bin/bash -l`, not `#!/bin/bash`.
 
-None of them error where the mistake is. That is what makes them cost an
-afternoon.
+&nbsp;
+
+None of these fail where the mistake is. That is what costs the afternoon.
 
 <SpeakerNotes>
-All four found the hard way preparing this talk. The cwd one is nastiest:
-nothing errors, you just get a fresh empty venv and a ModuleNotFoundError
-several minutes later. The proxy one is ALCF compute only -- Perlmutter
-needs no proxy.
+What each one looks like when you hit it, since that is how people will
+recognise it:
+  - no proxy  -> curl fails silently, then "ezpz_setup_env: command not
+    found"
+  - wrong cwd -> "ModuleNotFoundError: ezpz" several minutes in, after a
+    fresh empty venv was built under the directory you cd'd into
+  - no hf-limit -> six minutes of nothing before iter 0; looks exactly
+    like a hang
+  - no -l     -> "module: command not found"
+
+All four found the hard way preparing this talk. The proxy one is ALCF
+compute only; Perlmutter needs none.
 </SpeakerNotes>
 
 </Slide>
