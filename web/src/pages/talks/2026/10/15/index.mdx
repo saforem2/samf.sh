@@ -549,8 +549,8 @@ works on all three.
 | **Polaris** | A100 | `CUDA` | `self_cuda_time_total` |
 | **Perlmutter** | A100 | `CUDA` | `self_cuda_time_total` |
 
-`ezpz` probes the device and picks both. **You write one script and it
-runs on all three** — no `if xpu:` in your code, no per-machine config.
+`ezpz` fills in that right-hand column for you. **You write one script and
+it runs on all three** — no `if xpu:` anywhere in your code.
 
 > [!WARNING]+ Profiling is the part that travels badly
 > **Aurora** needs `--no-with-stack` for FSDP+TP.[^aurora-stack]
@@ -629,6 +629,46 @@ maps cuda/xpu to their column and everything else to CPU.
 {/*═══════════════════════════════════════════════════════════════
   PART 3 · READ THE TRACE
 ═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+10c-1 · in your own loop
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="in-your-loop">
+
+## In your own training loop
+
+```python
+from ezpz.profile import get_profiling_context
+
+with get_profiling_context(
+    profiler_type="torch",
+    wait=1, warmup=2, active=3, repeat=1,
+    rank_zero_only=True,
+    outdir="./traces",
+) as prof:
+    for step, batch in enumerate(dataloader):
+        train_step(batch)
+        if prof is not None:
+            prof.step()
+```
+
+Three lines around a loop you already have. It picks the activity set,
+the sort column, and the rank gating.
+
+<SpeakerNotes>
+get_profiling_context is the higher-level entry point -- it builds the
+schedule and a trace handler that both writes the chrome trace and logs
+the key-averages table. get_torch_profiler is the thinner wrapper if you
+want to pass your own handler.
+
+The `if prof is not None` guard matters: on non-zero ranks with
+rank_zero_only=True the context is a nullcontext, so there is no .step()
+to call. That asymmetry is also the suspected cause of the Perlmutter
+hang -- worth mentioning only if someone asks.
+</SpeakerNotes>
+
+</Slide>
 
 {/*───────────────────────────────────────────────────────────────
 10c-2 · the launch

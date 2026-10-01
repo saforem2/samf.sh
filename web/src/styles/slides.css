@@ -512,6 +512,11 @@
     pre.astro-code span.line {
         display: block;
         line-height: 1.35;
+        /* An EMPTY .line has no content box, so line-height alone gives it
+           zero height and a deliberate blank line in a snippet collapses --
+           the import ran straight into the `with` it was separated from.
+           min-height keeps the gap the author wrote. */
+        min-height: 1.35em;
     }
     /* Mobile: drop the negative offset (otherwise the codeblock can
        extend `100% + 2ch` past the right edge, since max-width is
