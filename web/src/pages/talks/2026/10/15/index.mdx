@@ -905,7 +905,7 @@ No new code. The flags already exist.
 ```bash
 # 0 · setup, then install -- setup_env does NOT install ezpz
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
-python3 -m pip install "git+https://github.com/saforem2/ezpz"
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
 
 # 1 · baseline: how fast is it now?
 ezpz launch python3 -m ezpz.examples.fsdp_tp \
@@ -925,6 +925,10 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp \
 > `export_chrome_trace`, so you lose the table **and** the trace.
 
 <SpeakerNotes>
+--no-cache and --link-mode=copy because the venv lives on a shared
+filesystem: hardlinks across it fail and a cache there is slower than the
+download. uv resolves this in seconds where pip takes minutes.
+
 The PBS script also needs #!/bin/bash -l or module is not found. Step 2
 writes the trace as torch-profiler-rank0-step(N)-(timestamp).json into
 the run's own outputs directory.
@@ -1162,7 +1166,7 @@ statement of the mechanism than the percentage.
 
 ```bash
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
-python3 -m pip install "git+https://github.com/saforem2/ezpz"
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
 ezpz launch python3 -m ezpz.examples.fsdp_tp \
     --profile --rank-zero-only --no-with-stack
 ```

@@ -370,8 +370,7 @@
            weaker, which is why the chip vanished. --chip-fill-l pushes
            the tint away from the surface per theme. */
         background-color: oklch(
-            from var(--chip) var(--chip-fill-l, l) c h /
-                var(--chip-fill-a, 0.1)
+            from var(--chip) var(--chip-fill-l, l) c h / var(--chip-fill-a, 0.1)
         );
         border: none;
         border-radius: 0;
