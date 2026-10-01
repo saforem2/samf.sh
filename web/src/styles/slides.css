@@ -363,7 +363,16 @@
            against it resolved unreliably, so the themes set an explicit
            value instead of clamping. */
         color: oklch(from var(--chip) var(--chip-l, 0.42) c h);
-        background-color: oklch(from var(--chip) l c h / 0.1);
+        /* The FILL has to be tinted toward the opposite end from the page,
+           not toward the chip's own lightness. On dark that was
+           --foreground0 at l=0.321 over a page at l=0.226: composited at
+           10% it separated by 0.0095, against light's 0.043 -- 4.5x
+           weaker, which is why the chip vanished. --chip-fill-l pushes
+           the tint away from the surface per theme. */
+        background-color: oklch(
+            from var(--chip) var(--chip-fill-l, l) c h /
+                var(--chip-fill-a, 0.1)
+        );
         border: none;
         border-radius: 0;
         padding-block: 0.02em;
@@ -377,10 +386,17 @@
 :root[data-webtui-theme='catppuccin'],
 :root[data-webtui-theme='nvim-dark'] {
     --chip-l: 0.84;
+    /* Tint UP, away from the dark page, at a slightly higher alpha.
+       0.12 of l=0.84 over l=0.226 lands at 0.300, a +0.074 separation --
+       visible without becoming a block of colour. */
+    --chip-fill-l: 0.84;
+    --chip-fill-a: 0.12;
 }
 @media (prefers-color-scheme: dark) {
     :root:not([data-webtui-theme]) {
         --chip-l: 0.84;
+        --chip-fill-l: 0.84;
+        --chip-fill-a: 0.12;
     }
 }
 [is-~='presentation'] {
