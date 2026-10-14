@@ -1276,7 +1276,8 @@ body[data-speaker-window] [is-~='notes'] {
         break-after: page;
         break-inside: avoid;
     }
-    [is-~='slide-status'] {
+    [is-~='slide-status'],
+    .deck-slide-number {
         display: none !important;
     }
     /* Screen-reader skip link hides off-screen via translateY; print resets
@@ -1334,7 +1335,8 @@ body.slides-print-mode [is-~='slide'] {
 body.slides-print-mode .skip-link {
     display: none !important;
 }
-body.slides-print-mode [is-~='slide-status'] {
+body.slides-print-mode [is-~='slide-status'],
+body.slides-print-mode .deck-slide-number {
     display: none !important;
 }
 body.slides-print-mode [is-~='slide'] .slide-inner {
@@ -1490,19 +1492,20 @@ body.slides-print-mode [is-~='slide']::after {
    so a wide figcaption or a full-measure paragraph runs underneath. Pad
    the last flow child of each slide out of the logo's corner instead of
    moving the logo -- the logo placement is a brand decision, the collision
-   is a layout one. Width covers the mark plus its right offset. */
-[is-~='slide'] .slide-inner > :last-child {
+   is a layout one. Width covers the mark plus its right offset. A plain
+   :last-child would land on the hidden <aside is-="notes"> that most
+   slides end with, so count only visible flow children. */
+[is-~='slide']
+    .slide-inner
+    > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
     padding-inline-end: var(--deck-logo-gutter, 0);
 }
-[is-~='presentation']:not(:has(#title-slide[data-current]))
-    [is-~='slide'][data-current]
-    .slide-inner {
-    --deck-logo-gutter: 9ch;
-}
-@media (max-width: 768px) {
-    /* Logo is hidden here, so no gutter needed. */
-    [is-~='slide'] .slide-inner {
-        --deck-logo-gutter: 0;
+/* Logo is hidden at <=768px, so the gutter only applies above that. */
+@media (min-width: 769px) {
+    [is-~='presentation']:not(:has(#title-slide[data-current]))
+        [is-~='slide'][data-current]
+        .slide-inner {
+        --deck-logo-gutter: 9ch;
     }
 }
 
