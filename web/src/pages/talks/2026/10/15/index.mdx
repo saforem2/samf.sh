@@ -1,0 +1,1242 @@
+---
+layout: '@/layouts/SlideLayout.astro'
+title: 'Profiling and Optimization of AI Training Workloads'
+shortTitle: 'Profiling AI Training at Scale'
+subtitle: 'Find the bottleneck before you buy more nodes'
+description: 'A hands-on session on instrumenting, profiling, and optimizing AI training workloads on leadership-class HPC. Establish a throughput baseline and a roofline, instrument a real run with torch.profiler, read a trace to separate compute from communication from data stalls, then work the bottlenecks in the order the measurements justify.'
+date: 2026-10-15
+location: 'Genesis Mission Hackathon, Argonne National Laboratory'
+---
+
+import Slide from '@/components/slides/Slide.astro'
+import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
+import Cols from '@/components/slides/Cols.astro'
+import Col from '@/components/slides/Col.astro'
+
+export const ASSETS = 'https://samforeman.me/assets'
+
+{/*═══════════════════════════════════════════════════════════════════════════
+  Genesis Mission Hackathon 2026 · Advanced track A3
+  "Profiling and optimization of AI training workloads for science at scale"
+
+  SLOT: 90 min, Day 2 (Thu 15 Oct) 9:00-10:30am.
+  The agenda prints "Advanced A3" in two slots and never prints A2. Every
+  other slot advances F/I/A in lockstep (F1/I1/A1, F2/I2/A2, ...), so the
+  Day 1 1:45pm entry -- which sits in the F2/I2 row -- is the typo: it
+  should read A2 (Chard, multi-agent). Our slot is the Day 2 9:00am one,
+  in the F3/I3 row. One session, not two.
+
+  AUDIENCE: RFA award teams "pushing the frontier" -- they already have a
+  training workload that runs. They are not here to learn PyTorch; they are
+  here because their run is slower than they think it should be.
+
+  THESIS: measure before you optimize, and measure the right thing. The
+  ordering is load-bearing -- every optimization slide is downstream of a
+  measurement that justifies it.
+
+  STATUS: COMPLETE. Every slide carries measured numbers from jobs that
+  actually ran; no TODOs remain. Open items are external, not authoring:
+  the ezpz session is testing whether sys.setrecursionlimit() rescues
+  with_stack=True (Aurora 8881461) and whether the Perlmutter hang is the
+  profiler or the NCCL TCP fallback (2x2, job 59128600). A recovery sweep
+  (Aurora 8881343) is queued to isolate seq-len at bs=1 and retry the two
+  OOMed configs with activation checkpointing.
+
+  WHAT ALREADY EXISTS (surveyed 2026-09-30, verified by hand):
+  - NO profiling content in any prior deck. The only profiler slide anywhere
+    is a pyinstrument dump pasted verbatim into three 2024-era decks. Zero
+    coverage of torch.profiler, nsys/ncu, chrome traces, or roofline. So the
+    instrumentation spine here is entirely net-new.
+  - ezpz ALREADY HAS the tooling, unpresented. Verified in
+    ~/projects/saforem2/ezpz:
+      src/ezpz/profile.py    get_profiling_context / get_torch_profiler,
+                             auto-detects CPU|CUDA|XPU activities, and its
+                             trace_handler already calls export_chrome_trace
+      src/ezpz/flops.py      estimate_model_flops (via FlopCounterMode),
+                             get_peak_flops (incl. dynamic Intel PVC),
+                             compute_mfu
+      src/ezpz/cli/flags.py  --profile, --pyinstrument-profiler,
+                             --rank-zero-only, --pytorch-profiler-{wait,
+                             warmup,active,repeat}, --record-shapes,
+                             --with-stack, --with-flops, --profile-memory
+    => VERIFIED ON AURORA 2026-09-30, and the bare command FAILS: with
+       --with-stack defaulting True, trace_handler dies with RecursionError
+       in key_averages() (profile.py:140), which runs BEFORE
+       export_chrome_trace (:148), so both the table and the trace are lost
+       and the run exits 143. Working form adds --no-with-stack. PBS script
+       needs #!/bin/bash -l. ezpz_setup_env does not install ezpz.
+       Upstream fix worth filing: export the trace before building the
+       table, and/or default --with-stack to False.
+  - REUSE from the ATPESC deck (2026/08/03) rather than rewriting: MFU
+    results (2186), critical batch (1122), ZeRO trade (810), async ckpt
+    (1621), Lustre import melt (452), parallelism menu (595) + cartoons
+    (633/730), "Try it yourself" (2412).
+  - Unused figures worth a look: public/talks/2026-06-03/figures/2b-mds-*.svg
+    (tflops, tps-per-gpu, tokens-vs-time, grad-norm) -- real traces, never
+    shown in any deck.
+═══════════════════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+1 · Title
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="title-slide">
+
+<a
+    class="title-slide-qr"
+    href="https://samf.sh/talks/2026/10/15"
+    aria-label="QR code linking to these slides">
+    <img
+        src="/talks/2026-10-15/figures/qr-slides.svg"
+        alt="QR code linking to samf.sh/talks/2026/10/15"
+    />
+    <span>samf.sh/talks/2026/10/15</span>
+</a>
+
+# <span style="color:var(--foreground0);">Profiling and Optimization of AI Training Workloads</span>
+
+<p class="title-slide-thesis">
+    Find the bottleneck before you buy more nodes.
+</p>
+
+<strong>Sam&nbsp;Foreman</strong>, Nathan&nbsp;Nichols · Argonne National Laboratory
+
+_{new Date(frontmatter.date).toISOString().slice(0, 10)} · Genesis Mission Hackathon · Advanced A3_
+
+<style>{`
+  #title-slide .title-slide-thesis {
+    max-width: 44ch;
+    margin-block-start: 0.5lh;
+    font-style: italic;
+    color: var(--foreground1);
+  }
+  /* QR top-right, big enough to scan from the back, URL underneath. */
+  #title-slide .title-slide-qr {
+    position: absolute;
+    top: 2lh;
+    right: 4ch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25lh;
+    text-decoration: none;
+    color: var(--foreground0);
+  }
+  #title-slide .title-slide-qr img { width: 11ch; height: 11ch; display: block; }
+  #title-slide .title-slide-qr span { font-size: 0.75em; color: var(--foreground1); white-space: nowrap; }
+  /* QR SVG ships stroke=currentColor but as an <img> resolves to black;
+     invert on dark themes so it reads white-on-dark. */
+  html[data-webtui-theme='custom-dark'] .title-slide-qr img,
+  html[data-webtui-theme='catppuccin'] .title-slide-qr img,
+  html[data-webtui-theme='nvim-dark'] .title-slide-qr img {
+    filter: invert(1);
+  }
+  @media (max-width: 768px) {
+    #title-slide .title-slide-thesis { max-width: 100%; }
+    #title-slide .title-slide-qr { display: none; }
+  }
+`}</style>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+2 · Roadmap
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="roadmap">
+
+## Roadmap
+
+**Measure → localize → fix.** The order is the content.
+
+| | | |
+| --- | --- | :--- |
+| 1 | **Baseline** | tokens/sec, MFU, and the ceiling — 15 min |
+| 2 | **Instrument** | `torch.profiler` on a real run — 25 min |
+| 3 | **Read the trace** | compute vs comms vs data — 25 min |
+| 4 | **Fix** | one measurement per fix — 25 min |
+
+Then the self-progress block, where you run it on your own model.
+
+<SpeakerNotes>
+Most teams arrive having already done step 4 without steps 1-3. That is why
+their speedups did not show up.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+3 · Framing / who this is for
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="framing">
+
+## Who this is for
+
+Your run works. It is slower than it should be. You do not know whether that
+is code, config, or nodes.
+
+- **Assumed:** a run that launches, an allocation, willingness to read a trace
+- **Not covered:** getting off the ground, failures, checkpointing
+
+> [!NOTE]+ If your run does not launch yet
+> Wrong session. The self-progress block is a better use of the next 90
+> minutes, and [ATPESC 2026](https://samf.sh/talks/2026/08/03) covers getting
+> started and staying alive.
+
+<SpeakerNotes>
+Say this out loud rather than letting someone sit through 90 minutes of the
+wrong thing.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+4 · The core claim
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="thesis">
+
+## More nodes is not a fix
+
+Scaling an inefficient run scales the inefficiency.
+
+The job we profile later this hour is idle **90.7%** of every step. Another
+512 nodes buys 90.7% idle on 512 more nodes. Same fraction, bigger bill.
+
+That idle is **inside the step** — the GPU sitting between kernels while
+one rank waits. It is not queue time, not a dead node, not walltime you
+lost to the scheduler. Nodes do not touch it.
+
+> [!IMPORTANT]+ First question, before any change
+> Is the GPU busy?
+
+<SpeakerNotes>
+No figure here on purpose. The obvious candidate was the 2B-MDS
+tokens-vs-calendar chart, but its flat stretches are queue waits and
+outages -- which more nodes genuinely would help with, so it argues the
+opposite of this slide. The picture that does make this case is the
+A/E trace pair later; do not spend it early.
+
+Everything hangs off this slide. Keep it short and land the 90.7%.
+</SpeakerNotes>
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 1 · BASELINE
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+5 · What to measure
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="what-to-measure">
+
+## Pick the number first
+
+| Metric | What it tells you | Use it for |
+| --- | --- | --- |
+| **tokens/sec/GPU** | what you are paying | the headline |
+| **step time** | decomposes into phases | debugging |
+| **MFU** | how much machine is left | knowing when to stop |
+
+The trap: **2× on a kernel that is 15% of the step is a 7% win.** Speed up
+the thing that dominates, or do not bother.
+
+<SpeakerNotes>
+Amdahl, without naming him. Worth writing the arithmetic on the board if the
+room looks unconvinced -- 0.15/2 + 0.85 = 0.925.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+6 · MFU, concretely
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="mfu">
+
+## MFU: how much of the machine are you using?
+
+$$
+\text{MFU} = \frac{\text{model FLOPs}}{\text{peak FLOP/s} \times \text{step time}}
+$$
+
+Both per-device, so `world_size` drops out. Every rank does the same work.
+
+Do not hand-derive the numerator. `ezpz` counts it with `FlopCounterMode`
+(real ops, not $6ND$) and looks up the peak, computing Intel PVC dynamically:
+
+```python
+from ezpz.flops import estimate_model_flops, compute_mfu
+flops = estimate_model_flops(model, input_shape)   # counted, not estimated
+mfu = compute_mfu(flops, step_duration)            # peak auto-detected
+```
+
+AuroraGPT production chains: 20B at **17-22%**, 2B at **9-12%**. Bigger
+model, better utilization, same machine.
+
+<SpeakerNotes>
+The 20B/2B inversion surprises people: the bigger model is "slower" in
+tokens/sec/GPU and better in MFU, because bigger matmuls keep the XPUs busy.
+Source: ATPESC deck, all-production-perf.svg.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+6b · the demo job's own MFU
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="mfu-measured">
+
+## The job we profile today runs at **0.33% MFU**
+
+125M params, seq 1024, `tp=2` across 24 ranks. Where a 440 ms step goes:
+
+```mermaid
+flowchart LR
+    S["<span style='font-weight:700'>one step</span><br/><i>440.3 ms</i>"] --> I["<span style='font-weight:700'>idle</span><br/><i>398.7 ms · 90.6%</i>"]
+    S --> B["<span style='font-weight:700'>device busy</span><br/><i>41.5 ms · 9.4%</i>"]
+    B --> C["compute<br/><i>31.9 ms · 7.2%</i>"]
+    B --> M["collectives<br/><i>9.7 ms · 2.2%</i>"]
+    I --> G["<i>3,748 gaps</i><br/>median <b>46 µs</b>"]
+    C --> K["<i>3,749 kernels</i><br/>median <b>4.6 µs</b>"]
+
+    classDef step fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef bad  fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    classDef ok   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef note fill:#83838308,stroke:#838383,color:#838383,stroke-width:1.5px
+    class S step
+    class I,G bad
+    class B,C,M ok
+    class K note
+```
+
+**The gaps are bigger than the kernels.** Python cannot launch work fast
+enough to keep the device fed.
+
+<SpeakerNotes>
+Say plainly that this is the job we are about to profile together, and that
+0.33% is not a mistake -- it is what a 125M model sharded across 24 ranks
+actually does. Better teaching example than a clean number.
+Careful with key_averages() here: summing _allgather_base_ 12.6% +
+_reduce_scatter_base_ 11.4% + oneccl_* 15.8% double-counts, because the
+c10d:: op and the oneccl_* kernel it launches are the same work billed
+twice. Measured from the trace's own kernel intervals, comm is 25%.
+Source: Aurora job 8881266, 2026-09-30.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+7 · Roofline
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="roofline">
+
+## The ceiling: roofline
+
+Arithmetic intensity (FLOP per byte) against achievable FLOP/s. Two regimes,
+two different fixes:
+
+- **Memory-bound** — left of the ridge. Fusion, precision, layout.
+- **Compute-bound** — right of it. Bigger matmuls, better kernels.
+
+Knowing which side you are on tells you which half of this talk applies.
+
+<figure>
+    <picture>
+        <source
+            media="(max-width: 768px)"
+            srcset="/talks/2026-10-15/figures/roofline-mobile.svg"
+        />
+        <img
+            src="/talks/2026-10-15/figures/roofline.svg"
+            alt="Log-log roofline: arithmetic intensity in FLOP per byte on the x axis against attainable bf16 TFLOP/s on the y. A slope-one memory diagonal rises to meet a flat compute ceiling. Intel Max 1550 per tile peaks at 340.8 TFLOP/s over 1638.4 GB/s HBM2e, ridge at 208 FLOP/byte; NVIDIA A100 40GB peaks at 312 TFLOP/s over 1555 GB/s HBM2, ridge at 201 FLOP/byte. Left of the ridge is memory-bound, right is compute-bound."
+        />
+    </picture>
+</figure>
+
+Both machines ask for roughly the same thing: **~200 FLOP per byte** before
+compute becomes the limit.
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 2 · INSTRUMENT
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+8 · torch.profiler
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="torch-profiler">
+
+## Instrument it
+
+Four decisions, four flags:
+
+| Decision | Why | Flag |
+| --- | --- | --- |
+| skip the warmup | step 1 is allocator + autotune | `--pytorch-profiler-warmup` |
+| capture a few steps | 1 is noise, 100 is gigabytes | `--pytorch-profiler-active` |
+| one rank | 2048 ranks × traces → Lustre | `--rank-zero-only` |
+| pay for what you read | shapes/stack/memory cost | `--record-shapes`, ... |
+
+Defaults: `wait=1 warmup=2 active=3 repeat=5`.
+
+> [!IMPORTANT]+ Profiling the warmup is the classic mistake
+> Step 1 is allocator churn and autotuning. It is not your training step.
+
+**Profiling is not free:** step time **+57%**, and writing a 101 MiB trace
+stalls the step **~65×**.
+
+<SpeakerNotes>
+Measured on Aurora, same job with and without: step 0.221s -> 0.346s,
+tokens/s/GPU 2318 -> 1484, and the two trace-export steps took 14.1s and
+16.2s against a 0.22s baseline step.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+9 · Cheaper instrumentation
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="lightweight-timers">
+
+## Before you reach for the profiler
+
+A profiler perturbs what it measures and hands you gigabytes to interpret. A
+timer around each phase answers *which quarter of the step* in five minutes.
+
+Often that is the whole answer.
+
+```python
+import ezpz
+from ezpz.history import StopWatch
+with StopWatch("fwd", iter=step):
+    loss = model(batch)
+    ezpz.synchronize()  # GPU work is async: wait for it
+```
+
+`ezpz` also has `timeitlogit` (decorator, logs per-rank) and `History.update()`,
+which is where the `dt= dtf= dtb= sps= tps= mfu=` log lines come from.
+
+<SpeakerNotes>
+Demo exactly one of these. Three ways to time a function is worse than one
+that works.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10 · Vendor tools
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="vendor-tools">
+
+## Vendor tools
+
+**`torch.profiler` says _which op_. The vendor tool says _why that op is
+slow_** — occupancy, bandwidth, which collective algorithm got picked.
+
+Most people never need this. Go here when the trace blames a kernel and you
+cannot see why.
+
+<Cols>
+<Col>
+
+**Aurora** · Intel Max 1550
+
+```bash
+module load frameworks/2026.1.0
+unitrace -d -h \
+  --chrome-itt-logging \
+  --chrome-kernel-logging \
+  -o utrace python step.py
+```
+
+</Col>
+<Col>
+
+**Polaris · Perlmutter** · NVIDIA
+
+```bash
+module load pytorch/2.13.0
+nsys profile -t cuda,nvtx,osrt \
+  -o step_trace \
+  --force-overwrite true \
+  python step.py
+```
+
+</Col>
+</Cols>
+
+> [!WARNING]+ Do not `module load pti-gpu`
+> `frameworks/2026.1.0` already loads `pti-gpu/0.17.0` and puts `unitrace`
+> 2.3.0 on PATH. Loading `pti-gpu/1.0.1-rc1` on top breaks torch outright:
+> `ImportError: libpti_view.so.0: cannot open shared object file`.
+
+<SpeakerNotes>
+unitrace ran on Sunspot (byte-identical stack to Aurora, rc=0); nsys ran on
+a Perlmutter login GPU, 2.1 MB .nsys-rep. ncu is compute-node only -- on a
+shared node the driver refuses counters. Trace selectors drift between nsys
+versions: Polaris 2025.5.1 has cuda-hw, Perlmutter 2026.2.1 has cuda-sw and
+nccl. cuda,nvtx,osrt is valid in every build checked, which is why it is the
+one on the slide.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10c · annotation
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="annotation">
+
+## Name your own phases
+
+A vendor timeline shows kernels. **Annotation** makes it show *your* phases.
+
+| | NVIDIA | Intel |
+| --- | --- | --- |
+| API | `torch.cuda.nvtx` | `torch.profiler.itt` |
+| `range_push` / `pop` | yes | yes |
+| `range_start` / `end` | yes | **no** |
+| on the other vendor | **raises** | no-ops |
+
+```python
+nvtx = torch.cuda.is_available()
+push = torch.cuda.nvtx.range_push if nvtx else torch.profiler.itt.range_push
+pop  = torch.cuda.nvtx.range_pop  if nvtx else torch.profiler.itt.range_pop
+```
+
+Only one direction needs guarding: NVTX **raises** on XPU, ITT no-ops on
+CUDA. `ezpz` has the wrapper but no annotation yet ([#270]).
+
+[#270]: https://github.com/saforem2/ezpz/issues/270
+
+<SpeakerNotes>
+NVTX on XPU raises "RuntimeError: NVTX functions not installed". ITT no-ops
+on CUDA, so the shim guards one direction only. record_function is
+imported-and-commented at profile.py:49.
+Verified both reach the trace, which is the claim that matters. Perlmutter
+`nsys stats --report nvtx_sum` showed :forward, :backward, :optimizer and
+train_step_0..4 alongside real CUDA kernels. Sunspot unitrace JSON contained
+the same ranges. --chrome-itt-logging is the flag that makes ITT ranges land.
+</SpeakerNotes>
+
+<SpeakerNotes>
+Aurora is the primary target; Polaris and Perlmutter are here because
+attendees have allocations on them and the portable layer above genuinely
+works on all three.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10b · Portability
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="portability">
+
+## One setup function, three schedulers
+
+| Machine | Device | Activity | Sorts by |
+| --- | --- | --- | --- |
+| **Aurora** | Max 1550 | `XPU` | `self_xpu_time_total` |
+| **Polaris** | A100 | `CUDA` | `self_cuda_time_total` |
+| **Perlmutter** | A100 | `CUDA` | `self_cuda_time_total` |
+
+`ezpz` fills in that right-hand column for you. **You write one script and
+it runs on all three** — no `if xpu:` anywhere in your code.
+
+> [!WARNING]+ Profiling is the part that travels badly
+> **Aurora** needs `--no-with-stack` for FSDP+TP.[^aurora-stack]
+> **Perlmutter** hangs outright. Demo from Polaris or Aurora.
+
+[^aurora-stack]: `torch.profiler` records a Python stack per op when `with_stack=True` (the default), and `p.key_averages()` then walks those stacks **recursively** in [`torch/autograd/profiler_util.py`](https://github.com/pytorch/pytorch/blob/main/torch/autograd/profiler_util.py) to build the event tree — FSDP2 + TP call stacks are deep enough to exceed Python's default 1000-frame limit, and the run exits 143 having written **zero** traces. Aurora job `8881403` is a one-variable pair (same allocation, same `fsdp_tp --model small --tp 2`): the default writes 0 traces at `rc=143`, `--no-with-stack` writes 5 at `rc=0`. Nothing in `ezpz` is implicated; its frames in the traceback are just the outer call path. This is a **depth threshold, not an Aurora property** — Polaris (job `7670657`) profiled the same example *with* stacks and wrote 5 traces. Aurora crosses the limit first.
+
+<SpeakerNotes>
+Why Aurora needs the flag: torch walks the recorded stacks recursively to
+build the event tree, and deep FSDP2+TP frames blow Python's 1000-frame
+limit. NOT an accelerator property -- Polaris ran the identical code path
+WITH stacks and wrote its traces (job 7670657). Aurora just reaches that
+depth first.
+
+The same ezpz/profile.py is byte-identical across the three installs
+(md5 71a6baf5...), which is how I confirmed there is no hidden per-machine
+branch -- not worth a slide, but it is the evidence if someone asks.
+
+Polaris job 7670657, 4x A100-SXM4-40GB, tp=2 dp_shard=2: MFU 7.7-7.9%, ~849
+tok/s/GPU, step 0.60s, 5 rank-0 traces, top ops ncclDevKernel_AllGather and
+ReduceScatter.
+
+Perlmutter is a controlled pair differing by ONE flag: job 59125292 WITH
+--profile hit a 10-min NCCL watchdog timeout on _ALLGATHER_BASE at SeqNum
+619, exit 143, zero traces; job 59126199 WITHOUT it ran 256 iters clean at
+MFU 8.8-9.0%. Ranks timed out on different SeqNums.
+
+RESOLVED by a full 2x2 in one allocation, Perlmutter job 59132774 --
+profiler on/off crossed with fast Libfabric vs forced Socket:
+
+  OFF + fast    rc=0        ON + fast    rc=124 hang
+  OFF + Socket  rc=0        ON + Socket  rc=124 hang
+
+Both profiled arms hang, both unprofiled arms pass, and the transport
+column changes nothing. Single variable: --profile. An earlier theory
+that the slow TCP fallback was the real cause is dead; the 8.3x figure
+is true about the nccl module and irrelevant here. Cite 59132774 rather
+than the original pair -- all four cells ran in one allocation.
+
+MECHANISM, offered as hypothesis not measurement: get_torch_profiler gives
+rank 0 a real profiler and every peer a nullcontext(), so rank 0 alone pays
+per-step bookkeeping and the group drifts -- which is what timeouts on
+different SeqNums look like. Suggestive detail: on Aurora, raising the
+recursion limit to dodge the RecursionError produced THIS failure instead
+(job 8881461 -- trains ~54 s, goes silent, killed at timeout, zero traces).
+Both machines land in the same place; Aurora just trips a recursion limit
+before it can drift. Nobody has instrumented per-rank timing to confirm it.
+
+Clean one-variable pair, Aurora job 8881403, same job and allocation,
+fsdp_tp --model small --tp 2, 30 iters, only the flag differing:
+
+  default (with_stack=True)   rc=143   0 traces  (RecursionError)
+  --no-with-stack             rc=0     5 traces
+
+Fails inside torch/autograd/profiler_util.py, reached from key_averages()
+in ezpz's trace handler; none of ezpz's own code is implicated. Also
+reproduced at 12 iters as job 8880975.
+
+The rule is stack DEPTH against a fixed limit, not the accelerator: Polaris
+job 7670657 ran the identical path with stacks on and wrote 5 traces. It
+fails where the frames are deepest, and Aurora reaches that first. If asked
+about a fix: forcing with_stack=False on XPU would be wrong -- it strips
+the most useful part of a profile on a machine where a shallower model
+works fine. Raising the recursion limit around the trace handler is the
+better hypothesis, untested.
+</SpeakerNotes>
+
+<SpeakerNotes>
+Source: src/ezpz/profile.py -- activities built by probing
+torch.cuda.is_available() / torch.xpu.is_available(), and _table_sort_key()
+maps cuda/xpu to their column and everything else to CPU.
+</SpeakerNotes>
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 3 · READ THE TRACE
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+10c-1 · in your own loop
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="in-your-loop">
+
+## In your own training loop
+
+```python
+from ezpz.profile import get_profiling_context
+
+with get_profiling_context(
+    profiler_type="torch",
+    wait=1, warmup=2, active=3, repeat=1,
+    rank_zero_only=True,
+    with_stack=False,  # True hits the RecursionError on Aurora
+    outdir="./traces",
+) as prof:
+    for step, batch in enumerate(dataloader):
+        train_step(batch)
+        if prof is not None:
+            prof.step()
+```
+
+Three lines around a loop you already have. It picks the activity set,
+the sort column, and the rank gating.
+
+<SpeakerNotes>
+get_profiling_context is the higher-level entry point -- it builds the
+schedule and a trace handler that both writes the chrome trace and logs
+the key-averages table. get_torch_profiler is the thinner wrapper if you
+want to pass your own handler.
+
+The `if prof is not None` guard matters: on non-zero ranks with
+rank_zero_only=True the context is a nullcontext, so there is no .step()
+to call. That asymmetry is also the suspected cause of the Perlmutter
+hang -- worth mentioning only if someone asks.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10c-2 · the launch
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-launch">
+
+## The launch is not identical
+
+```bash
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute: no internet
+source <(curl -fsSL https://ezpz.cool/utils.sh)
+ezpz_setup_env && ezpz_install                     # install is a SECOND step
+ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
+```
+
+Verified on Polaris. Note `examples.profiler` — the small one. Swap in
+`fsdp_tp --tp 2` and you need `--no-with-stack` on Aurora, and it hangs
+outright on Perlmutter.
+
+<SpeakerNotes>
+Each line earns its place: the proxy because ALCF compute has no route out,
+ezpz_install because setup_env does not install ezpz, and the profiler
+example because it is purpose-built for this and finishes fast.
+
+The example choice is load-bearing, not incidental. ezpz.examples.profiler
+is a shallow model and survives --profile on all three machines. The
+published ALCF guide and ezpz docs currently recommend this same flag with
+fsdp_tp --tp 2, which hangs on Perlmutter (59132774) and RecursionErrors on
+Aurora without --no-with-stack (8881403). Both pages are being corrected.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+10d · the traps
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="setup-traps">
+
+## Four things that bite
+
+1. **ALCF compute has no route out.**
+   Set `HTTPS_PROXY=http://proxy.alcf.anl.gov:3128`
+2. **The venv is named after `cwd`.**
+   Don't `cd` between setup and launch.
+3. **It tokenizes 5.9 GB before step 0.**
+   Pass `--hf-limit 512`.
+4. **PBS jobs need a login shell.**
+   `#!/bin/bash -l`, not `#!/bin/bash`.
+
+&nbsp;
+
+None of these fail where the mistake is. That is what costs the afternoon.
+
+<SpeakerNotes>
+What each one looks like when you hit it, since that is how people will
+recognise it:
+  - no proxy  -> curl fails silently, then "ezpz_setup_env: command not
+    found"
+  - wrong cwd -> "ModuleNotFoundError: ezpz" several minutes in, after a
+    fresh empty venv was built under the directory you cd'd into
+  - no hf-limit -> six minutes of nothing before iter 0; looks exactly
+    like a hang
+  - no -l     -> "module: command not found"
+
+All four found the hard way preparing this talk. The proxy one is ALCF
+compute only; Perlmutter needs none.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+11 · Trace anatomy
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="trace-anatomy">
+
+## Reading a trace
+
+`--profile` drops `torch-profiler-rank0-step{N}-{timestamp}.json`. Open it in
+[Perfetto](https://ui.perfetto.dev) or `chrome://tracing`.
+
+CPU rows on top (what Python asked for), device rows below (what ran). A
+**gap in the device row is the GPU waiting.**
+
+From the job behind this talk. **The GPU is idle 90.6% of every step.**
+
+<figure>
+    <img
+        src="/talks/2026-10-15/figures/trace-gap.png"
+        alt="Perfetto timeline zoomed to a 17 ms window inside ProfilerStep#10 on Aurora. The CPU main-thread row is packed with nested operator frames including FSDP::pre_forward, FSDP::all_gather, c10d::_allgather_base_ and xccl::_all_gather. The three XPU device rows, Stream 64, 65 and 66, are blank across the middle of the window: the GPU is idle while the CPU works."
+    />
+    <figcaption>17 ms inside one step. CPU packed, <code>Stream 64/65/66</code> blank. That whitespace is the GPU waiting on <code>all_gather</code>.</figcaption>
+</figure>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+12 · The three shapes
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="three-shapes">
+
+## Three shapes, three fixes
+
+| Trace shows | Diagnosis | Fix section |
+| --- | --- | --- |
+| idle at the **start** of every step | data stall | dataloader, FS |
+| idle **mid**-step, regular | communication | collective, overlap |
+| **busy** but throughput low | kernel efficiency | precision, fusion, shapes |
+
+Everything after this slide is one of three branches.
+
+<SpeakerNotes>
+Device time in the Aurora trace: gemm_kernel 11.2%, oneccl_allgatherv 9.8%,
+oneccl_reduce_scatter 7.3% -- collectives 25.1% against 74.9% compute.
+</SpeakerNotes>
+
+> [!TIP]+ Take a photo of this one
+> It is the table you will want in front of you at 2am.
+
+<SpeakerNotes>
+Deliberately one figure, not three. The gap shot two slides back shows row
+1; rows 2 and 3 would need a job engineered to exhibit each shape, which is
+a fabricated example wearing a real trace's clothes.
+</SpeakerNotes>
+
+</Slide>
+
+{/*═══════════════════════════════════════════════════════════════
+  PART 4 · FIX, IN ORDER
+═══════════════════════════════════════════════════════════════*/}
+
+{/*───────────────────────────────────────────────────────────────
+13 · Data stalls
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-data">
+
+## Fix: data stalls
+
+Usually the cheapest big win, and the one teams skip because it is not the
+interesting part.
+
+- **Workers, prefetch, pinned memory** — the boring three, in that order
+- **Many small files** is a metadata problem, not a bandwidth problem
+- **Lustre does not like you** — one `stat()` storm × 50k ranks
+
+> [!NOTE]+ Same failure as `import torch` at scale
+> The fix is not a faster filesystem. It is not hitting the filesystem from
+> every rank. See [`ezpz yeet`](https://samf.sh/posts/2026/05/01/).
+
+Measured on Aurora, 8 → 4096 nodes: per-node env cost **8.7 s → 0.18 s**
+(48×). Full-scale pre-launch **12.5 min**, first step at **16 min**.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+14 · Communication
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-comms">
+
+## Fix: communication
+
+- **Overlap** — the framework probably already does it; confirm in the trace
+  before tuning anything
+- **TP across nodes** is usually the bug, not a tuning problem
+
+Keep `TP` on-node. `DP` is nearly free; `TP` is chatty.
+
+**Turn the logs on before you tune anything:**
+
+| | Aurora | Polaris · Perlmutter |
+| --- | --- | --- |
+| verbosity | `CCL_LOG_LEVEL=info` | `NCCL_DEBUG=INFO` |
+| narrow it | — | `NCCL_DEBUG_SUBSYS=INIT,COLL,NET` |
+| one file per rank | — | `NCCL_DEBUG_FILE=nccl.%h.%p.log` |
+| who hung | `TORCH_NCCL_DESYNC_DEBUG=1` | same |
+
+> [!IMPORTANT]+ Aurora ships quieter than the library default
+> oneCCL defaults to `warn`; the setup lowers it to `ERROR`. You are getting
+> *less* diagnostic output than the library would give you.
+
+<SpeakerNotes>
+Verified live by strings against the installed libs: oneCCL 2022.1.0 on
+Aurora, NCCL 2.28.3 Polaris, 2.29.2 Perlmutter. Aurora arrives with 31
+collective vars pre-set; Polaris arrives with ZERO -- that contrast is worth
+saying out loud. TORCH_NCCL_DESYNC_DEBUG is the highest-value one: it prints
+"[0,1,2,...] joined but didn't finish collective #39", which answers "did a
+rank die or is the network stuck" in one line.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+15 · Kernel efficiency
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-kernels">
+
+## Fix: kernel efficiency
+
+- **Mixed precision** — verify you got it; `bf16` in the config is not proof
+- **`torch.compile`** — helps often; on AuroraGPT MoE it cost **26% of throughput**
+- **Fused attention / optimizer** — usually free, check availability per device
+- **Shapes** — pad to the tensor-core multiple
+
+> [!WARNING]+ `torch.compile` is not free
+> Compile time is real, and it does not always pay back. Measure it like
+> anything else.
+
+Measured: `moe_500m`, Aurora, 2 nodes / 24 tiles, 2026-04-13. TPS 11,200 →
+8,316; TFLOPS 25.22 → 18.70; MFU 8.46% → 6.27%. All three agree on **-26%**,
+which is the same thing as **+35% step time** — quote one, not both.
+
+Compile also used **2.2× less memory** (8.44 → 3.78 GiB). A real trade.
+
+_As of April 2026, torch 2.10 — not re-measured since._
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+16 · Memory
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="fix-memory">
+
+## When the constraint is memory
+
+Activation checkpointing, ZeRO stages, offload. Each buys memory with compute.
+
+<Cols>
+<Col width={7}>
+
+<figure>
+    <picture>
+        <source
+            media="(max-width: 768px)"
+            srcset="/talks/2026-08-03/figures/zero-memory-mobile.svg"
+        />
+        <img
+            src="/talks/2026-08-03/figures/zero-memory.svg"
+            alt="ZeRO / FSDP memory partitioning: horizontal memory-proportional bars per GPU across four stages (Baseline/DDP, ZeRO-1 shard optimizer, ZeRO-2 +gradients, ZeRO-3/FULL_SHARD shard everything). Each stage replaces a full-width component bar with a 1/N per-GPU slice over a greyed freed-memory track, so per-GPU memory drops from 16 GB toward 16/N GB."
+        />
+    </picture>
+</figure>
+
+</Col>
+<Col width={5}>
+
+Adam, per parameter: **2** (bf16 param) + **2** (grad) + **12** (fp32 master
++ two moments) = **16 bytes**. Sharding takes that toward 16/N.
+
+> [!IMPORTANT]+ These are slowdowns you accept to fit
+> Not speedups. Teams reach for them expecting speedups.
+
+</Col>
+</Cols>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17 · Hands-on
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="hands-on">
+
+## Hands-on
+
+No new code. The flags already exist.
+
+```bash
+# 0 · setup, then install -- setup_env does NOT install ezpz
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute only
+source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
+
+# 1 · baseline: how fast is it now?
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --model small --dataset random --train-iters 12
+
+# 2 · same run, instrumented
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --model small --dataset random --train-iters 12 \
+    --profile --rank-zero-only --no-with-stack
+```
+
+**144 s**, two traces, full table. Open the JSON in
+[Perfetto](https://ui.perfetto.dev) and you are looking at your own run.
+
+> [!WARNING]+ `--no-with-stack` is not optional for FSDP+TP
+> Without it the callback dies in `key_averages()` — which runs *before*
+> `export_chrome_trace`, so you lose the table **and** the trace.
+
+<SpeakerNotes>
+--no-cache and --link-mode=copy because the venv lives on a shared
+filesystem: hardlinks across it fail and a cache there is slower than the
+download. uv resolves this in seconds where pip takes minutes.
+
+The PBS script also needs #!/bin/bash -l or module is not found. Step 2
+writes the trace as torch-profiler-rank0-step(N)-(timestamp).json into
+the run's own outputs directory.
+
+The exercise for the self-progress block: profile your run, name which of
+the three shapes you have, change one thing, re-measure. Bring the
+before/after.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17b · Wasted time: the failure tax
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="failure-tax">
+
+## The other way you lose GPU-hours
+
+Everything so far assumed the run finishes. At scale it does not.
+
+A crash at step 1,900 of 2,000 with a 100-step save interval costs you the
+recompute, the restart, and the queue wait. None of it shows up in a profile.
+
+> [!IMPORTANT]+ Throughput you never used is the same as throughput you never had
+> An 18% MFU run that dies at 90% is a 0% MFU run.
+
+<SpeakerNotes>
+This is the bridge from "make the step fast" to "make sure the steps you paid
+for survive." Keep it to one slide -- ATPESC covers the full failure story.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17c · auto-retry
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="auto-retry">
+
+## `ezpz launch --auto-retry`
+
+On a non-zero exit, scrape the log for known bad-node signatures, retire the
+named host, rotate in a spare, relaunch. No babysitting.
+
+```bash
+ezpz launch --auto-retry --nhosts 8 --spare-nodes 2 -- \
+  python3 -m ezpz.examples.fsdp_tp --model debug \
+    --ckpt-dir ./ckpts --save-interval 100 --train-iters 3000
+```
+
+Catches: watchdog kill (124), walltime-racing crashes (143), Aurora PALS
+shepherd-9, gloo peer-closed, and zero-progress hangs.
+
+> [!WARNING]+ No spare, no retry
+> Every retryable verdict is gated on `has_spares`. If `--np` eats the whole
+> allocation there is nothing to rotate in and the run ends `EXHAUSTED`.
+> Size with `--nhosts` and leave `--spare-nodes`.
+
+`--auto-retry` also flips the idle timeout on: it defaults to **30 min**,
+so a silent `xccl` hang gets killed and retried instead of burning the
+whole walltime.
+
+<SpeakerNotes>
+Flags verified against ezpz 0.29.2 as installed on Aurora, 2026-09-30:
+--auto-retry, --spare-nodes, --nhosts, --max-failover-retries all present.
+The idle-timeout default matches FAILOVER_IDLE_TIMEOUT in
+src/ezpz/bin/failover.sh; pass --timeout 0 to disable it.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17d · async checkpointing
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="async-ckpt">
+
+## Checkpointing without paying for it
+
+Sync save blocks training. Async stages to CPU, fans out in a background
+thread, stamps `.complete` last.
+
+| Model | Ckpt | Sync stall | Async stall | |
+| --- | --- | --- | --- | --- |
+| `agpt-2b` | 23 GB | 3.75 s | **1.05 s** | 3.6× |
+| `agpt-20b` | 232 GB | 23.57 s | **5.4 s** | 4.4× |
+
+```bash
+python3 -m ezpz.examples.fsdp_tp \
+    --ckpt-dir /shared/ckpts --async-ckpt \
+    --ckpt-stage-dir /tmp/ezpz-ckpt --save-interval 100
+```
+
+> [!NOTE]+ Two dead ends got there
+> A 5.18 s blocking drain that no metric recorded, then a marker stamped a
+> full interval late — async was durable but not *resumable*. The fix probes
+> on MPI's own communicator, not the training group, so it cannot deadlock
+> against the gradient all-reduce.
+
+[ezpz.cool/guides/checkpoint-restart](https://ezpz.cool/guides/checkpoint-restart/)
+
+<SpeakerNotes>
+The dead ends are the interesting part: both were invisible to the metrics
+being logged at the time. Same lesson as the rest of the talk -- instrument
+the thing you actually care about, or you will optimize a number that is not
+the cost. 20b measured on 4 Sunspot nodes with --meta-init; memory went from
+OOM at >64 GB/tile to ~14 GB/tile.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17e · the arc: measured, one lever at a time
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-arc">
+
+## Now do it: one lever at a time
+
+Same job, same 2 nodes, same profiling recipe. Each row is a run.
+
+| | change | **idle** | MFU | tok/s/GPU |
+| --- | --- | --- | --- | --- |
+| **A** | baseline, `bs=1 sl=1024` | **90.7%** | 0.33% | 1,392 |
+| **B** | `--batch-size 8` | **76.4%** | 2.51% | 10,484 |
+| **C** | `--batch-size 16` | **63.8%** | 4.54% | 18,947 |
+| **D** | `+ --seq-len 4096` | **19.1%** | 9.77% | 27,648 |
+| **E** | `+ --tp 1` | **10.1%** | **12.9%** | 36,461 |
+
+One mechanism explains all of it: **give each kernel launch more work.**
+Comm share falls 25% → 2.7% as a *consequence*, not a separate fix.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17e-2 · the same window, before and after
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="arc-pictures">
+
+## The same 440 ms
+
+<Cols>
+<Col>
+
+<figure>
+    <img
+        src="/talks/2026-10-15/figures/arc-before.png"
+        alt="Perfetto timeline of a 440 ms window in the baseline run. Stream 64 is a row of thin coloured ticks with visible white gaps between nearly every one; the CPU thread above is densely packed. Twenty-odd one-shot XCCL init streams each occupy a row with a single mark."
+    />
+    <figcaption><strong>A</strong> — 90.7% idle</figcaption>
+</figure>
+
+</Col>
+<Col>
+
+<figure>
+    <img
+        src="/talks/2026-10-15/figures/arc-after.png"
+        alt="Perfetto timeline of the same 440 ms window after batching and sequence-length changes. Stream 64 is nearly continuous, with labelled gemm_kernel and collective blocks wide enough to read, and the CPU thread shows repeating FSDP::pre_forward and FSDP::all_gather spans instead of undifferentiated texture."
+    />
+    <figcaption><strong>E</strong> — 10.1% idle</figcaption>
+</figure>
+
+</Col>
+</Cols>
+
+Same trace viewer, same zoom, same 440 ms. The whitespace is the win.
+
+<SpeakerNotes>
+Both sliced to an identical 440.27 ms window from ProfilerStep#10, because
+E's real step is 1,873 ms -- showing each at its own step boundary would
+make E look denser purely from the zoom. Same window is the honest
+comparison.
+</SpeakerNotes>
+
+<SpeakerNotes>
+Aurora job 8881266, 7 configs in one job, 5 succeeded. Per-step spread under
+1pp on every config, so these are stable. A re-run reproduced the deck's
+90.6% baseline at 90.68%.
+
+Caveat E out loud: --tp 1 changes the mesh from (dp_shard=12, tp=2) to
+dp_shard=24, which also doubles global batch. A->B->C->D is the clean
+per-lever story; E is "and stop sharding a 125M model twelve ways".
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+17f · where it stops
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="the-ceiling">
+
+## Where it stops, and why
+
+**90.7% → 10.1% idle. MFU 0.33% → 12.9%, a 39× gain.**
+
+Also still bad — and the trace says why. The residual 188 ms of idle is
+**3,735 gaps at a 23 µs median**. Launch overhead never disappears; it only
+gets amortized.
+
+> [!IMPORTANT]+ The honest ceiling is memory, not cleverness
+> `E` peaks at **55.7 of 64 GiB**. Both bigger-model configs **OOMed**
+> outright. To go further you need a model big enough to justify 24 tiles,
+> which is a different talk.
+
+<SpeakerNotes>
+The OOMs are evidence, not an embarrassment: --model l (495M) at bs16/sl4096
+hit 60.53 GiB and --model xl (1B) at bs8/sl4096 hit 61.84 GiB, both with
+zero iterations. "Just use a bigger model" does not work without also
+cutting batch or adding activation checkpointing. Absolute idle per step
+fell 0.326s -> 0.113s while the work grew 128x -- that is the cleaner
+statement of the mechanism than the percentage.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+18 · Summary
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="summary">
+
+## Takeaways
+
+1. **Baseline and ceiling before any change.**
+2. **The trace names the problem.** Ours said launch overhead, not comms —
+   and the first guess was wrong.
+3. **One lever per measurement.** 90.7% → 10.1% idle, five runs.
+4. **Stop when the measurement says stop.** Ours stopped at memory.
+
+**Slides:** [samf.sh/talks/2026/10/15](https://samf.sh/talks/2026/10/15)
+
+```bash
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute only
+source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --profile --rank-zero-only --no-with-stack
+```
+
+Find me in the self-progress block.
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
+19 · Acknowledgements
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="acknowledgements">
+
+## Acknowledgements
+
+> This research used resources of the Argonne Leadership Computing Facility
+> at Argonne National Laboratory, which is supported by the Office of
+> Science of the U.S. Department of Energy, Office of Science, under
+> contract number DE-AC02-06CH11357.
+
+<SpeakerNotes>
+CELS-required wording, matching what the other talks were standardised to
+in #35. Every measurement in this deck came from Aurora, Polaris or
+Perlmutter allocations, so this is required, not decorative.
+</SpeakerNotes>
+
+</Slide>

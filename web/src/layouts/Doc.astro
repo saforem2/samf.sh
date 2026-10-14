@@ -2762,10 +2762,33 @@ const articleSchema =
             const maxLeft = window.innerWidth - contentWidth - 8
             if (left > maxLeft) left = Math.max(8, maxLeft)
             details.style.setProperty('--popover-left', `${left}px`)
-            details.style.setProperty(
-                '--popover-top',
-                `${triggerRect.bottom}px`,
-            )
+
+            // Vertical: opening downward unconditionally puts a long
+            // footnote off the bottom of the window when the trigger sits
+            // low. Pick the roomier side, cap to that gap, and let the CSS
+            // scroll the remainder. Same fix as the deck popover.
+            const PAD = 8
+            const below = window.innerHeight - triggerRect.bottom - PAD
+            const above = triggerRect.top - PAD
+            // Natural height, not offsetHeight: that is already capped by
+            // the previous --popover-max-h.
+            const contentHeight =
+                content.scrollHeight +
+                (content.offsetHeight - content.clientHeight)
+            if (contentHeight <= below || below >= above) {
+                details.style.setProperty(
+                    '--popover-top',
+                    `${triggerRect.bottom}px`,
+                )
+                details.style.setProperty('--popover-max-h', `${below}px`)
+            } else {
+                const boxH = Math.min(contentHeight, above)
+                details.style.setProperty(
+                    '--popover-top',
+                    `${Math.max(PAD, triggerRect.top - boxH)}px`,
+                )
+                details.style.setProperty('--popover-max-h', `${above}px`)
+            }
         }
 
         // Open/close on hover
@@ -2884,6 +2907,12 @@ const articleSchema =
         top: var(--popover-top, auto);
         left: var(--popover-left, auto);
         margin: 0 !important;
+        /* Cap to the gap the positioner measured and scroll the rest, so a
+           long footnote near the bottom of the window is reachable instead
+           of clipped off the edge. */
+        max-height: var(--popover-max-h, calc(100vh - 2rem));
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 </style>
 

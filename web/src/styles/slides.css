@@ -332,21 +332,106 @@
        real cue: the theme's own violet, distinct from the blue link/heading
        color, the pink accent, and the diagram greens.
 
-       Use the theme's `--purple` token DIRECTLY — every theme already tunes
-       it to be legible on its own background (dark theme: light purple l~0.7
-       on the near-black base; light theme: deep purple l~0.57 on near-white),
-       so it can never read "out of sync" with that theme's palette. Fill and
-       border are alpha-tinted from the same token. Scoped to inline code only
-       — `pre.astro-code > code` (the shiki codeblock body) keeps its theme. */
+       Earlier this used the theme's `--purple` at full strength with a
+       tinted fill, a 1px border and a 3px radius. That reads as a fourth
+       accent competing with the blue headings, the pink, and the diagram
+       greens, and the rounded chip is the only rounded thing in a deck
+       whose codeblocks, tables and callouts are all square.
+
+       Match the site instead: a flat tint of the page's own surface, no
+       border, no radius, prose color kept. Legibility on a projector comes
+       from the fill being a real step off the background rather than from
+       hue. Scoped to inline code only — `pre.astro-code > code` (the shiki
+       codeblock body) keeps its theme. */
     :is(p, li, td, h1, h2, h3, h4, figcaption) code {
-        --chip: var(--purple, var(--mauve, #8260cc));
-        color: var(--chip);
-        background-color: oklch(from var(--chip) l c h / 0.13);
-        border: 1px solid oklch(from var(--chip) l c h / 0.28);
-        border-radius: 3px;
+        /* Derive the chip from whatever it sits in rather than hardcoding
+           a grey. --callout-color is already set per callout variant
+           (red for warning, orange for important, green for tip, ...) and
+           inherits, so a chip inside one picks up that hue for free;
+           outside a callout the chain falls through to --foreground0 and
+           the chip is a neutral tint of the page's own text colour. That
+           makes it self-correcting on light and dark themes -- the tint is
+           always a step off the surface it is on, never a fixed grey that
+           happens to work on one background.
+
+           Relative-colour syntax does the work: same h and c as the
+           source, alpha for the fill, and a lightness nudge for the text
+           so it stays legible on the tint rather than matching it. */
+        --chip: var(--callout-color, var(--foreground0));
+        /* --chip-l is the text lightness, overridden per theme below.
+           Relative-colour `l` is a number in 0..1 here, but min()/max()
+           against it resolved unreliably, so the themes set an explicit
+           value instead of clamping. */
+        color: oklch(from var(--chip) var(--chip-l, 0.42) c h);
+        /* The FILL has to be tinted toward the opposite end from the page,
+           not toward the chip's own lightness. On dark that was
+           --foreground0 at l=0.321 over a page at l=0.226: composited at
+           10% it separated by 0.0095, against light's 0.043 -- 4.5x
+           weaker, which is why the chip vanished. --chip-fill-l pushes
+           the tint away from the surface per theme. */
+        background-color: oklch(
+            from var(--chip) var(--chip-fill-l, l) c h / var(--chip-fill-a, 0.1)
+        );
+        border: none;
+        border-radius: 0;
         padding-block: 0.02em;
-        padding-inline: 0.28em;
+        padding-inline: 0.3em;
     }
+}
+/* Dark themes invert it: the chip text has to be LIGHTER than the tint,
+   not darker. Scoped on :root (where the theme attribute actually lives)
+   and outside the deck block so it is not fighting specificity. */
+:root[data-webtui-theme='custom-dark'],
+:root[data-webtui-theme='catppuccin'],
+:root[data-webtui-theme='nvim-dark'] {
+    --chip-l: 0.84;
+    /* Tint UP, away from the dark page, at a slightly higher alpha.
+       0.12 of l=0.84 over l=0.226 lands at 0.300, a +0.074 separation --
+       visible without becoming a block of colour. */
+    --chip-fill-l: 0.84;
+    --chip-fill-a: 0.12;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-webtui-theme]) {
+        --chip-l: 0.84;
+        --chip-fill-l: 0.84;
+        --chip-fill-a: 0.12;
+    }
+}
+[is-~='presentation'] {
+    /* Display math. KaTeX centres `.katex-display` itself, but the deck's
+       own `p { text-align: ... }` and the slide's flex column can override
+       it, and katex's 1em block margin collapses against adjacent prose so
+       the fraction bar ends up nearly touching the line below. Restate both
+       explicitly, and give it a real line of air on each side. */
+    .katex-display {
+        display: block;
+        text-align: center;
+        margin-block: 1lh;
+        /* No overflow-x:auto here. It forces overflow-y to compute to
+           `auto` as well -- the two axes cannot disagree -- which turns
+           the box into a scroll container that slices a \frac's
+           numerator and denominator off at the edges. A display equation
+           on a slide should shrink to fit rather than scroll, so leave
+           overflow visible and cap the width instead. */
+        padding-block: 0.3lh;
+        max-width: 100%;
+        /* global.css sets overflow-x: auto on .katex-display for narrow
+           article viewports. On a slide that makes the box a scroll
+           container, and since the two axes cannot disagree, overflow-y
+           becomes `auto` too and clips the numerator and denominator of
+           a \frac. Slides are fixed-size: shrink to fit, do not scroll. */
+        overflow: visible !important;
+    }
+    .katex-display > .katex {
+        display: inline-block;
+        text-align: initial;
+    }
+    /* Inline math keeps the prose baseline -- no padding, no centring. */
+    :not(.katex-display) > .katex {
+        padding-inline: 0.1em;
+    }
+
     /* Codeblocks on slides must never overflow past the slide right
        edge — long shell commands (qsub lines, ezpz launch with
        many args) extend past the natural slide width if shiki's
@@ -427,6 +512,11 @@
     pre.astro-code span.line {
         display: block;
         line-height: 1.35;
+        /* An EMPTY .line has no content box, so line-height alone gives it
+           zero height and a deliberate blank line in a snippet collapses --
+           the import ran straight into the `with` it was separated from.
+           min-height keeps the gap the author wrote. */
+        min-height: 1.35em;
     }
     /* Mobile: drop the negative offset (otherwise the codeblock can
        extend `100% + 2ch` past the right edge, since max-width is
@@ -1141,6 +1231,16 @@ body[data-speaker-window] [is-~='notes'] {
     /* default deck mode unchanged */
 }
 
+/* Paper: zero margins only. Do NOT set an @page `size` here -- Chrome's
+   print dialog keeps whatever paper the user picked, so a hardcoded size
+   is ignored while the slide keeps the height that size implied. A 540px
+   slide on a 1632px Tabloid sheet then breaks across THREE pages, which
+   is how 25 slides became 75. Let the sheet be whatever it is and make
+   the slide fill it (see the height rules below). */
+@page {
+    margin: 0;
+}
+
 @media print {
     body.slides-print-mode\? body {
         background-color: white;
@@ -1167,11 +1267,17 @@ body[data-speaker-window] [is-~='notes'] {
         pointer-events: auto !important;
         transform: none !important;
         width: 100%;
-        aspect-ratio: 16 / 9;
+        /* Fill the sheet rather than holding 16/9 against it. With
+           aspect-ratio the slide keeps a height the paper may not share,
+           so it either leaves a band of white (Letter) or spills onto
+           extra pages (Tabloid). 100vh under print media is one page. */
+        height: 100vh;
         page-break-after: always;
         break-after: page;
+        break-inside: avoid;
     }
-    [is-~='slide-status'] {
+    [is-~='slide-status'],
+    .deck-slide-number {
         display: none !important;
     }
     /* Screen-reader skip link hides off-screen via translateY; print resets
@@ -1185,8 +1291,21 @@ body[data-speaker-window] [is-~='notes'] {
         width: 100% !important;
         height: 100% !important;
         transform: none !important;
-        /* Same scale + clip as the .slides-print-mode ruleset below. */
-        font-size: 1.08em !important;
+        /* Same flex column + centering + scale + clip as the
+           .slides-print-mode ruleset below. This block used to omit the
+           flex properties, so printed slides lost the vertical centering
+           the screen deck has and sat against the bottom-left corner with
+           dead space above. `safe center` degrades to flex-start when a
+           slide overflows, which is what keeps the top from being clipped. */
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: safe center !important;
+        padding: 1lh 4ch !important;
+        /* Scale type to the sheet, the way the screen deck scales it to
+           the viewport (clamp with a vw term, ~line 123). A flat em here
+           meant the same physical text size on Letter and on Tabloid, so
+           the bigger the paper the more of it sat empty. */
+        font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
         overflow: hidden !important;
     }
 }
@@ -1206,14 +1325,18 @@ body.slides-print-mode [is-~='slide'] {
     pointer-events: auto !important;
     transform: none !important;
     width: 100%;
-    aspect-ratio: 16 / 9;
+    /* See the @media print copy above: fill the sheet, do not impose a
+       ratio the paper does not have. */
+    height: 100vh;
     page-break-after: always;
     break-after: page;
+    break-inside: avoid;
 }
 body.slides-print-mode .skip-link {
     display: none !important;
 }
-body.slides-print-mode [is-~='slide-status'] {
+body.slides-print-mode [is-~='slide-status'],
+body.slides-print-mode .deck-slide-number {
     display: none !important;
 }
 body.slides-print-mode [is-~='slide'] .slide-inner {
@@ -1228,11 +1351,16 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
        in inches and the browser shrinks them to tiny thumbnails. */
     display: flex !important;
     flex-direction: column !important;
-    /* Scale print type UP a touch so the exported PDF reads well as a
-       handout. The overflow:hidden clip below still catches the rare
-       dense slide (timeline tables, long bullet lists); most slides
-       have headroom on fixed paper, so bigger is the better default. */
-    font-size: 1.08em !important;
+    /* Centre the content vertically, as the screen deck does. Without
+       this the block is a flex column anchored at flex-start, so short
+       slides print hard against the top and read as bottom-heavy once
+       the footer stamp lands. */
+    justify-content: safe center !important;
+    padding: 1lh 4ch !important;
+    /* Scale type to the sheet rather than fixing it, so the deck reads
+       the same on Letter and Tabloid. The overflow:hidden clip below
+       still catches the rare dense slide. */
+    font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
     /* Clip anything that still overflows rather than letting it
        bleed visibly past the paper edge — better to lose half a
        trailing line than show it sliced in two. */
@@ -1291,12 +1419,19 @@ body.slides-print-mode [is-~='slide']::after {
 /* Persistent deck-corner logo: small, tight to the bottom-right corner
    above the status bar, on every slide. Theme-swapped same way as the
    title slide logo. */
+/* Both the position and the SIZE carry !important. The dark variant is
+   hidden by `.deck-corner-logo-dark { display: none !important }` and
+   re-shown by a `:root[data-webtui-theme=...]` rule, which outranks this
+   bare class selector -- so without !important here the dark logo came
+   back visible but UNSIZED and rendered 444px tall across the slide,
+   while the light one (never re-shown by a higher-specificity rule)
+   stayed at its correct 44px. */
 .deck-corner-logo {
-    position: fixed;
-    bottom: calc(1lh + 0.5lh);
-    right: 1ch;
-    height: 1.25lh;
-    width: auto;
+    position: fixed !important;
+    bottom: calc(1lh + 0.5lh) !important;
+    right: 1ch !important;
+    height: 1.25lh !important;
+    width: auto !important;
     /* No opacity dim — the black/white SVG variants already contrast
        appropriately against their respective theme backgrounds. The
        previous opacity:0.5 made both variants look washed-out grey. */
@@ -1321,12 +1456,86 @@ body.slides-print-mode [is-~='slide']::after {
 [is-~='presentation']:has(#title-slide[data-current]) .deck-corner-logo {
     display: none !important;
 }
+/* ...except in print, where there is no "current" slide -- every slide is
+   on its own sheet, so the title page would be the one page with no mark.
+   Re-show it there, but ONLY the variant the theme has not hidden: an
+   unqualified `.deck-corner-logo-light { display: block }` also overrides
+   the dark-theme hide above, which put a full-size light logo across the
+   middle of every dark slide on screen. Re-assert the theme guards, and
+   keep the sizing the .deck-corner-logo rule already sets. */
+@media print {
+    :root:not([data-webtui-theme='custom-dark']):not(
+            [data-webtui-theme='catppuccin']
+        )
+        [is-~='presentation']:has(#title-slide[data-current])
+        .deck-corner-logo-light,
+    :root:is(
+            [data-webtui-theme='custom-dark'],
+            [data-webtui-theme='catppuccin']
+        )
+        [is-~='presentation']:has(#title-slide[data-current])
+        .deck-corner-logo-dark {
+        display: block !important;
+    }
+}
 /* Hide the persistent logo on mobile — at narrow widths it overlaps
    content rather than tucking into a corner (less horizontal slack
    for content to flow around it). The title slide still shows its
    own bigger logo via the title-specific block below. */
 @media (max-width: 768px) {
     .deck-corner-logo {
+        display: none !important;
+    }
+}
+
+/* The corner logo is position:fixed with nothing reserving space for it,
+   so a wide figcaption or a full-measure paragraph runs underneath. Pad
+   the last flow child of each slide out of the logo's corner instead of
+   moving the logo -- the logo placement is a brand decision, the collision
+   is a layout one. Width covers the mark plus its right offset. A plain
+   :last-child would land on the hidden <aside is-="notes"> that most
+   slides end with, so count only visible flow children. */
+[is-~='slide']
+    .slide-inner
+    > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
+    padding-inline-end: var(--deck-logo-gutter, 0);
+}
+/* Logo is hidden at <=768px, so the gutter only applies above that. */
+@media (min-width: 769px) {
+    [is-~='presentation']:not(:has(#title-slide[data-current]))
+        [is-~='slide'][data-current]
+        .slide-inner {
+        --deck-logo-gutter: 9ch;
+    }
+}
+
+/* Slide number, top-right, linking to the current slide. The status bar
+   at the bottom already carries one, but it is small and easy to miss
+   from the back of a room; this is the one someone photographs to find
+   their place again. Hidden on the title slide, which has its own QR. */
+.deck-slide-number {
+    position: fixed;
+    top: 1lh;
+    right: 1ch;
+    z-index: 6;
+    font-size: 0.72em;
+    color: var(--foreground2);
+    text-decoration: none;
+    padding: 0 0.6ch;
+    border: 1px solid var(--background3, var(--foreground3));
+    border-radius: 2px;
+    background: var(--background0);
+    line-height: 1.4;
+}
+.deck-slide-number:hover {
+    color: var(--foreground0);
+    border-color: var(--foreground2);
+}
+[is-~='presentation']:has(#title-slide[data-current]) .deck-slide-number {
+    display: none !important;
+}
+@media (max-width: 768px) {
+    .deck-slide-number {
         display: none !important;
     }
 }
@@ -1368,6 +1577,13 @@ body.slides-print-mode [is-~='slide']::after {
     text-indent: 0;
     max-width: min(60ch, calc(100vw - 6ch));
     width: max-content;
+    /* Cap to the gap the positioner measured and scroll the rest. Without
+       this a long footnote opened near the bottom of a slide ran off the
+       screen with its tail unreachable -- the box has no page to continue
+       onto. Fallback keeps it on-screen if the JS has not run yet. */
+    max-height: var(--popover-max-h, calc(100vh - 4lh));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     /* Break long tokens (URLs, citation titles, etc) instead of
        overflowing past the right border. */
     overflow-wrap: anywhere;

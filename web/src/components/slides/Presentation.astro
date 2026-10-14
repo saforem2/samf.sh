@@ -29,6 +29,9 @@ const canonical = `samf.sh${url}`
         aria-hidden="true"
         class="deck-corner-logo deck-corner-logo-dark"
     />
+    <a class="deck-slide-number" id="deck-slide-number" href="#1"
+        ><span id="deck-slide-number-text">1</span></a
+    >
     <div is-="slide-status">
         <button
             type="button"
@@ -63,6 +66,8 @@ const canonical = `samf.sh${url}`
         const total = slides.length
         const currentEl = document.getElementById('ss-current')
         const posLinkEl = document.getElementById('ss-pos-link')
+        const deckNumEl = document.getElementById('deck-slide-number')
+        const deckNumTextEl = document.getElementById('deck-slide-number-text')
         // Tag each slide with its 1-based index for the overview-mode
         // corner badge (CSS ::after reads data-slide-index via attr()).
         slides.forEach((s, i) => {
@@ -100,6 +105,9 @@ const canonical = `samf.sh${url}`
             if (currentEl) currentEl.textContent = String(current + 1)
             const expected = `#${current + 1}`
             if (posLinkEl) posLinkEl.setAttribute('href', expected)
+            if (deckNumTextEl)
+                deckNumTextEl.textContent = `${current + 1} / ${slides.length}`
+            if (deckNumEl) deckNumEl.setAttribute('href', expected)
             if (location.hash !== expected) {
                 history.replaceState(null, '', expected)
             }
@@ -556,7 +564,33 @@ const canonical = `samf.sh${url}`
                 const maxLeft = window.innerWidth - w - 8
                 if (left > maxLeft) left = Math.max(8, maxLeft)
                 dlg.style.setProperty('--popover-left', `${left}px`)
-                dlg.style.setProperty('--popover-top', `${r.bottom}px`)
+
+                // Vertical: this used to always open downward from the
+                // trigger, so a long footnote near the bottom of a slide ran
+                // straight off the screen with its tail unreachable. Give it
+                // the larger of the two gaps, cap its height to that gap, and
+                // let the CSS scroll what does not fit.
+                const PAD = 8
+                const below = window.innerHeight - r.bottom - PAD
+                const above = r.top - PAD
+                // Natural height, not offsetHeight: that is already capped by
+                // the previous --popover-max-h, so a footnote that had been
+                // squeezed would be placed by its squeezed size.
+                const h =
+                    content.scrollHeight +
+                    (content.offsetHeight - content.clientHeight)
+                if (h <= below || below >= above) {
+                    dlg.style.setProperty('--popover-top', `${r.bottom}px`)
+                    dlg.style.setProperty('--popover-max-h', `${below}px`)
+                } else {
+                    // open upward, bottom-aligned to just above the trigger
+                    const boxH = Math.min(h, above)
+                    dlg.style.setProperty(
+                        '--popover-top',
+                        `${Math.max(PAD, r.top - boxH)}px`,
+                    )
+                    dlg.style.setProperty('--popover-max-h', `${above}px`)
+                }
             }
             dlg.addEventListener('mouseenter', () => {
                 setOpen(true)
