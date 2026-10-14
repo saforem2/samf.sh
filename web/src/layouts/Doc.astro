@@ -2770,7 +2770,11 @@ const articleSchema =
             const PAD = 8
             const below = window.innerHeight - triggerRect.bottom - PAD
             const above = triggerRect.top - PAD
-            const contentHeight = content.offsetHeight
+            // Natural height, not offsetHeight: that is already capped by
+            // the previous --popover-max-h.
+            const contentHeight =
+                content.scrollHeight +
+                (content.offsetHeight - content.clientHeight)
             if (contentHeight <= below || below >= above) {
                 details.style.setProperty(
                     '--popover-top',

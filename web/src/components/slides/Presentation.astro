@@ -573,7 +573,12 @@ const canonical = `samf.sh${url}`
                 const PAD = 8
                 const below = window.innerHeight - r.bottom - PAD
                 const above = r.top - PAD
-                const h = content.offsetHeight
+                // Natural height, not offsetHeight: that is already capped by
+                // the previous --popover-max-h, so a footnote that had been
+                // squeezed would be placed by its squeezed size.
+                const h =
+                    content.scrollHeight +
+                    (content.offsetHeight - content.clientHeight)
                 if (h <= below || below >= above) {
                     dlg.style.setProperty('--popover-top', `${r.bottom}px`)
                     dlg.style.setProperty('--popover-max-h', `${below}px`)
