@@ -1,5 +1,12 @@
 import { chromium } from 'playwright'
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+import fs from 'node:fs'
+// System Chrome on macOS if present, else Playwright's own Chromium.
+// Override with CHROME_PATH.
+const MAC_CHROME =
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+const CHROME =
+    process.env.CHROME_PATH ??
+    (fs.existsSync(MAC_CHROME) ? MAC_CHROME : undefined)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const b = await chromium.launch({ executablePath: CHROME, headless: true })
 const c = await b.newContext({

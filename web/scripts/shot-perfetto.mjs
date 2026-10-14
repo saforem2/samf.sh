@@ -10,7 +10,13 @@ import { chromium } from 'playwright'
 import path from 'node:path'
 import fs from 'node:fs'
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+// System Chrome on macOS if present, else Playwright's own Chromium.
+// Override with CHROME_PATH.
+const MAC_CHROME =
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+const CHROME =
+    process.env.CHROME_PATH ??
+    (fs.existsSync(MAC_CHROME) ? MAC_CHROME : undefined)
 const argv = process.argv.slice(2)
 const pos = argv.filter((a) => !a.startsWith('--') && !/^\d+$/.test(a))
 const flag = (n, d) => {
@@ -20,7 +26,7 @@ const flag = (n, d) => {
 const trace = path.resolve(pos[0])
 const outPng = path.resolve(pos[1])
 const doExpand = argv.includes('--expand')
-const keepRe = flag('keep', null)
+const keepRe = flag('pin', flag('keep', null)) // --keep: old name
 fs.mkdirSync(path.dirname(outPng), { recursive: true })
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -66,6 +72,12 @@ for (let i = 0; i < 150; i++) {
     }
 }
 console.log(`-> timeline ready: ${ok}`)
+if (!ok) {
+    // A screenshot now would be the loading screen, which looks like output.
+    console.error(`perfetto never finished loading ${trace}; no screenshot`)
+    await browser.close()
+    process.exit(1)
+}
 await sleep(4000)
 
 // Dismiss the Google cookie banner (overlays the bottom of the frame).
@@ -107,7 +119,7 @@ if (doExpand) {
     await sleep(4000)
 }
 
-// Optionally hide tracks whose name does not match --keep, so the shot is not
+// Optionally hide tracks whose name does not match --pin, so the shot is not
 // 90% empty XCCL streams.
 if (keepRe) {
     const hidden = await page.evaluate((src) => {
