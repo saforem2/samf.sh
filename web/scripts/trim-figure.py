@@ -5,7 +5,9 @@ Perfetto's timeline canvas is always full-viewport height, so a DOM-measured
 crop cannot tell where the last track row ends. Measuring the pixels can:
 scan up from the bottom while each row is a single flat colour, and cut there.
 """
+import os
 import sys
+import tempfile
 from PIL import Image
 
 def flat(px, w, y, tol=8, max_outliers=12):
@@ -25,7 +27,9 @@ def flat(px, w, y, tol=8, max_outliers=12):
     return True
 
 def main(path, pad=10):
-    im = Image.open(path).convert("RGB")
+    src = Image.open(path)
+    fmt = src.format
+    im = src.convert("RGB")
     w, h = im.size
     px = im.load()
     y = h - 1
@@ -35,7 +39,16 @@ def main(path, pad=10):
     if bottom >= h:
         print(f"{path}: nothing to trim ({w}x{h})")
         return
-    im.crop((0, 0, w, bottom)).save(path)
+    # Save beside the original and rename over it, so a failed save cannot
+    # truncate the only copy.
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)))
+    os.close(fd)
+    try:
+        im.crop((0, 0, w, bottom)).save(tmp, format=fmt)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
     print(f"{path}: {w}x{h} -> {w}x{bottom} (trimmed {h - bottom}px)")
 
 if __name__ == "__main__":

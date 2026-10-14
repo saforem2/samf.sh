@@ -32,10 +32,50 @@ const t0 = Number(a),
     t1 = Number(b)
 const d = JSON.parse(fs.readFileSync(inp, 'utf8'))
 const ev = d.traceEvents
+// Spans can also be written as paired B/E records with no dur. Clamping those
+// one at a time would drop a span that covers the whole window, or keep one
+// end and orphan the other. Pair them per (pid,tid) into X events first, so
+// they go through the same clamp as everything else.
+const pairs = new Map()
+const paired = []
+let orphans = 0
+const be = ev
+    .map((e, i) => [e, i])
+    .filter(([e]) => e.ph === 'B' || e.ph === 'E')
+    .sort(([x, i], [y, j]) => x.ts - y.ts || i - j)
+for (const [e] of be) {
+    const k = `${e.pid}/${e.tid}`
+    if (!pairs.has(k)) pairs.set(k, [])
+    const open = pairs.get(k)
+    if (e.ph === 'B') open.push(e)
+    else if (open.length) {
+        const bgn = open.pop()
+        paired.push({
+            ...bgn,
+            ph: 'X',
+            dur: e.ts - bgn.ts,
+            args: { ...bgn.args, ...e.args },
+        })
+    } else orphans++
+}
+// A B with no E ran past the end of the trace.
+// (A loop, not Math.max(...ev): a spread of millions of events overflows.)
+let traceEnd = -Infinity
+for (const e of ev) if (e.ts > traceEnd) traceEnd = e.ts
+for (const open of pairs.values())
+    for (const bgn of open)
+        paired.push({ ...bgn, ph: 'X', dur: traceEnd - bgn.ts })
+if (be.length)
+    console.log(
+        `   paired ${be.length} B/E records into ${paired.length} spans (${orphans} orphan E dropped)`,
+    )
 const out = []
 let dropped = 0,
     clamped = 0
-for (const e of ev) {
+for (const e of [
+    ...ev.filter((e) => e.ph !== 'B' && e.ph !== 'E'),
+    ...paired,
+]) {
     if (e.ph === 'M') {
         out.push(e)
         continue
@@ -80,12 +120,15 @@ if (maxDepth > 0) {
     const deep = new Set()
     for (const [, arr] of byTid) {
         arr.sort((x, y) => x.ts - y.ts || (y.dur || 0) - (x.dur || 0))
-        const stack = []
+        // Ends of every interval still open. Not a stack: PyTorch emits
+        // crossing (non-nested) X events, and popping only the top would
+        // leave an expired interval buried under a longer one.
+        let active = []
         for (const e of arr) {
             const end = e.ts + (e.dur || 0)
-            while (stack.length && stack[stack.length - 1] <= e.ts) stack.pop()
-            if (stack.length >= maxDepth) deep.add(e)
-            stack.push(end)
+            active = active.filter((x) => x > e.ts)
+            if (active.length >= maxDepth) deep.add(e)
+            active.push(end)
         }
     }
     const before = final.length
@@ -114,7 +157,11 @@ if (minEvents > 0) {
     )
 }
 d.traceEvents = final
-fs.writeFileSync(outp, JSON.stringify(d))
+// Write then rename, so an interrupted run never leaves a truncated trace
+// where a good one used to be.
+const tmp = `${outp}.tmp-${process.pid}`
+fs.writeFileSync(tmp, JSON.stringify(d))
+fs.renameSync(tmp, outp)
 console.log(
     `${outp}: kept ${d.traceEvents.length}/${ev.length} (dropped ${dropped}, clamped ${clamped}), window ${((t1 - t0) / 1000).toFixed(2)} ms, ${(fs.statSync(outp).size / 1e6).toFixed(1)} MB`,
 )
