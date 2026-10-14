@@ -1670,14 +1670,59 @@ body.slides-print-mode [is-~='slide']::after {
 }
 /* Backgrounds live in their own rules: the :is() above carries the ID's
    specificity, so a background there would beat the variant rule. */
+/* The cover art is a full 16:9 slide: span the width and anchor it to the
+   bottom, as the template does. On a taller viewport the extra height is
+   black above it. */
 [data-deck-theme='doe'] #title-slide {
-    background: var(--background0) url('/doe-template/cover-lines.webp') right
-        bottom / auto 62% no-repeat;
+    background: var(--background0) url('/doe-template/cover-lines.webp') center
+        bottom / 100% auto no-repeat;
 }
-/* Text to the top, art to the bottom 62%, as on the template cover. */
+/* Template cover: a large regular-weight title top-left, the subtitle right
+   under it, then the name and date block well below, all upright. */
 [data-deck-theme='doe'] #title-slide .slide-inner {
     justify-content: flex-start;
-    padding-block-start: 3lh;
+    padding-block-start: 2lh;
+}
+[data-deck-theme='doe'] #title-slide h1 {
+    /* Kept inside the left half: the art's lines fill the top right. */
+    max-inline-size: 30ch;
+    font-size: 1.4lh;
+    font-weight: 400;
+    letter-spacing: -0.02ch;
+    line-height: 1.1;
+    margin-block-end: 0;
+}
+[data-deck-theme='doe'] #title-slide h1 * {
+    font-weight: inherit;
+}
+[data-deck-theme='doe'] #title-slide .title-slide-thesis {
+    margin-block-start: 0.25lh;
+    font-style: normal;
+    color: var(--foreground0);
+}
+[data-deck-theme='doe'] #title-slide .title-slide-thesis + p,
+[data-deck-theme='doe'] #title-slide h1 + p:not(.title-slide-thesis) {
+    margin-block-start: 2lh;
+}
+[data-deck-theme='doe'] #title-slide p {
+    color: var(--foreground0);
+}
+[data-deck-theme='doe'] #title-slide :is(em, i) {
+    font-style: normal;
+}
+[data-deck-theme='doe'] #title-slide strong {
+    font-weight: 500;
+}
+/* Full-width art fills the top right, where the QR sat. The black below
+   the art's horizontal line is free, but its height is 0.2 of the slide
+   width, so the QR shrinks to fit a 4:3 screen too. */
+[data-deck-theme='doe'] #title-slide .title-slide-qr {
+    top: auto;
+    bottom: 0.5lh;
+}
+[data-deck-theme='doe'] #title-slide .title-slide-qr img {
+    width: 8ch;
+    height: 8ch;
 }
 [data-deck-theme='doe'] [is-~='slide'][data-variant='dark'] {
     background: var(--background0) url('/doe-template/contents-lines.webp')
