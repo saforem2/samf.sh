@@ -415,9 +415,11 @@ timer around each phase answers *which quarter of the step* in five minutes.
 Often that is the whole answer.
 
 ```python
+import ezpz
 from ezpz.history import StopWatch
 with StopWatch("fwd", iter=step):
     loss = model(batch)
+    ezpz.synchronize()  # GPU work is async: wait for it
 ```
 
 `ezpz` also has `timeitlogit` (decorator, logs per-rank) and `History.update()`,
@@ -645,6 +647,7 @@ with get_profiling_context(
     profiler_type="torch",
     wait=1, warmup=2, active=3, repeat=1,
     rank_zero_only=True,
+    with_stack=False,  # True hits the RecursionError on Aurora
     outdir="./traces",
 ) as prof:
     for step, batch in enumerate(dataloader):
