@@ -679,7 +679,7 @@ hang -- worth mentioning only if someone asks.
 ## The launch is not identical
 
 ```bash
-export HTTP_PROXY=http://proxy.alcf.anl.gov:3128   # ALCF compute: no internet
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute: no internet
 source <(curl -fsSL https://ezpz.cool/utils.sh)
 ezpz_setup_env && ezpz_install                     # install is a SECOND step
 ezpz launch python3 -m ezpz.examples.profiler --profile --rank-zero-only
@@ -712,7 +712,7 @@ Aurora without --no-with-stack (8881403). Both pages are being corrected.
 ## Four things that bite
 
 1. **ALCF compute has no route out.**
-   Set `HTTP_PROXY=http://proxy.alcf.anl.gov:3128`
+   Set `HTTPS_PROXY=http://proxy.alcf.anl.gov:3128`
 2. **The venv is named after `cwd`.**
    Don't `cd` between setup and launch.
 3. **It tokenizes 5.9 GB before step 0.**
@@ -944,6 +944,7 @@ No new code. The flags already exist.
 
 ```bash
 # 0 · setup, then install -- setup_env does NOT install ezpz
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute only
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
 uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
 
@@ -1205,6 +1206,7 @@ statement of the mechanism than the percentage.
 **Slides:** [samf.sh/talks/2026/10/15](https://samf.sh/talks/2026/10/15)
 
 ```bash
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128  # ALCF compute only
 source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
 uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"
 ezpz launch python3 -m ezpz.examples.fsdp_tp \
