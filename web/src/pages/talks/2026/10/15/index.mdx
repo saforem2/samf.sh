@@ -291,7 +291,7 @@ Source: ATPESC deck, all-production-perf.svg.
 
 <Slide id="mfu-measured">
 
-## The job we profile today runs at **0.55% MFU**
+## The job we profile today runs at **0.33% MFU**
 
 125M params, seq 1024, `tp=2` across 24 ranks. Where a 440 ms step goes:
 
@@ -319,7 +319,7 @@ enough to keep the device fed.
 
 <SpeakerNotes>
 Say plainly that this is the job we are about to profile together, and that
-0.55% is not a mistake -- it is what a 125M model sharded across 24 ranks
+0.33% is not a mistake -- it is what a 125M model sharded across 24 ranks
 actually does. Better teaching example than a clean number.
 Careful with key_averages() here: summing _allgather_base_ 12.6% +
 _reduce_scatter_base_ 11.4% + oneccl_* 15.8% double-counts, because the
