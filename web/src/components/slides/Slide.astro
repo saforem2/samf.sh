@@ -7,18 +7,21 @@
  * - id: optional explicit fragment id for deep-linking
  * - size: 'sm' shrinks slide-inner font by ~15% so dense slides (big
  *   tables next to figures) fit without cropping. Defaults to base size.
+ * - variant: 'dark' marks a section / contents slide. Only the doe deck
+ *   theme styles it (black ground, line art), the rest ignore it.
  */
 interface Props {
     bg?: string
     id?: string
     size?: 'sm' | 'base'
+    variant?: 'dark'
 }
-const { bg, id, size = 'base' } = Astro.props
+const { bg, id, size = 'base', variant } = Astro.props
 const style = bg ? `background-color: ${bg};` : undefined
 const dataSize = size !== 'base' ? size : undefined
 ---
 
-<section is-="slide" {id} {style} data-size={dataSize}>
+<section is-="slide" {id} {style} data-size={dataSize} data-variant={variant}>
     <div class="slide-inner">
         <slot />
     </div>

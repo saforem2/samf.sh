@@ -462,7 +462,11 @@ const fontOptions = {
             })
         })
         colorSchemeQuery.addEventListener('change', () => {
-            if (localStorage.getItem('webtui-theme') === 'auto') {
+            // A deck pinned to a theme does not follow the OS.
+            if (
+                localStorage.getItem('webtui-theme') === 'auto' &&
+                !document.documentElement.dataset.deckTheme
+            ) {
                 setTheme('auto')
             }
         })

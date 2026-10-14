@@ -10,17 +10,20 @@ import CodeCopyButtons from '@/components/CodeCopyButtons.astro'
 import 'katex/dist/katex.min.css'
 
 interface Props {
-    frontmatter?: { title?: string; description?: string }
+    frontmatter?: { title?: string; description?: string; theme?: string }
     title?: string
     description?: string
 }
 const fm = (Astro.props as Props).frontmatter ?? {}
 const title = (Astro.props as Props).title ?? fm.title
 const description = (Astro.props as Props).description ?? fm.description
+// `theme: doe` in a deck's frontmatter pins the page to that theme and turns
+// on the template chrome in Presentation (footer, dark title slide).
+const deckTheme = fm.theme
 ---
 
-<Layout {title} {description}>
-    <Presentation {title}>
+<Layout {title} {description} {deckTheme}>
+    <Presentation {title} {deckTheme}>
         <slot />
     </Presentation>
     <CodeCopyButtons />
