@@ -1498,7 +1498,9 @@ body.slides-print-mode [is-~='slide']::after {
 [is-~='slide']
     .slide-inner
     > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
-    padding-inline-end: var(--deck-logo-gutter, 0);
+    /* Margin, not padding: padding moved the right edge of a callout's
+       title row (and its +/x toggle) 9ch inside the box. */
+    margin-inline-end: var(--deck-logo-gutter, 0);
 }
 /* Logo is hidden at <=768px, so the gutter only applies above that. */
 @media (min-width: 769px) {
@@ -1603,6 +1605,12 @@ body.slides-print-mode [is-~='slide']::after {
    swapped out for the footer. Colours come from themes/doe.css. */
 [data-deck-theme='doe'] .deck-corner-logo {
     display: none !important;
+}
+/* No corner logo, so no gutter to clear it. */
+[is-~='presentation'][data-deck-theme='doe']
+    [is-~='slide'][data-current]
+    .slide-inner {
+    --deck-logo-gutter: 0;
 }
 .doe-footer {
     position: fixed;
