@@ -52,7 +52,10 @@ html[data-webtui-theme='doe'] {
     --bs-border-color: var(--background2);
     --callout-color: var(--foreground2);
 
-    --accent: var(--doe-blue);
+    /* --accent, --sky and --sapphire also colour text (footer links, file
+       tree labels), so they take the AA shade. #0086fc stays in --doe-blue
+       for fills and art. */
+    --accent: var(--doe-blue-text);
     --url: var(--doe-blue-text);
 
     /* The template sets every heading in black; the blue is reserved for
@@ -65,8 +68,8 @@ html[data-webtui-theme='doe'] {
     --h6: var(--doe-black);
 
     --blue: var(--doe-blue-text);
-    --sky: var(--doe-blue);
-    --sapphire: var(--doe-blue);
+    --sky: var(--doe-blue-text);
+    --sapphire: var(--doe-blue-text);
     --aqua: oklch(from #00b8d4 l c h);
     --teal: oklch(from #00838f l c h);
     --red: oklch(from #e05560 l c h);

@@ -432,6 +432,7 @@ const fontOptions = {
         const themeChips = dlg.querySelectorAll<HTMLElement>(
             '.shn-theme-chip[data-theme-option]',
         )
+        let pinnedUntilPicked = true
         const colorSchemeQuery = window.matchMedia(
             '(prefers-color-scheme: dark)',
         )
@@ -458,6 +459,7 @@ const fontOptions = {
         themeChips.forEach((btn) => {
             btn.addEventListener('click', () => {
                 const v = btn.getAttribute('data-theme-option')
+                pinnedUntilPicked = false
                 if (v) setTheme(v)
             })
         })
@@ -494,7 +496,11 @@ const fontOptions = {
         // stored value (so 'auto' shows as selected) and fall back to
         // the resolved attribute when no choice is saved.
         const syncActive = () => {
+            // A pinned deck renders its own theme whatever is stored, so
+            // mark that one until the viewer picks another this session.
             const curTheme =
+                (pinnedUntilPicked &&
+                    document.documentElement.dataset.deckTheme) ||
                 localStorage.getItem('webtui-theme') ||
                 document.documentElement.getAttribute('data-webtui-theme') ||
                 ''

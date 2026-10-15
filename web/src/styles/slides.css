@@ -1667,6 +1667,10 @@ body.slides-print-mode [is-~='slide']::after {
     --code-fg: var(--foreground2);
     --callout-color: var(--foreground2);
     --url: oklch(from #8ccafd l c h);
+    /* Inline code chips: the dark-theme values (see custom-dark above). */
+    --chip-l: 0.84;
+    --chip-fill-l: 0.84;
+    --chip-fill-a: 0.12;
     --h1: var(--foreground0);
     --h2: var(--foreground0);
     --h3: var(--foreground0);
@@ -1735,6 +1739,17 @@ body.slides-print-mode [is-~='slide']::after {
 [data-deck-theme='doe'] [is-~='slide'][data-variant='dark'] {
     background: var(--background0) url('/doe-template/contents-lines.webp')
         center / cover no-repeat;
+}
+/* Code on the black slides: every token already carries the one-dark-pro
+   colours as --shiki-custom-dark, so switch to those. No extra HTML. */
+[data-deck-theme='doe']
+    :is(#title-slide, [data-variant='dark'])
+    .astro-code
+    span:not(.line) {
+    color: var(--shiki-custom-dark) !important;
+    font-style: var(--shiki-custom-dark-font-style) !important;
+    font-weight: var(--shiki-custom-dark-font-weight) !important;
+    text-decoration: var(--shiki-custom-dark-text-decoration) !important;
 }
 /* QR SVGs resolve to black as <img>; invert them on the black slides. */
 [data-deck-theme='doe']
