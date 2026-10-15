@@ -1639,14 +1639,13 @@ html[data-webtui-theme='doe']
     width: auto;
     margin-bottom: 0.09lh;
 }
-/* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh). rlh,
-   not lh: both bars are set in the root font, the slide is not, and a
-   slide-font 3lh reserved twice the room and clipped dense slides. */
-html[data-webtui-theme='doe']
+/* Clear the status bar plus the taller ALCF footer (its top edge
+   sits at ~3.8rlh with the vh-sized lockups). */
+html[data-webtui-theme='alcf']
     [is-~='presentation']
     [is-~='slide']
     .slide-inner {
-    bottom: 3rlh;
+    bottom: 4rlh;
 }
 html[data-webtui-theme='doe']:has(#title-slide[data-current]) .doe-footer {
     display: none;
@@ -1818,13 +1817,21 @@ html[data-webtui-theme='alcf'] [is-~='presentation']::before {
     display: flex;
     align-items: flex-end;
 }
-/* Heights keep the template's proportion: in the template the Argonne +
-   ALCF lockup stands about twice the DOE lockup's height. */
-.alcf-footer .alcf-footer-doe,
-.alcf-footer .alcf-footer-doe-dark {
-    height: 0.52lh;
+/* Lockup sizes come from the template's layouts, as fractions of the
+   slide height (Argonne + ALCF 5.9%, DOE 3.6%), so they are set in vh:
+   the footer has to scale with the slide, and lh does not — the slide
+   font scales to the window while the root line height barely moves,
+   which left the lockups stranded at a fixed small size. */
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe,
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe-dark {
+    height: 3.4vh;
     width: auto;
     margin-bottom: 0.06lh;
+}
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl,
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl-dark {
+    height: 5.6vh;
+    width: auto;
 }
 .alcf-footer .alcf-footer-anl,
 .alcf-footer .alcf-footer-anl-dark {
