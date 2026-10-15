@@ -12,6 +12,7 @@ interface Props {
 }
 const { deckTheme } = Astro.props
 const doe = deckTheme === 'doe'
+const alcf = deckTheme === 'alcf'
 const url = Astro.url.pathname
 const canonical = `samf.sh${url}`
 ---
@@ -48,6 +49,26 @@ const canonical = `samf.sh${url}`
                     class="doe-footer-doe"
                     width="1712"
                     height="96"
+                />
+            </div>
+        )
+    }
+    {
+        alcf && (
+            <div class="alcf-footer" aria-hidden="true">
+                <img
+                    src="/alcf-template/doe-lockup.png"
+                    alt=""
+                    class="alcf-footer-doe"
+                    width="1100"
+                    height="116"
+                />
+                <img
+                    src="/alcf-template/argonne-alcf-lockup.png"
+                    alt=""
+                    class="alcf-footer-anl"
+                    width="2005"
+                    height="256"
                 />
             </div>
         )
