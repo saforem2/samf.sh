@@ -8,12 +8,15 @@ import SlideHelpDialog from '@/components/slides/SlideHelpDialog.astro'
 
 interface Props {
     title?: string
+    deckTheme?: string
 }
+const { deckTheme } = Astro.props
+const doe = deckTheme === 'doe'
 const url = Astro.url.pathname
 const canonical = `samf.sh${url}`
 ---
 
-<main is-="presentation" data-mode="deck">
+<main is-="presentation" data-mode="deck" data-deck-theme={deckTheme}>
     <div is-="slides">
         <slot />
     </div>
@@ -29,6 +32,26 @@ const canonical = `samf.sh${url}`
         aria-hidden="true"
         class="deck-corner-logo deck-corner-logo-dark"
     />
+    {
+        doe && (
+            <div class="doe-footer" aria-hidden="true">
+                <img
+                    src="/doe-template/genesis-on-light.png"
+                    alt=""
+                    class="doe-footer-genesis"
+                    width="706"
+                    height="96"
+                />
+                <img
+                    src="/doe-template/doe-on-light.png"
+                    alt=""
+                    class="doe-footer-doe"
+                    width="1712"
+                    height="96"
+                />
+            </div>
+        )
+    }
     <a class="deck-slide-number" id="deck-slide-number" href="#1"
         ><span id="deck-slide-number-text">1</span></a
     >

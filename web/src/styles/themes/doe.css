@@ -1,0 +1,92 @@
+/* DOE: the palette and face of the official DOE / Genesis Mission slide
+   template (DOE_GM_Figtree_PPT_Template). The template's theme XML is stock
+   Office; the real palette is hard-coded on the slides:
+
+     #000000 / #ffffff   ground (black covers, white content slides)
+     #888a94             muted grey (footer, captions)
+     #e5f3ff / #cce8ff   light-blue panels
+     #0086fc             the one accent, in the cover line art
+
+   #888a94 (3.4:1) and #0086fc (3.6:1) both miss WCAG AA on white, so they
+   stay on rules, borders and fills. Text uses the nearest passing shades:
+   #6b6d76 (5.2:1) and #0066cc (5.6:1, 4.9:1 on the #e5f3ff panel).
+
+   Starts from the custom-light values for everything the template does not
+   speak to (semantic red/green/yellow for callouts, code), so no variable is
+   left undefined. Code blocks fall through to the light Shiki colours, which
+   are the inline default: no extra Shiki theme, no extra HTML. */
+
+html[data-webtui-theme='doe'] {
+    --doe-black: oklch(from #000000 l c h);
+    --doe-grey: oklch(from #888a94 l c h);
+    --doe-grey-text: oklch(from #6b6d76 l c h);
+    --doe-panel: oklch(from #e5f3ff l c h);
+    --doe-panel-2: oklch(from #cce8ff l c h);
+    --doe-blue: oklch(from #0086fc l c h);
+    --doe-blue-text: oklch(from #0066cc l c h);
+
+    --oklch-scale: 0.85;
+    --pre-line-height: 1.3;
+
+    --background0: oklch(from #ffffff l c h);
+    --background1: oklch(from #f2f8ff l c h);
+    --background2: var(--doe-panel);
+    --background3: var(--doe-panel-2);
+    --background-active: oklch(from var(--doe-blue) l c h / 0.1);
+
+    --foreground0: var(--doe-black);
+    --foreground1: oklch(from #2b2d33 l c h);
+    --foreground2: var(--doe-grey-text);
+    --foreground3: var(--doe-grey);
+
+    --text: var(--foreground1);
+    --base: var(--background0);
+    --mantle: var(--background1);
+    --crust: var(--background2);
+
+    --pre-background: transparent;
+    --pre-linenumber-fg: oklch(from #c9ccd3 l c h);
+    --code-bg: var(--background1);
+    --code-fg: var(--foreground2);
+    --bs-body-bg: var(--background1);
+    --bs-border-color: var(--background2);
+    --callout-color: var(--foreground2);
+
+    /* --accent, --sky and --sapphire also colour text (footer links, file
+       tree labels), so they take the AA shade. #0086fc stays in --doe-blue
+       for fills and art. */
+    --accent: var(--doe-blue-text);
+    --url: var(--doe-blue-text);
+
+    /* The template sets every heading in black; the blue is reserved for
+       the accent. */
+    --h1: var(--doe-black);
+    --h2: var(--doe-black);
+    --h3: var(--doe-black);
+    --h4: var(--doe-black);
+    --h5: var(--doe-black);
+    --h6: var(--doe-black);
+
+    --blue: var(--doe-blue-text);
+    --sky: var(--doe-blue-text);
+    --sapphire: var(--doe-blue-text);
+    --aqua: oklch(from #00b8d4 l c h);
+    --teal: oklch(from #00838f l c h);
+    --red: oklch(from #e05560 l c h);
+    --maroon: oklch(from #ee99a0 l c h);
+    --orange: oklch(from #ff5722 l c h);
+    --peach: oklch(from #f5a97f l c h);
+    --yellow: oklch(from #fd971f l c h);
+    --green: oklch(from #05a551 l c h);
+    --purple: oklch(from #8260cc l c h);
+    --mauve: oklch(from #c6a0f6 l c h);
+    --lavender: oklch(from #b7bdf8 l c h);
+    --pink: oklch(from #ff3399 l c h);
+    --rosewater: oklch(from #f4dbd6 l c h);
+    --flamingo: oklch(from #f0c6c6 l c h);
+
+    /* Figtree for prose, like the template. Code keeps its own axis
+       (--code-font-family), so blocks stay monospaced. */
+    --font-stack:
+        'Figtree Web', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

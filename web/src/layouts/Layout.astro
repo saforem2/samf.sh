@@ -15,6 +15,10 @@ interface Props {
     // stays defined, so it still loads on demand (font-display:swap) if the
     // palette opens.
     preloadCodeFont?: boolean
+    // Pin the page to one theme on load, ignoring the stored choice. Set by
+    // decks that follow an outside template (frontmatter `theme: doe`). The
+    // picker still works for the session; the pin returns on reload.
+    deckTheme?: string
 }
 
 const {
@@ -24,6 +28,7 @@ const {
     ogType,
     publishedTime,
     preloadCodeFont = true,
+    deckTheme,
 } = Astro.props as Props
 const pageDescription = description || "Sam Foreman's Personal Website"
 const pageTitle = title || 'Sam Foreman'
@@ -55,6 +60,7 @@ const fontFaceCss = [
     'miosevka-term/miosevka-term.css',
     'iosevka/iosevka.css',
     'victor-mono/victor-mono.css',
+    'figtree/figtree.css',
 ]
     .map((rel) =>
         readFileSync(join(process.cwd(), 'public/fonts', rel), 'utf8'),
@@ -63,7 +69,10 @@ const fontFaceCss = [
 ---
 
 <!doctype html>
-<html lang="en" data-webtui-theme="custom-light">
+<html
+    lang="en"
+    data-webtui-theme={deckTheme ?? 'custom-light'}
+    data-deck-theme={deckTheme}>
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -159,9 +168,10 @@ const fontFaceCss = [
             // is always the resolved theme name so existing CSS
             // selectors keep matching.
             const resolvedTheme =
-                migratedTheme === 'auto'
+                document.documentElement.dataset.deckTheme ??
+                (migratedTheme === 'auto'
                     ? systemTheme
-                    : (migratedTheme ?? systemTheme)
+                    : (migratedTheme ?? systemTheme))
             document.documentElement.setAttribute(
                 'data-webtui-theme',
                 resolvedTheme,

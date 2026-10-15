@@ -1,0 +1,23 @@
+/* Figtree, the face the DOE / Genesis Mission slide template uses.
+ * Variable weight (300-900), Latin subset, from @fontsource-variable/figtree
+ * 5.3.0. OFL-1.1, license in OFL.txt. Only fetched when an element resolves
+ * to this family, i.e. under the doe theme.
+ */
+
+@font-face {
+    font-family: 'Figtree Web';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 300 900;
+    src: url('/fonts/figtree/figtree-latin-wght-normal.woff2')
+        format('woff2-variations');
+}
+
+@font-face {
+    font-family: 'Figtree Web';
+    font-style: italic;
+    font-display: swap;
+    font-weight: 300 900;
+    src: url('/fonts/figtree/figtree-latin-wght-italic.woff2')
+        format('woff2-variations');
+}
