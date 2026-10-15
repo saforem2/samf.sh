@@ -1327,22 +1327,22 @@
 }
 
 html[data-webtui-theme='custom-light'] .light-content,
-html[data-webtui-theme='doe'] .light-content,
-html[data-webtui-theme='alcf'] .light-content {
+html[data-webtui-theme='doe'] .light-content {
     display: revert !important;
 }
 
 html[data-webtui-theme='custom-light'] .dark-content,
-html[data-webtui-theme='doe'] .dark-content,
+html[data-webtui-theme='doe'] .dark-content {
+    display: none !important;
+}
+
+html[data-webtui-theme='custom-dark'] .light-content,
+html[data-webtui-theme='alcf'] .light-content {
+    display: none !important;
+}
+
+html[data-webtui-theme='custom-dark'] .dark-content,
 html[data-webtui-theme='alcf'] .dark-content {
-    display: none !important;
-}
-
-html[data-webtui-theme='custom-dark'] .light-content {
-    display: none !important;
-}
-
-html[data-webtui-theme='custom-dark'] .dark-content {
     display: revert !important;
 }
 
@@ -1366,16 +1366,14 @@ html[data-webtui-theme='catppuccin-latte'] .dark-content {
    a language-tinted border instead. This rule used to repaint the panel with
    !important, which beat that. */
 html[data-webtui-theme='custom-light'] .astro-code,
-html[data-webtui-theme='doe'] .astro-code,
-html[data-webtui-theme='alcf'] .astro-code {
+html[data-webtui-theme='doe'] .astro-code {
     --pre-background: transparent;
     background-color: transparent !important;
 }
 /* Don't paint span-level backgrounds — let the pre's background show
    through uniformly, including the top/bottom padding band. */
 html[data-webtui-theme='custom-light'] .astro-code span:not(.line),
-html[data-webtui-theme='doe'] .astro-code span:not(.line),
-html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
+html[data-webtui-theme='doe'] .astro-code span:not(.line) {
     --pre-background: oklch(from var(--code-bg, #f8f8f8) l c h);
     background-color: transparent !important;
 }
@@ -1384,8 +1382,7 @@ html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
    pale code background. Targeting the inline shiki style is the safest hook
    that survives token-class changes. */
 html[data-webtui-theme='custom-light'] .astro-code span[style*='#C2C3C5'],
-html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'],
-html[data-webtui-theme='alcf'] .astro-code span[style*='#C2C3C5'] {
+html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'] {
     color: #6a6e76 !important;
 }
 
@@ -1395,12 +1392,12 @@ html[data-webtui-theme='alcf'] .astro-code span[style*='#C2C3C5'] {
    shikiConfig.colorReplacements wasn't honored for the bundled min-light
    theme, so this CSS hook is the reliable route. */
 html[data-webtui-theme='custom-light'] .astro-code span[style*='#FF9800'],
-html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'],
-html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
+html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
 }
 
-html[data-webtui-theme='custom-dark'] .astro-code span:not(.line) {
+html[data-webtui-theme='custom-dark'] .astro-code span:not(.line),
+html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
     color: var(--shiki-custom-dark) !important;
     font-style: var(--shiki-custom-dark-font-style) !important;
     font-weight: var(--shiki-custom-dark-font-weight) !important;
@@ -1515,14 +1512,12 @@ html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
    clearing AA. Scoped to the light themes on purpose: the dark ones already
    measure 7.40 / 6.14, and darkening there would make it worse. */
 html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt,
-html[data-webtui-theme='doe'] .nb-in > .nb-prompt,
-html[data-webtui-theme='alcf'] .nb-in > .nb-prompt {
+html[data-webtui-theme='doe'] .nb-in > .nb-prompt {
     color: oklch(from var(--blue) calc(l * 0.78) c h);
 }
 
 html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt,
-html[data-webtui-theme='doe'] .nb-out > .nb-prompt,
-html[data-webtui-theme='alcf'] .nb-out > .nb-prompt {
+html[data-webtui-theme='doe'] .nb-out > .nb-prompt {
     color: oklch(from var(--red) calc(l * 0.82) c h);
 }
 
@@ -1803,7 +1798,8 @@ pre.astro-code::after {
 
 /* Dark inverts the direction: the label lightens instead of darkening, so
    the same hue reads against the dark chip. */
-html[data-webtui-theme='custom-dark'] pre.astro-code::after {
+html[data-webtui-theme='custom-dark'] pre.astro-code::after,
+html[data-webtui-theme='alcf'] pre.astro-code::after {
     color: oklch(from var(--lang-badge, var(--material-pink)) 0.8 c h);
 }
 
