@@ -193,6 +193,13 @@ const fontFaceCss = [
                 'data-mono-font',
                 storedBodyFont,
             )
+            // Nothing stored means the attribute above is the fallback
+            // default, not a pick: mark it, so a template theme (doe,
+            // alcf) can offer its own default body font instead. A pick
+            // in either font picker clears the mark.
+            if (localStorage.getItem('mono-font') === null) {
+                document.documentElement.setAttribute('data-font-default', '')
+            }
             const storedCodeFont =
                 localStorage.getItem('code-font') ?? 'miosevka-term'
             document.documentElement.setAttribute(

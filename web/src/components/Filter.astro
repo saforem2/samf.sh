@@ -983,6 +983,7 @@ const codeFontOptions = {
         storageKey: string,
         optionAttr: string,
         font: string,
+        persist = true,
     ) => {
         document.documentElement.setAttribute(attr, font)
         document
@@ -992,15 +993,23 @@ const codeFontOptions = {
                 btn.setAttribute('aria-selected', String(v === font))
                 btn.setAttribute('data-active', String(v === font))
             })
-        localStorage.setItem(storageKey, font)
+        if (persist) localStorage.setItem(storageKey, font)
     }
-    const setBodyFont = (font: string) =>
+    // An explicit body-font pick clears the data-font-default mark (see
+    // Layout.astro), so a template theme's default body font stops
+    // applying. Re-applying the fallback at load is not a pick: it
+    // neither persists nor clears the mark.
+    const setBodyFont = (font: string, explicit = true) => {
+        if (explicit)
+            document.documentElement.removeAttribute('data-font-default')
         setFontAxis(
             'data-mono-font',
             'mono-font',
             'data-body-font-option',
             font,
+            explicit,
         )
+    }
     const setCodeFont = (font: string) =>
         setFontAxis(
             'data-code-font',
@@ -1009,7 +1018,8 @@ const codeFontOptions = {
             font,
         )
 
-    setBodyFont(localStorage.getItem('mono-font') ?? 'miosevka-qp')
+    const storedBodyFont = localStorage.getItem('mono-font')
+    setBodyFont(storedBodyFont ?? 'miosevka-qp', storedBodyFont !== null)
     setCodeFont(localStorage.getItem('code-font') ?? 'miosevka-term')
 
     document.addEventListener('click', (e) => {
