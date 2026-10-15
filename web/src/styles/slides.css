@@ -1768,11 +1768,14 @@ body.slides-print-mode .doe-footer {
 }
 /* ── ALCF deck chrome ────────────────────────────────────────────────────
    Decks with `theme: alcf` in frontmatter follow the ALCF slide
-   template (ALCF-Template_MASTER): navy slides with a blue bar down
-   the left edge, white headlines and body, sky-blue subtitles, and
-   the white DOE + Argonne/ALCF lockups at the foot of every slide —
-   title slide included, as in the template. The ANL corner logo is
-   swapped out for the footer. Colours come from themes/alcf.css. */
+   template (ALCF-Template_MASTER): white content slides with a blue
+   bar down the left edge, black headlines, blue subtitles, and the
+   DOE + Argonne/ALCF lockups at the foot of the slide, directly on
+   the ground as in the template. The title slide and section slides
+   (<Slide variant="dark">) sit on the template's navy instead, with
+   white text and the white lockups — the footer swaps sets with the
+   current slide. The ANL corner logo is swapped out for the footer.
+   Colours come from themes/alcf.css. */
 [data-deck-theme='alcf'] .deck-corner-logo {
     display: none !important;
 }
@@ -1806,17 +1809,52 @@ body.slides-print-mode .doe-footer {
     padding: 0.5lh 2ch;
     pointer-events: none;
 }
-/* Two classes deep: a broader img rule sets height:auto and would win.
-   Heights keep the template's proportion: in the template the Argonne +
+.alcf-footer > span {
+    display: flex;
+    align-items: flex-end;
+}
+/* Heights keep the template's proportion: in the template the Argonne +
    ALCF lockup stands about twice the DOE lockup's height. */
-.alcf-footer > .alcf-footer-doe {
+.alcf-footer .alcf-footer-doe,
+.alcf-footer .alcf-footer-doe-dark {
     height: 0.52lh;
     width: auto;
     margin-bottom: 0.06lh;
 }
-.alcf-footer > .alcf-footer-anl {
+.alcf-footer .alcf-footer-anl,
+.alcf-footer .alcf-footer-anl-dark {
     height: 1lh;
     width: auto;
+}
+/* The white lockups are for the navy slides; the footer carries both
+   sets and shows the one that matches the current slide. */
+.alcf-footer .alcf-footer-doe-dark,
+.alcf-footer .alcf-footer-anl-dark {
+    display: none;
+}
+[data-deck-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-doe,
+[data-deck-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-anl {
+    display: none;
+}
+[data-deck-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-doe-dark,
+[data-deck-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-anl-dark {
+    display: block;
 }
 /* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh), as
    with the DOE footer. */
@@ -1824,19 +1862,40 @@ body.slides-print-mode .doe-footer {
     bottom: 3rlh;
 }
 
-/* Section slides (<Slide variant="dark">) drop to a deeper navy, the
-   way the template's section breaks sit darker than its content
-   slides. Only the grounds change; the foregrounds already read on
-   both. */
-[data-deck-theme='alcf'] [is-~='slide'][data-variant='dark'] {
-    --background0: var(--alcf-navy-deep);
-    --background1: var(--alcf-navy);
-    --background2: oklch(from #292361 l c h);
-    --background3: oklch(from #352d75 l c h);
+/* The navy slides: the title slide and the section slides share the
+   template's dark ground (#1d1651, sampled #1c164e in the editor) with
+   white text and the sky-blue subtitle colour. Variables the slides
+   resolve locally are restated here for the same reason as in the DOE
+   block: derived vars resolve where they are declared (on <html>), so
+   they keep the light values unless restated. */
+[data-deck-theme='alcf'] :is(#title-slide, [data-variant='dark']) {
+    --background0: var(--alcf-navy);
+    --background1: oklch(from #292361 l c h);
+    --background2: oklch(from #352d75 l c h);
+    --background3: oklch(from #463d8f l c h);
+    --foreground0: oklch(from #ffffff l c h);
+    --foreground1: oklch(from #edeef7 l c h);
+    --foreground2: oklch(from #c9ccf0 l c h);
+    --foreground3: oklch(from #8fa0ff l c h);
+    --text: var(--foreground1);
     --base: var(--background0);
     --mantle: var(--background1);
     --crust: var(--background2);
     --code-bg: var(--background1);
+    --code-fg: var(--foreground2);
+    --callout-color: var(--foreground2);
+    --url: var(--alcf-sky);
+    /* Inline code chips: the dark-theme values (see custom-dark). */
+    --chip-l: 0.84;
+    --chip-fill-l: 0.84;
+    --chip-fill-a: 0.12;
+    --h1: var(--foreground0);
+    --h2: var(--foreground0);
+    --h3: var(--foreground0);
+    --h4: var(--foreground0);
+    --h5: var(--foreground0);
+    --h6: var(--foreground0);
+    color: var(--foreground1);
     background-color: var(--background0);
 }
 /* Template cover: a large bold white title top-left on the plain navy,
@@ -1869,10 +1928,23 @@ body.slides-print-mode .doe-footer {
 [data-deck-theme='alcf'] #title-slide :is(em, i) {
     font-style: normal;
 }
-/* QR SVGs resolve to black as <img>; invert them on the navy slides.
-   Code colours are handled by the theme's dark Shiki rule in
-   global.css, so no deck-level code rule is needed here. */
-[data-deck-theme='alcf'] :is(.title-slide-qr, .thanks-qr) img {
+/* Code on the navy slides: every token already carries the
+   one-dark-pro colours as --shiki-custom-dark, so switch to those.
+   No extra HTML. */
+[data-deck-theme='alcf']
+    :is(#title-slide, [data-variant='dark'])
+    .astro-code
+    span:not(.line) {
+    color: var(--shiki-custom-dark) !important;
+    font-style: var(--shiki-custom-dark-font-style) !important;
+    font-weight: var(--shiki-custom-dark-font-weight) !important;
+    text-decoration: var(--shiki-custom-dark-text-decoration) !important;
+}
+/* QR SVGs resolve to black as <img>; invert them on the navy slides. */
+[data-deck-theme='alcf']
+    :is(#title-slide, [data-variant='dark'])
+    :is(.title-slide-qr, .thanks-qr)
+    img {
     filter: invert(1);
 }
 @media print {
