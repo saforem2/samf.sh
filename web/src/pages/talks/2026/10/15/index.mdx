@@ -264,6 +264,7 @@ GPU, or a thousand-node supercomputer, with no code changes.
 ```python
 import ezpz
 rank = ezpz.setup_torch()        # CUDA/NCCL, XPU/CCL, MPS, or CPU/Gloo
+model = MyModel().to(ezpz.get_torch_device())
 model = ezpz.wrap_model(model)   # FSDP by default
 ```
 
