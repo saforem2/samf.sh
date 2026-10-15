@@ -1603,11 +1603,12 @@ body.slides-print-mode [is-~='slide']::after {
    DOE wordmark at right, a black title slide over the cover line art, and
    black section slides (<Slide variant="dark">). The ANL corner logo is
    swapped out for the footer. Colours come from themes/doe.css. */
-[data-deck-theme='doe'] .deck-corner-logo {
+html[data-webtui-theme='doe'] .deck-corner-logo {
     display: none !important;
 }
 /* No corner logo, so no gutter to clear it. */
-[is-~='presentation'][data-deck-theme='doe']
+html[data-webtui-theme='doe']
+    [is-~='presentation']
     [is-~='slide'][data-current]
     .slide-inner {
     --deck-logo-gutter: 0;
@@ -1641,14 +1642,17 @@ body.slides-print-mode [is-~='slide']::after {
 /* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh). rlh,
    not lh: both bars are set in the root font, the slide is not, and a
    slide-font 3lh reserved twice the room and clipped dense slides. */
-[is-~='presentation'][data-deck-theme='doe'] [is-~='slide'] .slide-inner {
+html[data-webtui-theme='doe']
+    [is-~='presentation']
+    [is-~='slide']
+    .slide-inner {
     bottom: 3rlh;
 }
-[data-deck-theme='doe']:has(#title-slide[data-current]) .doe-footer {
+html[data-webtui-theme='doe']:has(#title-slide[data-current]) .doe-footer {
     display: none;
 }
 
-[data-deck-theme='doe'] :is(#title-slide, [data-variant='dark']) {
+html[data-webtui-theme='doe'] :is(#title-slide, [data-variant='dark']) {
     --background0: oklch(from #000000 l c h);
     --background1: oklch(from #1a1a1c l c h);
     --background2: oklch(from #26272b l c h);
@@ -1685,17 +1689,17 @@ body.slides-print-mode [is-~='slide']::after {
 /* The cover art is a full 16:9 slide: span the width and anchor it to the
    bottom, as the template does. On a taller viewport the extra height is
    black above it. */
-[data-deck-theme='doe'] #title-slide {
+html[data-webtui-theme='doe'] #title-slide {
     background: var(--background0) url('/doe-template/cover-lines.webp') center
         bottom / 100% auto no-repeat;
 }
 /* Template cover: a large regular-weight title top-left, the subtitle right
    under it, then the name and date block well below, all upright. */
-[data-deck-theme='doe'] #title-slide .slide-inner {
+html[data-webtui-theme='doe'] #title-slide .slide-inner {
     justify-content: flex-start;
     padding-block-start: 2lh;
 }
-[data-deck-theme='doe'] #title-slide h1 {
+html[data-webtui-theme='doe'] #title-slide h1 {
     /* Kept inside the left half: the art's lines fill the top right. */
     max-inline-size: 30ch;
     font-size: 1.4lh;
@@ -1704,45 +1708,45 @@ body.slides-print-mode [is-~='slide']::after {
     line-height: 1.1;
     margin-block-end: 0;
 }
-[data-deck-theme='doe'] #title-slide h1 * {
+html[data-webtui-theme='doe'] #title-slide h1 * {
     font-weight: inherit;
 }
-[data-deck-theme='doe'] #title-slide .title-slide-thesis {
+html[data-webtui-theme='doe'] #title-slide .title-slide-thesis {
     margin-block-start: 0.25lh;
     font-style: normal;
     color: var(--foreground0);
 }
-[data-deck-theme='doe'] #title-slide .title-slide-thesis + p,
-[data-deck-theme='doe'] #title-slide h1 + p:not(.title-slide-thesis) {
+html[data-webtui-theme='doe'] #title-slide .title-slide-thesis + p,
+html[data-webtui-theme='doe'] #title-slide h1 + p:not(.title-slide-thesis) {
     margin-block-start: 2lh;
 }
-[data-deck-theme='doe'] #title-slide p {
+html[data-webtui-theme='doe'] #title-slide p {
     color: var(--foreground0);
 }
-[data-deck-theme='doe'] #title-slide :is(em, i) {
+html[data-webtui-theme='doe'] #title-slide :is(em, i) {
     font-style: normal;
 }
-[data-deck-theme='doe'] #title-slide strong {
+html[data-webtui-theme='doe'] #title-slide strong {
     font-weight: 500;
 }
 /* Full-width art fills the top right, where the QR sat. The black below
    the art's horizontal line is free, but its height is 0.2 of the slide
    width, so the QR shrinks to fit a 4:3 screen too. */
-[data-deck-theme='doe'] #title-slide .title-slide-qr {
+html[data-webtui-theme='doe'] #title-slide .title-slide-qr {
     top: auto;
     bottom: 0.5lh;
 }
-[data-deck-theme='doe'] #title-slide .title-slide-qr img {
+html[data-webtui-theme='doe'] #title-slide .title-slide-qr img {
     width: 8ch;
     height: 8ch;
 }
-[data-deck-theme='doe'] [is-~='slide'][data-variant='dark'] {
+html[data-webtui-theme='doe'] [is-~='slide'][data-variant='dark'] {
     background: var(--background0) url('/doe-template/contents-lines.webp')
         center / cover no-repeat;
 }
 /* Code on the black slides: every token already carries the one-dark-pro
    colours as --shiki-custom-dark, so switch to those. No extra HTML. */
-[data-deck-theme='doe']
+html[data-webtui-theme='doe']
     :is(#title-slide, [data-variant='dark'])
     .astro-code
     span:not(.line) {
@@ -1752,7 +1756,7 @@ body.slides-print-mode [is-~='slide']::after {
     text-decoration: var(--shiki-custom-dark-text-decoration) !important;
 }
 /* QR SVGs resolve to black as <img>; invert them on the black slides. */
-[data-deck-theme='doe']
+html[data-webtui-theme='doe']
     :is(#title-slide, [data-variant='dark'])
     :is(.title-slide-qr, .thanks-qr)
     img {
@@ -1776,17 +1780,18 @@ body.slides-print-mode .doe-footer {
    white text and the white lockups — the footer swaps sets with the
    current slide. The ANL corner logo is swapped out for the footer.
    Colours come from themes/alcf.css. */
-[data-deck-theme='alcf'] .deck-corner-logo {
+html[data-webtui-theme='alcf'] .deck-corner-logo {
     display: none !important;
 }
 /* No corner logo, so no gutter to clear it. */
-[is-~='presentation'][data-deck-theme='alcf']
+html[data-webtui-theme='alcf']
+    [is-~='presentation']
     [is-~='slide'][data-current]
     .slide-inner {
     --deck-logo-gutter: 0;
 }
 /* The template's blue left-edge bar, full height on every slide. */
-[is-~='presentation'][data-deck-theme='alcf']::before {
+html[data-webtui-theme='alcf'] [is-~='presentation']::before {
     content: '';
     position: fixed;
     left: 0;
@@ -1832,24 +1837,24 @@ body.slides-print-mode .doe-footer {
 .alcf-footer .alcf-footer-anl-dark {
     display: none;
 }
-[data-deck-theme='alcf']:has(
+html[data-webtui-theme='alcf']:has(
         [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
     )
     .alcf-footer
     .alcf-footer-doe,
-[data-deck-theme='alcf']:has(
+html[data-webtui-theme='alcf']:has(
         [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
     )
     .alcf-footer
     .alcf-footer-anl {
     display: none;
 }
-[data-deck-theme='alcf']:has(
+html[data-webtui-theme='alcf']:has(
         [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
     )
     .alcf-footer
     .alcf-footer-doe-dark,
-[data-deck-theme='alcf']:has(
+html[data-webtui-theme='alcf']:has(
         [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
     )
     .alcf-footer
@@ -1858,7 +1863,10 @@ body.slides-print-mode .doe-footer {
 }
 /* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh), as
    with the DOE footer. */
-[is-~='presentation'][data-deck-theme='alcf'] [is-~='slide'] .slide-inner {
+html[data-webtui-theme='alcf']
+    [is-~='presentation']
+    [is-~='slide']
+    .slide-inner {
     bottom: 3rlh;
 }
 
@@ -1868,7 +1876,7 @@ body.slides-print-mode .doe-footer {
    resolve locally are restated here for the same reason as in the DOE
    block: derived vars resolve where they are declared (on <html>), so
    they keep the light values unless restated. */
-[data-deck-theme='alcf'] :is(#title-slide, [data-variant='dark']) {
+html[data-webtui-theme='alcf'] :is(#title-slide, [data-variant='dark']) {
     --background0: var(--alcf-navy);
     --background1: oklch(from #292361 l c h);
     --background2: oklch(from #352d75 l c h);
@@ -1901,11 +1909,11 @@ body.slides-print-mode .doe-footer {
 /* Template cover: a large bold white title top-left on the plain navy,
    the tagline right under it, then the name block below. The deck's
    title-slide markup differs, so this only sizes and positions. */
-[data-deck-theme='alcf'] #title-slide .slide-inner {
+html[data-webtui-theme='alcf'] #title-slide .slide-inner {
     justify-content: flex-start;
     padding-block-start: 2lh;
 }
-[data-deck-theme='alcf'] #title-slide h1 {
+html[data-webtui-theme='alcf'] #title-slide h1 {
     max-inline-size: 32ch;
     font-size: 1.5lh;
     font-weight: 700;
@@ -1913,25 +1921,25 @@ body.slides-print-mode .doe-footer {
     line-height: 1.1;
     margin-block-end: 0;
 }
-[data-deck-theme='alcf'] #title-slide h1 * {
+html[data-webtui-theme='alcf'] #title-slide h1 * {
     font-weight: inherit;
 }
-[data-deck-theme='alcf'] #title-slide .title-slide-thesis {
+html[data-webtui-theme='alcf'] #title-slide .title-slide-thesis {
     margin-block-start: 0.25lh;
     font-style: normal;
     color: var(--alcf-sky);
 }
-[data-deck-theme='alcf'] #title-slide .title-slide-thesis + p,
-[data-deck-theme='alcf'] #title-slide h1 + p:not(.title-slide-thesis) {
+html[data-webtui-theme='alcf'] #title-slide .title-slide-thesis + p,
+html[data-webtui-theme='alcf'] #title-slide h1 + p:not(.title-slide-thesis) {
     margin-block-start: 2lh;
 }
-[data-deck-theme='alcf'] #title-slide :is(em, i) {
+html[data-webtui-theme='alcf'] #title-slide :is(em, i) {
     font-style: normal;
 }
 /* Code on the navy slides: every token already carries the
    one-dark-pro colours as --shiki-custom-dark, so switch to those.
    No extra HTML. */
-[data-deck-theme='alcf']
+html[data-webtui-theme='alcf']
     :is(#title-slide, [data-variant='dark'])
     .astro-code
     span:not(.line) {
@@ -1941,7 +1949,7 @@ body.slides-print-mode .doe-footer {
     text-decoration: var(--shiki-custom-dark-text-decoration) !important;
 }
 /* QR SVGs resolve to black as <img>; invert them on the navy slides. */
-[data-deck-theme='alcf']
+html[data-webtui-theme='alcf']
     :is(#title-slide, [data-variant='dark'])
     :is(.title-slide-qr, .thanks-qr)
     img {
@@ -1951,10 +1959,22 @@ body.slides-print-mode .doe-footer {
     .alcf-footer {
         display: none !important;
     }
-    [is-~='presentation'][data-deck-theme='alcf']::before {
+    html[data-webtui-theme='alcf'] [is-~='presentation']::before {
         display: none !important;
     }
 }
 body.slides-print-mode .alcf-footer {
+    display: none !important;
+}
+
+/* The branded footers follow the live theme, not the deck's pin: both
+   footers are rendered on branded decks (see Presentation.astro) and
+   only the live theme's shows. The pin only chooses the theme a deck
+   opens in; the rest of the chrome above is keyed to the live theme
+   for the same reason. */
+html:not([data-webtui-theme='doe']) .doe-footer {
+    display: none !important;
+}
+html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
 }

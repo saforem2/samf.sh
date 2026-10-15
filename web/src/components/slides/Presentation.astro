@@ -13,6 +13,10 @@ interface Props {
 const { deckTheme } = Astro.props
 const doe = deckTheme === 'doe'
 const alcf = deckTheme === 'alcf'
+// A branded deck renders both footers; slides.css shows the one that
+// matches the live theme, so switching themes in the picker swaps the
+// branding too. The pin only chooses the opening theme.
+const branded = doe || alcf
 const url = Astro.url.pathname
 const canonical = `samf.sh${url}`
 ---
@@ -34,7 +38,7 @@ const canonical = `samf.sh${url}`
         class="deck-corner-logo deck-corner-logo-dark"
     />
     {
-        doe && (
+        branded && (
             <div class="doe-footer" aria-hidden="true">
                 <img
                     src="/doe-template/genesis-on-light.png"
@@ -54,7 +58,7 @@ const canonical = `samf.sh${url}`
         )
     }
     {
-        alcf && (
+        branded && (
             <div class="alcf-footer" aria-hidden="true">
                 <span>
                     <img
