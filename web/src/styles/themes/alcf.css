@@ -1,0 +1,111 @@
+/* ALCF: the palette and face of the official ALCF slide template
+   (ALCF-Template_MASTER). Unlike the DOE template, this one's theme
+   XML carries a real scheme, named "ALCF Color Palette":
+
+     #000000 / #ffffff   ground
+     #1d1651             accent 1: the navy of the template's dark
+                         slides (title, section breaks)
+     #8ac1fa             the subtitle blue on those navy slides
+     #0061af             accent 2: ALCF blue (rules, bands, the left bar)
+     #640433             accent 3: dark plum (sparing)
+     #d03e53 / #ec6358   accents 4/5: raspberry, coral
+     #107970             accent 6: teal
+     #0d63ad             hyperlink blue
+     #595a5c / #47484a   the body greys hard-coded on the slides
+     #dceBFF / #c9ccf0   pale blue / periwinkle panels on the slides
+
+   Contrast on white: #0061af 6.2:1, #0d63ad 6.1:1, #107970 5.2:1,
+   #1d1651 ~14:1, #595a5c ~6.9:1 all pass WCAG AA for text. #d03e53
+   (4.7:1) passes for large/accent text. #ec6358 (3.2:1) misses AA, so
+   it stays on fills and decorative rules only.
+
+   Starts from the custom-light values for everything the template does
+   not speak to (semantic red/green/yellow for callouts, code), so no
+   variable is left undefined. Code blocks fall through to the light
+   Shiki colours, which are the inline default: no extra Shiki theme,
+   no extra HTML. */
+
+html[data-webtui-theme='alcf'] {
+    --alcf-navy: oklch(from #1d1651 l c h);
+    --alcf-blue: oklch(from #0061af l c h);
+    --alcf-link: oklch(from #0d63ad l c h);
+    /* The subtitle blue of the template's navy slides. */
+    --alcf-sky: oklch(from #8ac1fa l c h);
+    --alcf-teal: oklch(from #107970 l c h);
+    --alcf-teal-bright: oklch(from #179e8f l c h);
+    --alcf-plum: oklch(from #640433 l c h);
+    --alcf-red: oklch(from #d03e53 l c h);
+    --alcf-coral: oklch(from #ec6358 l c h);
+    --alcf-grey: oklch(from #6e6e78 l c h);
+    --alcf-grey-text: oklch(from #595a5c l c h);
+    --alcf-panel: oklch(from #dcebff l c h);
+    --alcf-panel-2: oklch(from #c9ccf0 l c h);
+
+    --oklch-scale: 0.85;
+    --pre-line-height: 1.3;
+
+    --background0: oklch(from #ffffff l c h);
+    --background1: oklch(from #f2f6fc l c h);
+    --background2: var(--alcf-panel);
+    --background3: var(--alcf-panel-2);
+    --background-active: oklch(from var(--alcf-blue) l c h / 0.1);
+
+    --foreground0: oklch(from #000000 l c h);
+    --foreground1: oklch(from #2e2a33 l c h);
+    --foreground2: var(--alcf-grey-text);
+    --foreground3: var(--alcf-grey);
+
+    --text: var(--foreground1);
+    --base: var(--background0);
+    --mantle: var(--background1);
+    --crust: var(--background2);
+
+    --pre-background: transparent;
+    --pre-linenumber-fg: oklch(from #c9ccd3 l c h);
+    --code-bg: var(--background1);
+    --code-fg: var(--foreground2);
+    --bs-body-bg: var(--background1);
+    --bs-border-color: var(--background2);
+    --callout-color: var(--foreground2);
+
+    /* --accent, --sky and --sapphire also colour text (footer links,
+       file tree labels); all three take AA-passing shades. */
+    --accent: var(--alcf-blue);
+    --url: var(--alcf-blue);
+
+    /* The template sets slide titles in black bold; the navy is
+       reserved for blocks and bands. */
+    --h1: var(--foreground0);
+    --h2: var(--foreground0);
+    --h3: var(--foreground0);
+    --h4: var(--foreground0);
+    --h5: var(--foreground0);
+    --h6: var(--foreground0);
+
+    --blue: var(--alcf-blue);
+    --sky: var(--alcf-blue);
+    --sapphire: var(--alcf-navy);
+    --aqua: var(--alcf-teal-bright);
+    --teal: var(--alcf-teal);
+    --red: var(--alcf-red);
+    --maroon: var(--alcf-plum);
+    --orange: oklch(from #ff7900 l c h);
+    --peach: var(--alcf-coral);
+    --yellow: oklch(from #fd971f l c h);
+    --green: oklch(from #05a551 l c h);
+    --purple: oklch(from #4b47a0 l c h);
+    --mauve: oklch(from #6e7bd6 l c h);
+    --lavender: oklch(from #8fa0ff l c h);
+    --pink: var(--alcf-coral);
+    --rosewater: oklch(from #f4dbd6 l c h);
+    --flamingo: oklch(from #f0c6c6 l c h);
+}
+
+/* The template's face is this theme's default body font, not a lock:
+   it applies only while [data-font-default] stands — set pre-paint by
+   Layout.astro when no body font is stored — and any pick in the font
+   picker (command dialog or slide help) clears the mark and wins.
+   Code keeps its own axis (--code-font-family) throughout. */
+html[data-webtui-theme='alcf'][data-font-default] {
+    --font-stack: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+}

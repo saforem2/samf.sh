@@ -55,6 +55,7 @@ const themeOptions = {
     catppuccin: 'Catppuccin Mocha',
     'catppuccin-latte': 'Catppuccin Latte',
     doe: 'DOE',
+    alcf: 'ALCF',
 }
 
 // Body font: all 5 (incl. the quasi-proportional QP).
@@ -666,6 +667,7 @@ const codeFontOptions = {
         catppuccin: 'Catppuccin Mocha',
         'catppuccin-latte': 'Catppuccin Latte',
         doe: 'DOE',
+        alcf: 'ALCF',
     }
 
     let activeLink: HTMLAnchorElement | null =
@@ -981,6 +983,7 @@ const codeFontOptions = {
         storageKey: string,
         optionAttr: string,
         font: string,
+        persist = true,
     ) => {
         document.documentElement.setAttribute(attr, font)
         document
@@ -990,15 +993,28 @@ const codeFontOptions = {
                 btn.setAttribute('aria-selected', String(v === font))
                 btn.setAttribute('data-active', String(v === font))
             })
-        localStorage.setItem(storageKey, font)
+        if (persist) localStorage.setItem(storageKey, font)
     }
-    const setBodyFont = (font: string) =>
+    // An explicit body-font pick clears the data-font-default mark (see
+    // Layout.astro), so a template theme's default body font stops
+    // applying. Re-applying the fallback at load is not a pick: it
+    // neither persists nor clears the mark.
+    const setBodyFont = (font: string, explicit = true) => {
+        if (explicit) {
+            document.documentElement.removeAttribute('data-font-default')
+            // Mark the pick as a real choice: the boot migration in
+            // Layout.astro drops UNMARKED 'miosevka-qp' values, which
+            // the old picker persisted as a fallback, not a pick.
+            localStorage.setItem('mono-font-explicit', '1')
+        }
         setFontAxis(
             'data-mono-font',
             'mono-font',
             'data-body-font-option',
             font,
+            explicit,
         )
+    }
     const setCodeFont = (font: string) =>
         setFontAxis(
             'data-code-font',
@@ -1007,8 +1023,43 @@ const codeFontOptions = {
             font,
         )
 
-    setBodyFont(localStorage.getItem('mono-font') ?? 'miosevka-qp')
+    // Themes whose stylesheet supplies a default body font under the
+    // [data-font-default] mark (themes/doe.css, themes/alcf.css).
+    // While one is live and no body font is stored, the theme font is
+    // what renders — no picker font is in effect, so the marking sync
+    // below leaves every chip unmarked instead of marking the fallback
+    // the attribute carries.
+    const themeDefaultActive = () =>
+        document.documentElement.hasAttribute('data-font-default') &&
+        ['doe', 'alcf'].includes(
+            document.documentElement.getAttribute('data-webtui-theme') ?? '',
+        )
+    const markBodyFontChips = (font: string) => {
+        document
+            .querySelectorAll<HTMLElement>('[data-body-font-option]')
+            .forEach((btn) => {
+                const v = btn.getAttribute('data-body-font-option')
+                btn.setAttribute('aria-selected', String(v === font))
+                btn.setAttribute('data-active', String(v === font))
+            })
+    }
+    const syncBodyFontMarks = () => {
+        markBodyFontChips(
+            localStorage.getItem('mono-font') ??
+                (themeDefaultActive() ? '' : 'miosevka-qp'),
+        )
+    }
+
+    const storedBodyFont = localStorage.getItem('mono-font')
+    setBodyFont(storedBodyFont ?? 'miosevka-qp', storedBodyFont !== null)
     setCodeFont(localStorage.getItem('code-font') ?? 'miosevka-term')
+    syncBodyFontMarks()
+    // Theme switches change which font renders when none is stored;
+    // keep the marking truthful across them.
+    new MutationObserver(syncBodyFontMarks).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-webtui-theme'],
+    })
 
     document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement
