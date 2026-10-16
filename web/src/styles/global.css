@@ -242,6 +242,21 @@
         --font-stack-system:
             ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
             'Liberation Mono', 'Courier New', monospace;
+        /* Proportional body options: generic system stacks (no files)
+           and Iosevka's quasi-proportional Aile (sans) / Etoile (slab
+           serif), self-hosted like the mono families. Fallbacks stay
+           inside the same genre — no mono fallbacks, and no fallback
+           family with more weights than the 400/700 these ship (the
+           mIosevka weight trap above). */
+        --font-stack-sans:
+            ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+            'Helvetica Neue', Arial, sans-serif;
+        --font-stack-serif:
+            ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+        --font-stack-iosevka-aile:
+            'Iosevka Aile Web', ui-sans-serif, system-ui, sans-serif;
+        --font-stack-iosevka-etoile:
+            'Iosevka Etoile Web', ui-serif, Georgia, serif;
         /* Two independent font axes, each set by its own picker / attribute:
              body  → --font-stack      via [data-mono-font]   (default QP)
              code  → --code-font-family via [data-code-font]   (default Term)
@@ -313,7 +328,7 @@
            keep full width. */
         --prose-measure: 84ch;
     }
-    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 5 fonts.
+    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 9 fonts.
        'Symbols Nerd Font' is appended via --font-family so icons render
        regardless of choice. (Attribute kept named data-mono-font so the
        slides picker + returning visitors' stored key keep working.) */
@@ -332,6 +347,18 @@
     }
     :root[data-mono-font='system'] {
         --font-stack: var(--font-stack-system);
+    }
+    :root[data-mono-font='sans'] {
+        --font-stack: var(--font-stack-sans);
+    }
+    :root[data-mono-font='serif'] {
+        --font-stack: var(--font-stack-serif);
+    }
+    :root[data-mono-font='iosevka-aile'] {
+        --font-stack: var(--font-stack-iosevka-aile);
+    }
+    :root[data-mono-font='iosevka-etoile'] {
+        --font-stack: var(--font-stack-iosevka-etoile);
     }
 
     /* ── CODE font axis — [data-code-font] sets --code-font-family,

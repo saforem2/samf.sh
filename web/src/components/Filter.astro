@@ -58,7 +58,8 @@ const themeOptions = {
     alcf: 'ALCF',
 }
 
-// Body font: all 5 (incl. the quasi-proportional QP).
+// Body font: all 9 (mono, the quasi-proportional QP / Aile /
+// Etoile, and the generic sans / serif system stacks).
 // Defaults first: Layout.astro falls back to miosevka-qp for the body and
 // miosevka-term for code, so each list leads with the font you are already
 // looking at rather than burying it mid-list.
@@ -68,6 +69,10 @@ const bodyFontOptions = {
     iosevka: 'Iosevka',
     'victor-mono': 'Victor Mono',
     system: 'System',
+    sans: 'Sans',
+    serif: 'Serif',
+    'iosevka-aile': 'Iosevka Aile',
+    'iosevka-etoile': 'Iosevka Etoile',
 }
 // Code font: true-monospace only — no QP (it breaks ASCII / column alignment).
 const codeFontOptions = {

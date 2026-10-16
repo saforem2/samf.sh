@@ -1,0 +1,44 @@
+/* Self-hosted Iosevka Etoile WOFF2 — Iosevka's quasi-proportional
+ * slab serif, from the upstream PkgWebFont-IosevkaEtoile v34.9.0
+ * package, subset with pyftsubset against the site's glyph inventory
+ * (the union of the mIosevka-QP / Iosevka / Victor Mono subsets,
+ * 3,312 codepoints; same recipe as the other families).
+ *
+ * Total: ~784 KB across 4 weights, down from ~6.9 MB upstream.
+ * Layout features kept: calt, ccmp, locl, mark, mkmk, liga, kern,
+ * dlig, rclt, rlig. Stylistic variants (ss## / cv##) dropped.
+ */
+
+@font-face {
+    font-family: 'Iosevka Etoile Web';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url('/fonts/iosevka-etoile/IosevkaEtoile-Regular.woff2')
+        format('woff2');
+}
+
+@font-face {
+    font-family: 'Iosevka Etoile Web';
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+    src: url('/fonts/iosevka-etoile/IosevkaEtoile-Italic.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Iosevka Etoile Web';
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    src: url('/fonts/iosevka-etoile/IosevkaEtoile-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Iosevka Etoile Web';
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
+    src: url('/fonts/iosevka-etoile/IosevkaEtoile-BoldItalic.woff2')
+        format('woff2');
+}
