@@ -1761,18 +1761,82 @@ html[data-webtui-theme='doe']
     img {
     filter: invert(1);
 }
-/* Print keeps the branding: the footer is position:fixed, so the
-   browser repeats it on every printed page. The screen rule hiding
-   it on the title slide keys off [data-current], which cannot work
-   per-page in print, so print overrides it outright — every page
-   carries the footer. */
+/* Print: the fixed footer repeats on every page but can only carry
+   one lockup set for the whole document, so print replaces it with a
+   per-slide footer (the ::before layers below) and hides the fixed
+   one. The DOE title slide carries no footer, as on screen. */
 @media print {
     .doe-footer {
-        display: flex !important;
+        display: none !important;
     }
 }
 body.slides-print-mode .doe-footer {
-    display: flex !important;
+    display: none !important;
+}
+/* Per-slide print footer, DOE: Genesis mark bottom-left, DOE strip
+   bottom-right (the fixed footer's space-between layout, at its
+   sizes). Dark slides take the on-dark art; the title slide takes
+   none. Background layers are only fetched in print contexts, and
+   print-color-adjust keeps them printing with background graphics
+   off. The same ruleset appears under @media print and under
+   .slides-print-mode, like the rest of the print layout. */
+@media print {
+    html[data-webtui-theme='doe'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            url('/doe-template/genesis-on-light.png'),
+            url('/doe-template/doe-on-light.png');
+        background-position:
+            left 2ch bottom 1.5lh,
+            right 2ch bottom 1.6lh;
+        background-size:
+            auto 1lh,
+            auto 0.56lh;
+        background-repeat: no-repeat;
+        pointer-events: none;
+        z-index: 5;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    html[data-webtui-theme='doe'] [is-~='slide'][data-variant='dark']::before {
+        background-image:
+            url('/doe-template/genesis-on-dark.png'),
+            url('/doe-template/doe-on-dark.png');
+    }
+    html[data-webtui-theme='doe'] #title-slide::before {
+        content: none;
+    }
+}
+html[data-webtui-theme='doe'] body.slides-print-mode [is-~='slide']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        url('/doe-template/genesis-on-light.png'),
+        url('/doe-template/doe-on-light.png');
+    background-position:
+        left 2ch bottom 1.5lh,
+        right 2ch bottom 1.6lh;
+    background-size:
+        auto 1lh,
+        auto 0.56lh;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 5;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+html[data-webtui-theme='doe']
+    body.slides-print-mode
+    [is-~='slide'][data-variant='dark']::before {
+    background-image:
+        url('/doe-template/genesis-on-dark.png'),
+        url('/doe-template/doe-on-dark.png');
+}
+html[data-webtui-theme='doe'] body.slides-print-mode #title-slide::before {
+    content: none;
 }
 /* ── ALCF deck chrome ────────────────────────────────────────────────────
    Decks with `theme: alcf` in frontmatter follow the ALCF slide
@@ -1964,15 +2028,77 @@ html[data-webtui-theme='alcf']
     img {
     filter: invert(1);
 }
-/* Print keeps the branding, bar included: footer and bar are both
-   position:fixed, so the browser repeats them on every printed page. */
+/* Print: the bar stays (it is slide-independent), but the fixed
+   footer is replaced by the per-slide footer below — the fixed one
+   can only carry one lockup set for the whole document. */
 @media print {
     .alcf-footer {
-        display: flex !important;
+        display: none !important;
     }
 }
 body.slides-print-mode .alcf-footer {
-    display: flex !important;
+    display: none !important;
+}
+/* Per-slide print footer, ALCF: DOE lockup bottom-left, Argonne + ALCF
+   lockup bottom-right, at the fixed footer's vh sizes and offsets.
+   The navy slides (title + dark variants) take the on-dark art,
+   resolved from the slide itself rather than the current slide.
+   Background layers are only fetched in print contexts, and
+   print-color-adjust keeps them printing with background graphics
+   off. Duplicated under .slides-print-mode like the rest of the
+   print layout. */
+@media print {
+    html[data-webtui-theme='alcf'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            url('/alcf-template/doe-lockup.png'),
+            url('/alcf-template/argonne-alcf-lockup.png');
+        background-position:
+            left 2ch bottom 1.5lh,
+            right 2ch bottom 1.5lh;
+        background-size:
+            auto 2.9vh,
+            auto 3.4vh;
+        background-repeat: no-repeat;
+        pointer-events: none;
+        z-index: 5;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    html[data-webtui-theme='alcf']
+        [is-~='slide']:is(#title-slide, [data-variant='dark'])::before {
+        background-image:
+            url('/alcf-template/doe-lockup-on-dark.png'),
+            url('/alcf-template/argonne-alcf-lockup-on-dark.png');
+    }
+}
+html[data-webtui-theme='alcf'] body.slides-print-mode [is-~='slide']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        url('/alcf-template/doe-lockup.png'),
+        url('/alcf-template/argonne-alcf-lockup.png');
+    background-position:
+        left 2ch bottom 1.5lh,
+        right 2ch bottom 1.5lh;
+    background-size:
+        auto 2.9vh,
+        auto 3.4vh;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 5;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+html[data-webtui-theme='alcf']
+    body.slides-print-mode
+    [is-~='slide']:is(#title-slide, [data-variant='dark'])::before {
+    background-image:
+        url('/alcf-template/doe-lockup-on-dark.png'),
+        url('/alcf-template/argonne-alcf-lockup-on-dark.png');
 }
 
 /* The branded footers follow the live theme, not the deck's pin: both
