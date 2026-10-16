@@ -167,6 +167,15 @@ const canonical = `samf.sh${url}`
                 s.querySelectorAll('.fragment').forEach((f) =>
                     f.removeAttribute('data-visible'),
                 )
+                s.querySelectorAll<HTMLVideoElement>(
+                    'video[data-autoplay]',
+                ).forEach((video) => {
+                    if (idx === current) {
+                        void video.play().catch(() => {})
+                    } else {
+                        video.pause()
+                    }
+                })
             })
             if (currentEl) currentEl.textContent = String(current + 1)
             const expected = `#${current + 1}`
@@ -204,6 +213,8 @@ const canonical = `samf.sh${url}`
             return (
                 tag === 'INPUT' ||
                 tag === 'TEXTAREA' ||
+                tag === 'VIDEO' ||
+                tag === 'AUDIO' ||
                 (a as HTMLElement).isContentEditable
             )
         }
