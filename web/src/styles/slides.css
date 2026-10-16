@@ -1817,25 +1817,22 @@ html[data-webtui-theme='alcf'] [is-~='presentation']::before {
     display: flex;
     align-items: flex-end;
 }
-/* Lockup sizes come from the template's layouts, as fractions of the
-   slide height (Argonne + ALCF 5.9%, DOE 3.6%), so they are set in vh:
-   the footer has to scale with the slide, and lh does not — the slide
-   font scales to the window while the root line height barely moves,
-   which left the lockups stranded at a fixed small size. */
+/* Lockup sizes come from the template's layouts, measured on the ink,
+   not the placed box (the placed images carry transparent padding):
+   Argonne + ALCF ink is 3.5% of the slide height, DOE ink 3.0%. They
+   are set in vh because the footer has to scale with the slide, and
+   lh does not — the slide font scales to the window while the root
+   line height barely moves. (An earlier cut used the placed-box
+   fractions, 5.9% / 3.6%, and came out cartoonishly large.) */
 html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe,
 html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe-dark {
-    height: 3.4vh;
+    height: 2.9vh;
     width: auto;
     margin-bottom: 0.06lh;
 }
 html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl,
 html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl-dark {
-    height: 5.6vh;
-    width: auto;
-}
-.alcf-footer .alcf-footer-anl,
-.alcf-footer .alcf-footer-anl-dark {
-    height: 1lh;
+    height: 3.4vh;
     width: auto;
 }
 /* The white lockups are for the navy slides; the footer carries both
