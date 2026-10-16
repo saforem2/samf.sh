@@ -1761,13 +1761,18 @@ html[data-webtui-theme='doe']
     img {
     filter: invert(1);
 }
+/* Print keeps the branding: the footer is position:fixed, so the
+   browser repeats it on every printed page. The screen rule hiding
+   it on the title slide keys off [data-current], which cannot work
+   per-page in print, so print overrides it outright — every page
+   carries the footer. */
 @media print {
     .doe-footer {
-        display: none !important;
+        display: flex !important;
     }
 }
 body.slides-print-mode .doe-footer {
-    display: none !important;
+    display: flex !important;
 }
 /* ── ALCF deck chrome ────────────────────────────────────────────────────
    Decks with `theme: alcf` in frontmatter follow the ALCF slide
@@ -1959,16 +1964,15 @@ html[data-webtui-theme='alcf']
     img {
     filter: invert(1);
 }
+/* Print keeps the branding, bar included: footer and bar are both
+   position:fixed, so the browser repeats them on every printed page. */
 @media print {
     .alcf-footer {
-        display: none !important;
-    }
-    html[data-webtui-theme='alcf'] [is-~='presentation']::before {
-        display: none !important;
+        display: flex !important;
     }
 }
 body.slides-print-mode .alcf-footer {
-    display: none !important;
+    display: flex !important;
 }
 
 /* The branded footers follow the live theme, not the deck's pin: both
