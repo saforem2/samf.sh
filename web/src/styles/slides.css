@@ -1305,7 +1305,9 @@ body[data-speaker-window] [is-~='notes'] {
            the viewport (clamp with a vw term, ~line 123). A flat em here
            meant the same physical text size on Letter and on Tabloid, so
            the bigger the paper the more of it sat empty. */
-        font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
+        font-size: calc(
+            clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+        ) !important;
         overflow: hidden !important;
     }
 }
@@ -1360,7 +1362,9 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
     /* Scale type to the sheet rather than fixing it, so the deck reads
        the same on Letter and Tabloid. The overflow:hidden clip below
        still catches the rare dense slide. */
-    font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
+    font-size: calc(
+        clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+    ) !important;
     /* Clip anything that still overflows rather than letting it
        bleed visibly past the paper edge — better to lose half a
        trailing line than show it sliced in two. */

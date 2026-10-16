@@ -299,14 +299,56 @@ const canonical = `samf.sh${url}`
 
         // Print-PDF mode: lay every slide out flat (one per page) and
         // pop the browser's print dialog. ?print-pdf or `p` triggers it.
+        // Fit-to-page for print: the print rules clip any slide whose
+        // content is taller than the sheet, and fragment-heavy slides
+        // sum every step in print, so a dense slide can run past the
+        // page edge and lose its tail. Measure each slide as laid out
+        // for print and scale its type down just enough, via the
+        // --print-fit multiplier in the print font-size rule; slides
+        // that fit keep 1 and print unchanged. A few passes: the first
+        // shrink reflows text, the rest trim what is left.
+        const fitPrintSlides = () => {
+            document
+                .querySelectorAll<HTMLElement>('[is-~="slide"]')
+                .forEach((slide) => {
+                    const inner =
+                        slide.querySelector<HTMLElement>('.slide-inner')
+                    if (!inner) return
+                    inner.style.removeProperty('--print-fit')
+                    for (let pass = 0; pass < 3; pass++) {
+                        const avail = inner.clientHeight
+                        const needed = inner.scrollHeight
+                        if (needed <= avail + 1) break
+                        const current =
+                            parseFloat(
+                                inner.style.getPropertyValue('--print-fit'),
+                            ) || 1
+                        const fit = Math.max(
+                            0.55,
+                            current * ((avail - 2) / needed) * 0.995,
+                        )
+                        inner.style.setProperty('--print-fit', fit.toFixed(3))
+                    }
+                })
+        }
+        const clearPrintFit = () => {
+            document
+                .querySelectorAll<HTMLElement>('.slide-inner')
+                .forEach((inner) => inner.style.removeProperty('--print-fit'))
+        }
+        window.addEventListener('beforeprint', fitPrintSlides)
+        window.addEventListener('afterprint', clearPrintFit)
+
         const enterPrintMode = () => {
             document.body.classList.add('slides-print-mode')
+            fitPrintSlides()
             // Wait one frame so layout applies before opening the dialog
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     window.print()
                     // Clean up after the print dialog closes
                     const cleanup = () => {
+                        clearPrintFit()
                         document.body.classList.remove('slides-print-mode')
                         window.removeEventListener('afterprint', cleanup)
                     }
