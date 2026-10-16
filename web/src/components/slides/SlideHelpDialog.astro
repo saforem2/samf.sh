@@ -558,9 +558,19 @@ const codeFontOptions = {
                 const v = btn.getAttribute('data-theme-option')
                 btn.setAttribute('aria-selected', String(v === curTheme))
             })
+            // With no stored body font, a branded theme's default font
+            // (the [data-font-default] mark; themes/doe.css, alcf.css)
+            // is what renders — mark no chip rather than the fallback.
+            const themeDefaultActive =
+                document.documentElement.hasAttribute('data-font-default') &&
+                ['doe', 'alcf'].includes(curTheme)
             const curFont =
-                document.documentElement.getAttribute('data-mono-font') ??
-                'miosevka-qp'
+                localStorage.getItem('mono-font') ??
+                (themeDefaultActive
+                    ? ''
+                    : (document.documentElement.getAttribute(
+                          'data-mono-font',
+                      ) ?? 'miosevka-qp'))
             fontChips.forEach((btn) => {
                 const v = btn.getAttribute('data-font-option')
                 btn.setAttribute('aria-selected', String(v === curFont))
