@@ -187,6 +187,20 @@ const fontFaceCss = [
             // visitors only have 'mono-font' stored; 'code-font' defaults to
             // term, matching the old QP-body behavior. See the two-axis CSS in
             // global.css.
+            // One-time migration: the picker this replaced persisted
+            // its miosevka-qp fallback on load, so a stored
+            // 'miosevka-qp' from before the explicit-pick marker
+            // existed may not be a choice at all. Unmarked QP values
+            // are dropped so template theme fonts can apply; a genuine
+            // QP pick is re-made once and marked from then on (both
+            // pickers write the marker on an explicit pick). Any other
+            // stored value could only ever come from a real pick.
+            if (
+                localStorage.getItem('mono-font') === 'miosevka-qp' &&
+                localStorage.getItem('mono-font-explicit') === null
+            ) {
+                localStorage.removeItem('mono-font')
+            }
             const storedBodyFont =
                 localStorage.getItem('mono-font') ?? 'miosevka-qp'
             document.documentElement.setAttribute(
@@ -227,6 +241,7 @@ const fontFaceCss = [
                 lastTheme = theme
                 if (!brandedThemes.includes(theme ?? '')) return
                 localStorage.removeItem('mono-font')
+                localStorage.removeItem('mono-font-explicit')
                 document.documentElement.setAttribute(
                     'data-mono-font',
                     'miosevka-qp',

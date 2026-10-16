@@ -510,6 +510,9 @@ const codeFontOptions = {
             // theme's default body font stops applying (Layout.astro).
             document.documentElement.removeAttribute('data-font-default')
             localStorage.setItem('mono-font', font)
+            // A real choice — the boot migration drops unmarked QP
+            // values (Layout.astro).
+            localStorage.setItem('mono-font-explicit', '1')
             fontChips.forEach((btn) => {
                 const v = btn.getAttribute('data-font-option')
                 btn.setAttribute('aria-selected', String(v === font))

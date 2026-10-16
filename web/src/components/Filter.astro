@@ -1000,8 +1000,13 @@ const codeFontOptions = {
     // applying. Re-applying the fallback at load is not a pick: it
     // neither persists nor clears the mark.
     const setBodyFont = (font: string, explicit = true) => {
-        if (explicit)
+        if (explicit) {
             document.documentElement.removeAttribute('data-font-default')
+            // Mark the pick as a real choice: the boot migration in
+            // Layout.astro drops UNMARKED 'miosevka-qp' values, which
+            // the old picker persisted as a fallback, not a pick.
+            localStorage.setItem('mono-font-explicit', '1')
+        }
         setFontAxis(
             'data-mono-font',
             'mono-font',
