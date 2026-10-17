@@ -1,0 +1,367 @@
+---
+layout: '@/layouts/Doc.astro'
+title: 'ezpz from anywhere: remote submission via the ALCF IRI API'
+date: 2026-10-16
+date-created: 2026-10-16
+date-modified: today
+description: 'Submit, monitor, extend, and cancel HPC jobs from anywhere — no SSH session required. A tour of the new ezpz IRI integration: IRI-first auto fallback, rich status tables, and live resource and incident views, all backed by the ALCF IRI API.'
+---
+
+For years the `ezpz` answer to "which machine am I on?" was to figure it out
+at runtime. Launch on Aurora (PBS, Intel XPUs), Polaris (PBS, NVIDIA), Perlmutter
+(SLURM, NVIDIA), Frontier (SLURM, AMD), or a laptop — same command, no per-site
+`mpiexec` wrappers:
+
+```bash
+ezpz launch python3 train.py
+```
+
+That solved *running*. It did not solve *submitting*.
+
+If you wanted a job on Aurora you still had to be *on* Aurora — an SSH session
+to a login node, an active allocation, a `qsub` typed in the right shell. From a
+laptop at a conference, from CI, from anywhere without your ALCF SSH keys and
+MFA token, you were stuck. And even on the login node, `qstat` is text you scrape,
+`qdel` is fire-and-forget, and "extend my walltime" is an incantation you google
+every time.
+
+Today that changes. `ezpz` can now drive the
+[ALCF IRI API](https://docs.alcf.anl.gov/services/iri-api/) directly — submit,
+list, inspect, extend, and cancel jobs as structured HTTP, with no SSH at all.
+
+## Why not just SSH?
+
+SSH still works and still matters. It is the only path to machines the IRI API
+does not serve — Sunspot, Perlmutter, Frontier, Sophia — and it reuses whatever
+authentication you already have (ControlMaster, agent, MFA). For those hosts,
+`ezpz` still opens one connection, streams your script over stdin, and runs
+`qsub` or `sbatch` on the far side:
+
+```bash
+ezpz submit --remote aurora -N 128 -q prod -A AuroraGPT \
+    --time 12:00:00 --workdir /lus/flare/projects/AuroraGPT/me/run \
+    -- python3 -m my.module
+# 8936286.aurora-pbs-0001  (via ssh)
+```
+
+One connection, not two — the script is delivered with `cat >` over the same
+channel that runs the submit command, so an MFA gate is paid once.
+
+But SSH has real costs. It needs a live login-node session, it is gated by MFA
+on every new connection, and its answers are still text:
+
+```bash
+qstat 8936286  # parse this yourself
+```
+
+The IRI API is the complement: a REST surface that returns JSON, needs no
+interactive session, and works from anywhere you hold a token. It covers
+**Aurora, Polaris, and Crux** — the ALCF compute resources with published IRI
+endpoints — and it is what lets `ezpz` behave like a proper remote control
+rather than a screen-scraper.
+
+## Getting a token
+
+One login, from an ALCF UAN:
+
+```bash
+# ephemeral, no install
+uvx alcf-tokens login iri
+
+# or persistent
+uv tool install alcf-tokens
+alcf-tokens login iri
+```
+
+`ezpz` finds the token the same way every time: `uvx alcf-tokens get-token iri`,
+falling back to `alcf-tokens get-token iri`, then to `ALCF_IRI_TOKEN` in the
+environment. If you are scripting in CI, export the token and skip the tool
+entirely:
+
+```bash
+export ALCF_IRI_TOKEN="eyJ..."
+ezpz submit --remote aurora --backend iri -N 2 -q debug -A datascience -- python3 hello.py
+```
+
+No Globus dance in user code, no manual header construction. The plumbing
+lives in `ezpz/remote.py::_iri_token()`.
+
+## IRI-first auto fallback
+
+`--backend` takes three values: `ssh`, `iri`, and `auto` (the default). The
+design question is what `auto` should do when one path fails.
+
+The first version tried SSH first and fell back to IRI only on exit code 255 —
+SSH's own "I could not open the session" status. Every other non-zero code is
+the *remote command's* exit, and retrying those is actively harmful:
+
+| Exit | Meaning | Action |
+| --- | --- | --- |
+| `0` | Submitted | Done |
+| `255` | SSH transport failed — unreachable, auth rejected | Fall back |
+| anything else | `qsub`/`sbatch` refused the job — bad queue, over quota, bad filesystem | Stop, show the scheduler's message |
+
+A scheduler rejection retried on another backend either reproduces the rejection
+with a worse error, or — if the first submission landed before the non-zero exit
+— **submits the job twice**. Wrong queue, wrong project, and per-user queue
+limits all surface as `rc=1`; each deserves the scheduler's own text, not a
+silent retry.
+
+As of this week, `auto` is **IRI-first on IRI-capable hosts**:
+
+```text
+aurora / polaris / crux  →  try IRI, fall back to SSH on auth/network failure
+everything else          →  straight to SSH
+```
+
+That makes the fast, structured path the default where it exists, while keeping
+the 255-only guard for the SSH leg. The backend that ran is always reported:
+
+```console
+$ ezpz submit --remote aurora -N 2 -q debug -A datascience -- python3 hello.py
+8936286.aurora-pbs-0001  (via iri)
+
+$ ezpz submit --remote aurora --backend ssh -N 2 -q debug -A datascience -- python3 hello.py
+8936287.aurora-pbs-0001  (via ssh)
+```
+
+Force one with `--backend iri` or `--backend ssh` when you do not want the
+automatic behaviour. `--dry-run` still works and still needs no connection at
+all — it prints the exact script that would be submitted:
+
+```bash
+ezpz submit --remote aurora --dry-run -N 128 -q prod -A AuroraGPT -- python3 train.py
+# # would submit to aurora (scheduler=PBS, backend=auto)
+# #!/bin/bash
+# #PBS -l select=128:system=polaris
+# ...
+```
+
+## Status and cancel without qstat
+
+Three endpoints, three commands, verified against the live OpenAPI spec at
+`/openapi.json`:
+
+- `GET /api/v1/compute/status/{rid}/{job_id}?historical=true` — one job
+- `POST /api/v1/compute/status/{rid}?historical=true&limit=20` — a filtered list
+- `DELETE /api/v1/compute/cancel/{rid}/{job_id}` — cancel (204 on success)
+
+In `ezpz` they are `ezpz status` and `ezpz cancel`:
+
+```bash
+# one job (IRI-first on Aurora, SSH fallback on failure)
+ezpz status 8936286 --remote aurora
+# 8936286  completed  queue=prod  exit=0  (via iri)
+
+# your recent jobs
+ezpz status --remote aurora --limit 10
+
+# only what is queued or running
+ezpz status --remote aurora --states queued,active --limit 20
+
+# filter by queue or owner
+ezpz status --remote aurora --queue prod --owner foreman
+
+# machine-readable
+ezpz status 8936286 --remote aurora --json | jq .
+
+# cancel (same auto/iri/ssh rule, dry-run supported)
+ezpz cancel 8936286 --remote aurora --dry-run
+ezpz cancel 8936286 --remote aurora
+# cancelled 8936286 (via iri)
+```
+
+Without `--remote`, both commands do the local thing — `qstat` / `qdel` (or
+`squeue` / `scancel` on SLURM), trying `qstat -x` first to include historical
+jobs. The remote flags are strictly additive; nothing changes if you omit them.
+
+The list endpoint honours the same filters the API does: `--queue`, `--owner`,
+`--states`, `--limit`, and `--historical` / `--no-historical`. A 30-second
+timeout with a clean message replaces the old raw `TimeoutError` traceback — the
+I can tell you is to narrow it:
+
+```bash
+ezpz status --remote aurora --states queued --limit 5
+```
+
+## Rich tables (and the plain-text fallback)
+
+When stdout is a TTY, `ezpz status` renders a
+[Rich](https://github.com/Textualize/rich) table — no box borders, colour by
+state, short job ID in the first column, full ID dimmed below for copy-paste:
+
+```text
+ Job ID    State      Queue    Exit
+ 8936286   completed  prod      0
+ 8936102   active     prod      —
+ 8935991   queued     debug     —
+  8936286.aurora-pbs-0001.example.alcf.anl.gov
+  8936102.aurora-pbs-0001.example.alcf.anl.gov
+  8935991.aurora-pbs-0001.example.alcf.anl.gov
+```
+
+The colour map is small and deliberate — green for `active`/`running`, yellow
+for `queued`, magenta for `held`, cyan for `completed`, red for `failed`/
+`canceled`, dim for `new` — so a scan of ten rows tells you which jobs need
+attention without reading every cell.
+
+When stdout is piped, the same data comes out as fixed-width plain text with a
+header row, so `| grep`, `| awk`, and `| jq` keep working. Pass `--json` for
+the structured form in either mode.
+
+`ezpz resources` and `ezpz incidents` follow the same rule — Rich table on a
+TTY, fixed-width columns otherwise, `--json` on demand.
+
+## Extend, resources, incidents
+
+Three more commands shipped in the same pass:
+
+### `ezpz extend` — fix a queued job without resubmitting
+
+```bash
+# add walltime
+ezpz extend 8936286 --remote aurora --time 06:00:00
+
+# move queues and fix the project in one call
+ezpz extend 8936286 --remote aurora --queue prod --account AuroraGPT --time 12:00:00
+
+# see exactly what would be sent
+ezpz extend 8936286 --remote aurora --time 06:00:00 --dry-run
+# would PUT /api/v1/compute/job/{rid}/8936286 {duration:21600, queue:prod, ...}
+```
+
+Under the hood this is `PUT /api/v1/compute/job/{rid}/{jid}` — the
+`JobSpec-Input` update path — IRI-first with SSH fallback to `qalter`
+(PBS) or `scontrol update` (SLURM). Like submit, it refuses to "update
+nothing" and validates `duration_seconds >= 1` before a packet is sent.
+`update-job` is an alias.
+
+### `ezpz resources` — what exists and whether it is up
+
+```bash
+ezpz resources
+# Resource   ID         Status
+# aurora     55c1c99…   up
+# polaris    55c1c99…   up
+# crux       a1b2c3d…   up
+# ...
+
+ezpz resources --json | jq '.[] | {name, status}'
+```
+
+Backed by `GET /api/v1/status/resources?limit=100` (the default), which is the
+endpoint that actually returns data today — `/api/v1/compute/resources` is a
+`501` and is kept behind `--no-all` for forward-compatibility. The runtime
+resource-id resolver (`GET /status/resources` matched by name) is what lets
+`submit --backend iri` work for Aurora and Crux even though only Polaris's
+resource UUID is published in the ALCF docs. Hard-coding an id we cannot
+verify would risk submitting to the wrong machine.
+
+### `ezpz incidents` — maintenance and outages
+
+```bash
+ezpz incidents --resource aurora --limit 10
+ezpz incidents --status down --json | jq .
+```
+
+`GET /api/v1/status/incidents?limit=20&resource_id=...&status=...`. Public
+endpoint, no auth required — `ezpz` sends the token if it has one and omits it
+if not. Useful before a launch: if Polaris is `degraded` and your reservation
+is there, queue somewhere else.
+
+## What actually shipped
+
+For the changelog-minded, in commit order:
+
+- **`05e156b` → `0bdc270`** — `ezpz status` / `ezpz cancel` via IRI (`GET` single,
+  `POST` list, `DELETE` cancel) plus SSH fallbacks (`qstat`, `qdel`/`scancel`).
+  New library surface: `RemoteJobStatus`, `get_job_status_via_iri`,
+  `list_jobs_via_iri`, `cancel_via_iri`/`cancel_via_ssh`, `cancel_remote`.
+
+- **`c966a07`** — payload schema fix per the ALCF docs: `filesystems` at
+  `attributes.custom_attributes.filesystems` (not top-level), `stdout_path` /
+  `stderr_path` as mandatory top-level fields, seconds not `HH:MM:SS`.
+
+- **`a324f7f`** — `auto` flips to IRI-first on `aurora`/`polaris`/`crux`, SSH
+  otherwise; clean timeout messages instead of raw tracebacks.
+
+- **`a87a828`** — `ezpz extend` (`PUT /compute/job/{rid}/{jid}`), `ezpz
+  resources` (`GET /status/resources`), `ezpz incidents`
+  (`GET /status/incidents`). Dry-run for extend, Rich + plain-text tables for
+  resources/incidents/status, `--json` everywhere.
+
+Docs at [`docs/guides/remote-submission.md`](https://github.com/saforem2/ezpz/blob/main/docs/guides/remote-submission.md)
+and [`docs/cli/submit.md`](https://github.com/saforem2/ezpz/blob/main/docs/cli/submit.md)
+were updated in the same changes — the working-directory rule (local cwd is
+never carried across), the environment-setup story (remote scripts resolve
+`utils.sh` on the *target* at runtime, not from the submitter's path), and the
+`auto` fallback table.
+
+## A few things the docs bury
+
+**Walltime is seconds on the wire.** Every CLI flag takes `HH:MM:SS`, but the
+IRI API takes seconds — `ezpz/_walltime_seconds` does the conversion and the
+`--time 06:00:00` on `extend` becomes `duration: 21600` in the PUT body.
+
+**The remote workdir is shared-FS and job-unique.** Omitting `--workdir` now creates
+the local `os.getcwd()`, which does not exist on the target. Now it creates
+`$PBS_O_WORKDIR/ezpz-$PBS_JOBID` (`$SLURM_SUBMIT_DIR`/`$HOME` fallback) on shared FS — not `/tmp` (node-local, would shard output).
+
+**Environment setup is self-bootstrapping.** Every remote script now proxies, cds, then:
+
+```bash
+export http_proxy="http://proxy.alcf.anl.gov:3128"  # + https/no_proxy
+source <(curl -fsSL https://ezpz.cool/utils.sh) && ezpz_setup_env
+uv pip install --no-cache --link-mode=copy "git+https://github.com/saforem2/ezpz"  # if missing
+```
+
+Overridable with `--env` if you have site-specific setup to inject.
+
+**Resource ids are not all published.** Only Polaris's UUID appears in the ALCF
+docs. Rather than guess, `ezpz` looks up the full resource list at submit time
+and matches by name. If that lookup fails, you get the list of names it saw —
+not a silent mis-route.
+
+## What's next
+
+Two small things, both already scoped:
+
+- **Tab completions.** Queue and project names come from the resources endpoint
+  already; exposing them as shell completions for `--queue`/`-q` and `--account`/
+  `-A` is a short step. The shape is `ezpz completion bash|zsh|fish` plus a
+  dynamic source for the IRI-backed values.
+
+- **Watch mode.** `ezpz status --remote aurora --watch` — the same Rich table
+  on a 5-second poll, with a one-line transition log when a job moves
+  `queued → active → completed`. The primitive already exists in
+  `status_cancel_cmd.py:state_list` and `list_jobs_via_iri`; the loop is
+  `rich.live.Live` plus a `Ctrl-C` that leaves the terminal clean.
+
+Longer-term, the incident feed wants to be surfaced in `ezpz doctor` ("Polaris
+is degraded, your next submit targets Polaris — queue on Aurora instead?"),
+and the job list wants a `--mine` that fills `--owner` from the token's
+identity so you do not have to remember your ALCF username in every invocation.
+
+For now, the thing that matters is simple: from a laptop, from CI, from anywhere
+with a token, `ezpz submit` just works.
+
+```bash
+uvx alcf-tokens login iri
+ezpz submit --remote aurora -N 2 -q debug -A datascience -- python3 hello.py
+ezpz status --remote aurora --limit 5
+ezpz extend 8936286 --remote aurora --time 06:00:00
+ezpz cancel 8936286 --remote aurora
+ezpz resources
+ezpz incidents --resource aurora
+```
+
+_All of this is in `ezpz` `v0.32` on `main`
+([`a87a828`](https://github.com/saforem2/ezpz/commit/a87a828),
+[`a324f7f`](https://github.com/saforem2/ezpz/commit/a324f7f),
+[`0bdc270`](https://github.com/saforem2/ezpz/commit/0bdc270)).
+Docs: [Remote submission](https://github.com/saforem2/ezpz/blob/main/docs/guides/remote-submission.md).
+API: [ALCF IRI](https://docs.alcf.anl.gov/services/iri-api/)._
+
+_This research used resources of the Argonne Leadership Computing Facility, a
+U.S. Department of Energy Office of Science user facility, under Contract
+DE-AC02-06CH11357._
