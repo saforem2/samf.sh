@@ -1759,13 +1759,9 @@ body.slides-print-mode [is-~='slide']::after {
     filter: invert(1);
 }
 /* ── PyTorch deck chrome ───────────────────────────────────────────────
-   Decks with `theme: pytorch` follow the PyTorch Conference NA26 template:
-   a warm wave (red→magenta→peach with two black arcs, bg.webp 1600×900)
-   as the slide background. Content layouts cover it with a white card and
-   leave a footer strip where the wave + PyTorch logo remain visible.
-   The title slide shows the wave full-bleed behind white text instead.
-   The ANL corner logo is replaced by the footer lockup. Colours come
-   from themes/pytorch.css; face is Avenir (system). */
+   pytorchcon-na26-ppt.pptx: Simple Light wave (bg.webp 1600×900) is the
+   TITLE background only; content slides are plain white with a low footer
+   band (flame + "PyTorch CONFERENCE — NORTH AMERICA 2026 —"). */
 [data-deck-theme='pytorch'] .deck-corner-logo {
     display: none !important;
 }
@@ -1775,48 +1771,25 @@ body.slides-print-mode [is-~='slide']::after {
     .slide-inner {
     --deck-logo-gutter: 0;
 }
-/* The wave behind every slide. Content slides cover it with a white
-   card; the footer strip (pytorch-footer) sits above the wave. Using
-   fixed so it doesn't scroll with slide-inner overflow. */
-[data-deck-theme='pytorch'] [is-~='presentation']::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
+/* Title slide: full-bleed wave behind white text. */
+[data-deck-theme='pytorch'] #title-slide {
     background: var(--background0) url('/pytorch-template/bg.webp') center
         center / cover no-repeat;
-    pointer-events: none;
-}
-[data-deck-theme='pytorch'] [is-~='slide'] {
-    background: transparent;
-}
-/* White card over the wave — leaves the footer strip exposed. */
-[data-deck-theme='pytorch'] [is-~='slide'] .slide-inner {
-    background: var(--background0);
-    /* Top/sides breathe into the wave; bottom stops short to reveal footer. */
-    top: 0.6lh;
-    left: 0.6ch;
-    right: 0.6ch;
-    bottom: 2.6rlh;
-    border-radius: 2px;
-    box-shadow: 0 2px 16px oklch(from #000 l c h / 0.12);
-}
-/* Title slide: full-bleed wave, no card — text sits on the artwork. */
-[data-deck-theme='pytorch'] #title-slide {
-    background: transparent;
 }
 [data-deck-theme='pytorch'] #title-slide .slide-inner {
     background: transparent;
-    box-shadow: none;
-    border-radius: 0;
-    inset: 0;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 1lh;
     justify-content: center;
     color: var(--background0);
     text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
+    bottom: 1lh;
+}
+/* Content slides: plain white (template's default), no wave. */
+[data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) {
+    background: var(--background0);
+}
+[data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
+    background: var(--background0);
+    bottom: 2.2rlh;
 }
 [data-deck-theme='pytorch'] #title-slide h1,
 [data-deck-theme='pytorch'] #title-slide h2,
@@ -1833,10 +1806,9 @@ body.slides-print-mode [is-~='slide']::after {
     color: oklch(from #fff l c h / 0.92);
     font-style: normal;
 }
-/* Footer strip: the PyTorch wordmark over a sliver of the wave.
-   The SVG has viewBox 0 0 400 245 but only occupies y=0..245 within
-   that 400×245 viewBox — aspect ~1.63:1 wide. Constrain by height and
-   let width follow intrinsically so it doesn't blow up. */
+/* Footer: compact conference band, bottom-left like the template
+   (flame + 'PyTorch CONFERENCE — NORTH AMERICA 2026 —'). The PNG
+   already contains the full lockup; scale by height. */
 .pytorch-footer {
     position: fixed;
     left: 0;
@@ -1844,22 +1816,26 @@ body.slides-print-mode [is-~='slide']::after {
     bottom: 1lh;
     z-index: 5;
     display: flex;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: flex-start;
     padding: 0 2ch;
-    height: 1.6rlh;
+    height: 1.5rlh;
+    background: var(--background0);
+    border-top: 1px solid var(--background2);
+    color: var(--foreground1);
+    font-size: 0.72em;
+    letter-spacing: 0.04em;
     pointer-events: none;
 }
-.pytorch-footer-logo {
-    display: block !important;
-    height: 1lh !important;
-    width: auto !important;
-    max-width: 18ch !important;
-    max-height: 1lh !important;
-    flex: none !important;
-    object-fit: contain;
-    object-position: right center;
-    filter: drop-shadow(0 1px 4px oklch(from #000 l c h / 0.45));
+.pytorch-footer-mark b {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+.pytorch-footer-sub {
+    color: var(--foreground2);
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    margin-left: 1ch;
 }
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */
