@@ -53,11 +53,6 @@ const canonical = `samf.sh${url}`
             </div>
         )
     }
-    {pytorch && (
-        <div class="pytorch-footer" aria-hidden="true">
-            <span class="pytorch-footer-mark" aria-label="PyTorch Conference — North America 2026">PyTorch <b>CONFERENCE</b> <span class="pytorch-footer-sub">— NORTH AMERICA 2026 —</span></span>
-        </div>
-    )}
     <a class="deck-slide-number" id="deck-slide-number" href="#1"
         ><span id="deck-slide-number-text">1</span></a
     >
@@ -68,6 +63,9 @@ const canonical = `samf.sh${url}`
             class="ss-menu"
             aria-label="Show keybinds and navigation">&#xf0c9;</button
         >
+        {pytorch && (
+            <span class="pytorch-status-mark" aria-hidden="true"><svg class="pytorch-status-flame" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-1.2 4.8-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-4.8-6.2-6-11Z"/><circle cx="12" cy="13.5" r="1.6" fill="var(--background0)"/></svg> PyTorch <b>CONFERENCE</b> <span class="pytorch-status-sub">— NORTH AMERICA 2026 —</span></span>
+        )}
         <a class="ss-link" href={url}>{canonical}</a>
         <a id="ss-pos-link" class="ss-pos" href="#1">
             <span id="ss-current">1</span>

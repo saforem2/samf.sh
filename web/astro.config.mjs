@@ -541,7 +541,7 @@ export default defineConfig({
             // The dev server is intentionally bound to the LAN/tailnet. Keep
             // Vite's DNS-rebinding protection, but permit this machine's two
             // names instead of allowing every Host header.
-            allowedHosts: ['mbph', 'mbph.tail3e7069.ts.net'],
+            allowedHosts: ['mbph', 'mbph.tail3e7069.ts.net', 'mbpr', 'mbpr.tail3e7069.ts.net', 'localhost'],
         },
         ssr: {
             noExternal: [
