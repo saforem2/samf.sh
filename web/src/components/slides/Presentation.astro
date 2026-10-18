@@ -12,6 +12,7 @@ interface Props {
 }
 const { deckTheme } = Astro.props
 const doe = deckTheme === 'doe'
+const pytorch = deckTheme === 'pytorch'
 const url = Astro.url.pathname
 const canonical = `samf.sh${url}`
 ---
@@ -52,6 +53,11 @@ const canonical = `samf.sh${url}`
             </div>
         )
     }
+    {pytorch && (
+        <div class="pytorch-footer" aria-hidden="true">
+            <img src="/pytorch-template/pytorch-logo.svg" alt="" class="pytorch-footer-logo" width="400" height="245" />
+        </div>
+    )}
     <a class="deck-slide-number" id="deck-slide-number" href="#1"
         ><span id="deck-slide-number-text">1</span></a
     >
