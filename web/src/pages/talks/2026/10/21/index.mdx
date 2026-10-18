@@ -246,6 +246,26 @@ performance and job reliability.
 
 </Slide>
 
+<Slide id="xpu-gaps" size="sm">
+
+## Where the XPU path broke
+
+| Symptom | Cause | Status |
+| --- | --- | --- |
+| `torch 2.13`: `expected DTensor, got plain tensor` at FSDP wrap | Missing [pytorch#181519](https://github.com/pytorch/pytorch/pull/181519) | Fixed in `2.14.0+xpu` |
+| Nested `DeviceMesh` raises `does not support splitting` | `ProcessGroupXCCL` inherits `supportsSplitting() == false` | [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548); local shim |
+| `train_timeout_seconds` does nothing | `_set_pg_timeout` has no `xpu` branch; XCCL stores the timeout but never enforces it | Two-PR upstream plan |
+
+Same shape every time: **works on CUDA, inherits a default on XPU.**
+
+<SpeakerNotes>
+The 2.13 to 2.14 result is a controlled A/B on Sunspot: same tree, script,
+and node shape, only torch differing (job 12477670). The timeout row is the
+backend gap the operations slide points back to.
+</SpeakerNotes>
+
+</Slide>
+
 <Slide id="portable-training">
 
 ## One training program across vendors
@@ -270,6 +290,32 @@ This is deliberately a schematic excerpt, not a complete launch recipe.
 The AMD path also uses the CUDA API in PyTorch; the launcher and environment
 still differ by machine. Show the ezpz source or a real launch command if the
 audience wants the implementation details.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="environment">
+
+## The environment is part of the backend
+
+Collective settings from a live Sunspot production log (`12478562`):
+
+```bash
+export CCL_PROCESS_LAUNCHER=pmix
+export CCL_OP_SYNC=1
+export CCL_ATL_SYNC_COLL=1
+export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+```
+
+- `CCL_KVS_MODE=pmi` is required on the Aurora `next-eval` queue only.
+- Login and compute nodes run **different release trees** (torch `2.10` vs
+  `2.13`). A login-node probe reports a module as absent, not broken.
+- XCCL mesh ladder: **48 / 192 / 384 / 768 ranks**, all exit 0 with
+  value-validated collectives.
+
+<SpeakerNotes>
+The KVS setting came from ALCF guidance. Intel speakers may want to add or
+correct the oneCCL tuning story here.
 </SpeakerNotes>
 
 </Slide>
@@ -315,6 +361,28 @@ avoid implying every XPU change is already upstream.
 
 </Slide>
 
+<Slide id="layer-tests" size="sm">
+
+## Testing at every layer
+
+| Layer | Check |
+| --- | --- |
+| Numerics | 50-step loss baseline on every upstream sync; `±0.10` on final loss and last-10 mean |
+| Collectives | XCCL ladder to 768 ranks, values verified |
+| Parallelism | TP1 / TP2 / MoE on Aurora; parity on Sunspot |
+| Portability | One gate on Aurora, Sunspot, Polaris, and Perlmutter |
+| Orchestration | Failover harness, 9 fixtures |
+
+The loss baseline catches changes that import and parallelize cleanly but
+break gradients.
+
+<SpeakerNotes>
+The tolerance sits above the roughly 0.05 run-to-run shuffle noise of the
+streaming data loader.
+</SpeakerNotes>
+
+</Slide>
+
 <Slide id="migration-evidence">
 
 ## Validate the new stack with training runs
@@ -327,7 +395,8 @@ avoid implying every XPU change is already upstream.
 </div>
 
 The 2B reference and newer 2B/20B `torchtitan` runs share one tokens axis.
-Different models and data mixes make this a production record, not an isolated
+The `torchtitan` 2B runs at 256 and 512 nodes both completed their
+**4.674T**-token target. Different models and data mixes make this a production record, not an isolated
 framework benchmark.
 
 <SpeakerNotes>
@@ -367,7 +436,7 @@ resubmit**. Checkpointing determines how much work a restart loses.
 <SpeakerNotes>
 This is a documented production incident, not a hypothetical. Make clear that
 the watchdog observed missing stdout progress, not a reliable collective
-timeout. A later slide names that backend gap explicitly.
+timeout. The "Where the XPU path broke" slide names that backend gap.
 </SpeakerNotes>
 
 </Slide>
