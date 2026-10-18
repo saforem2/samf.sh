@@ -1810,35 +1810,23 @@ body.slides-print-mode [is-~='slide']::after {
 [data-deck-theme='pytorch'] [is-~='slide-status'] {
     background: color-mix(in srgb, var(--background0) 90%, var(--pt-red, #ee3b24));
     border-top: 1px solid color-mix(in srgb, var(--pt-panel-2, #fde8e6) 85%, transparent);
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+}
+[data-deck-theme='pytorch'] [is-~='slide-status'] .ss-pos {
+    display: none;
 }
 .pytorch-status-mark {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6ch;
+    justify-self: end;
     white-space: nowrap;
-    font-size: 0.88em;
+    font-size: 0.82em;
     font-weight: 500;
-    letter-spacing: 0.03em;
-    color: var(--pt-near-black, var(--foreground1));
-}
-.pytorch-status-mark b {
-    font-weight: 800;
-    letter-spacing: 0.06em;
-}
-.pytorch-status-sub {
+    letter-spacing: 0.04em;
     color: var(--pt-mid-grey, var(--foreground2));
-    font-weight: 400;
-    letter-spacing: 0.06em;
 }
-.pytorch-status-flame {
-    width: 1.05lh;
-    height: 1.05lh;
-    flex: none;
-    color: var(--pt-red, #ee3b24);
-}
+.pytorch-status-mark b { font-weight: 800; letter-spacing: 0.06em; color: var(--pt-near-black, var(--foreground1)); }
+.pytorch-status-sub { font-weight: 400; letter-spacing: 0.06em; }
 @media (max-width: 768px) {
-    .pytorch-status-mark { font-size: 0.78em; }
+    .pytorch-status-mark { font-size: 0.72em; }
     .pytorch-status-sub { display: none; }
 }
 /* Title slide reclaims the status bar space (no red bar on the hero). */
