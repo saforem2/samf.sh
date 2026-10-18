@@ -1781,8 +1781,10 @@ body.slides-print-mode [is-~='slide']::after {
     justify-content: center;
     color: var(--background0);
     text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
-    bottom: 1lh;
+    bottom: 0;
 }
+[data-deck-theme='pytorch']:has(#title-slide[data-current]) [is-~='slide-status'] { display: none; }
+[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer { display: none; }
 /* Content slides: plain white (template's default), no wave. */
 [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) {
     background: var(--background0);
@@ -1791,6 +1793,8 @@ body.slides-print-mode [is-~='slide']::after {
     background: var(--background0);
     bottom: 1lh;
 }
+[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer { display: none; }
+
 [data-deck-theme='pytorch'] #title-slide h1,
 [data-deck-theme='pytorch'] #title-slide h2,
 [data-deck-theme='pytorch'] #title-slide h3 {
@@ -1807,35 +1811,26 @@ body.slides-print-mode [is-~='slide']::after {
     font-style: normal;
 }
 /* PyTorch status bar: subtle red tint + conference mark in bottom-left. */
-[data-deck-theme='pytorch'] [is-~='slide-status'] {
-    background: color-mix(in srgb, var(--background0) 90%, var(--pt-red, #ee3b24));
-    border-top: 1px solid color-mix(in srgb, var(--pt-panel-2, #fde8e6) 85%, transparent);
-    grid-template-columns: auto minmax(0, 1fr) auto;
-}
-[data-deck-theme='pytorch'] [is-~='slide-status'] .ss-pos {
-    display: none;
-}
-.pytorch-status-mark {
-    justify-self: end;
-    white-space: nowrap;
-    font-size: 0.82em;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    color: var(--pt-mid-grey, var(--foreground2));
-}
-.pytorch-status-mark b { font-weight: 800; letter-spacing: 0.06em; color: var(--pt-near-black, var(--foreground1)); }
-.pytorch-status-sub { font-weight: 400; letter-spacing: 0.06em; }
-@media (max-width: 768px) {
-    .pytorch-status-mark { font-size: 0.72em; }
-    .pytorch-status-sub { display: none; }
-}
-/* Title slide reclaims the status bar space (no red bar on the hero). */
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) [is-~='slide-status'] {
-    display: none;
-}
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) [is-~='slide'] .slide-inner {
+/* PyTorch corner logo: flame + CONFERENCE mark, bottom-left above the status bar. */
+.pytorch-footer {
+    position: fixed;
+    left: 2ch;
     bottom: 1lh;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.6ch;
+    padding: 0 1ch;
+    height: 1.5rlh;
+    pointer-events: none;
+    color: var(--pt-near-black, var(--foreground1));
+    font-size: 0.72em;
+    letter-spacing: 0.04em;
 }
+.pytorch-footer-mark b { font-weight: 800; letter-spacing: 0.06em; }
+.pytorch-footer-sub { color: var(--pt-mid-grey, var(--foreground2)); letter-spacing: 0.06em; }
+.pytorch-footer-flame { width: 1.05lh; height: 1.05lh; flex: none; color: var(--pt-red, #ee3b24); }
+@media (max-width: 768px) { .pytorch-footer { display: none; } }
 
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */
