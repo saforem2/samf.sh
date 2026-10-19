@@ -251,6 +251,42 @@ room looks unconvinced -- 0.15/2 + 0.85 = 0.925.
 </Slide>
 
 {/*───────────────────────────────────────────────────────────────
+5b · ezpz, the tool behind the numbers
+───────────────────────────────────────────────────────────────*/}
+
+<Slide id="ezpz">
+
+## 🍋 `ezpz`
+
+Distributed PyTorch setup and launch. The same script runs on a laptop, one
+GPU, or a thousand-node supercomputer, with no code changes.
+
+```python
+import ezpz
+rank = ezpz.setup_torch()        # CUDA/NCCL, XPU/CCL, MPS, or CPU/Gloo
+model = MyModel().to(ezpz.get_torch_device())
+model = ezpz.wrap_model(model)   # FSDP by default
+```
+
+```bash
+ezpz launch python3 train.py     # PBS or SLURM: hostfile and ranks found for you
+```
+
+The FLOP counter, timers, and profiler context in the rest of this deck all
+come from it.
+
+- Code: [github.com/saforem2/ezpz](https://github.com/saforem2/ezpz)
+- Docs: [ezpz.cool](https://ezpz.cool)
+
+<SpeakerNotes>
+Thirty seconds. The point is that every snippet from here on is `ezpz`, so
+nobody wonders where `compute_mfu` or `get_profiling_context` came from.
+Install is on the hands-on slide.
+</SpeakerNotes>
+
+</Slide>
+
+{/*───────────────────────────────────────────────────────────────
 6 · MFU, concretely
 ───────────────────────────────────────────────────────────────*/}
 

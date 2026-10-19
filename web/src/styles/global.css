@@ -37,6 +37,7 @@
 @import '@webtui/theme-catppuccin';
 @import '@webtui/theme-custom';
 @import '@/styles/themes/doe.css';
+@import '@/styles/themes/alcf.css';
 @import '@/styles/themes/pytorch.css';
 
 .flex-container.icon-flex a {
@@ -242,6 +243,21 @@
         --font-stack-system:
             ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
             'Liberation Mono', 'Courier New', monospace;
+        /* Proportional body options: generic system stacks (no files)
+           and Iosevka's quasi-proportional Aile (sans) / Etoile (slab
+           serif), self-hosted like the mono families. Fallbacks stay
+           inside the same genre — no mono fallbacks, and no fallback
+           family with more weights than the 400/700 these ship (the
+           mIosevka weight trap above). */
+        --font-stack-sans:
+            ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+            'Helvetica Neue', Arial, sans-serif;
+        --font-stack-serif:
+            ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+        --font-stack-iosevka-aile:
+            'Iosevka Aile Web', ui-sans-serif, system-ui, sans-serif;
+        --font-stack-iosevka-etoile:
+            'Iosevka Etoile Web', ui-serif, Georgia, serif;
         /* Two independent font axes, each set by its own picker / attribute:
              body  → --font-stack      via [data-mono-font]   (default QP)
              code  → --code-font-family via [data-code-font]   (default Term)
@@ -313,7 +329,7 @@
            keep full width. */
         --prose-measure: 84ch;
     }
-    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 5 fonts.
+    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 9 fonts.
        'Symbols Nerd Font' is appended via --font-family so icons render
        regardless of choice. (Attribute kept named data-mono-font so the
        slides picker + returning visitors' stored key keep working.) */
@@ -332,6 +348,18 @@
     }
     :root[data-mono-font='system'] {
         --font-stack: var(--font-stack-system);
+    }
+    :root[data-mono-font='sans'] {
+        --font-stack: var(--font-stack-sans);
+    }
+    :root[data-mono-font='serif'] {
+        --font-stack: var(--font-stack-serif);
+    }
+    :root[data-mono-font='iosevka-aile'] {
+        --font-stack: var(--font-stack-iosevka-aile);
+    }
+    :root[data-mono-font='iosevka-etoile'] {
+        --font-stack: var(--font-stack-iosevka-etoile);
     }
 
     /* ── CODE font axis — [data-code-font] sets --code-font-family,
@@ -1327,12 +1355,14 @@
 }
 
 html[data-webtui-theme='custom-light'] .light-content,
-html[data-webtui-theme='doe'] .light-content {
+html[data-webtui-theme='doe'] .light-content,
+html[data-webtui-theme='alcf'] .light-content {
     display: revert !important;
 }
 
 html[data-webtui-theme='custom-light'] .dark-content,
-html[data-webtui-theme='doe'] .dark-content {
+html[data-webtui-theme='doe'] .dark-content,
+html[data-webtui-theme='alcf'] .dark-content {
     display: none !important;
 }
 
@@ -1364,14 +1394,16 @@ html[data-webtui-theme='catppuccin-latte'] .dark-content {
    a language-tinted border instead. This rule used to repaint the panel with
    !important, which beat that. */
 html[data-webtui-theme='custom-light'] .astro-code,
-html[data-webtui-theme='doe'] .astro-code {
+html[data-webtui-theme='doe'] .astro-code,
+html[data-webtui-theme='alcf'] .astro-code {
     --pre-background: transparent;
     background-color: transparent !important;
 }
 /* Don't paint span-level backgrounds — let the pre's background show
    through uniformly, including the top/bottom padding band. */
 html[data-webtui-theme='custom-light'] .astro-code span:not(.line),
-html[data-webtui-theme='doe'] .astro-code span:not(.line) {
+html[data-webtui-theme='doe'] .astro-code span:not(.line),
+html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
     --pre-background: oklch(from var(--code-bg, #f8f8f8) l c h);
     background-color: transparent !important;
 }
@@ -1380,7 +1412,8 @@ html[data-webtui-theme='doe'] .astro-code span:not(.line) {
    pale code background. Targeting the inline shiki style is the safest hook
    that survives token-class changes. */
 html[data-webtui-theme='custom-light'] .astro-code span[style*='#C2C3C5'],
-html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'] {
+html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'],
+html[data-webtui-theme='alcf'] .astro-code span[style*='#C2C3C5'] {
     color: #6a6e76 !important;
 }
 
@@ -1390,7 +1423,8 @@ html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'] {
    shikiConfig.colorReplacements wasn't honored for the bundled min-light
    theme, so this CSS hook is the reliable route. */
 html[data-webtui-theme='custom-light'] .astro-code span[style*='#FF9800'],
-html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'] {
+html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'],
+html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
 }
 
@@ -1509,12 +1543,14 @@ html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
    clearing AA. Scoped to the light themes on purpose: the dark ones already
    measure 7.40 / 6.14, and darkening there would make it worse. */
 html[data-webtui-theme='custom-light'] .nb-in > .nb-prompt,
-html[data-webtui-theme='doe'] .nb-in > .nb-prompt {
+html[data-webtui-theme='doe'] .nb-in > .nb-prompt,
+html[data-webtui-theme='alcf'] .nb-in > .nb-prompt {
     color: oklch(from var(--blue) calc(l * 0.78) c h);
 }
 
 html[data-webtui-theme='custom-light'] .nb-out > .nb-prompt,
-html[data-webtui-theme='doe'] .nb-out > .nb-prompt {
+html[data-webtui-theme='doe'] .nb-out > .nb-prompt,
+html[data-webtui-theme='alcf'] .nb-out > .nb-prompt {
     color: oklch(from var(--red) calc(l * 0.82) c h);
 }
 

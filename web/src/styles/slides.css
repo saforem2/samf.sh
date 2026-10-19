@@ -1305,7 +1305,9 @@ body[data-speaker-window] [is-~='notes'] {
            the viewport (clamp with a vw term, ~line 123). A flat em here
            meant the same physical text size on Letter and on Tabloid, so
            the bigger the paper the more of it sat empty. */
-        font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
+        font-size: calc(
+            clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+        ) !important;
         overflow: hidden !important;
     }
 }
@@ -1360,7 +1362,9 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
     /* Scale type to the sheet rather than fixing it, so the deck reads
        the same on Letter and Tabloid. The overflow:hidden clip below
        still catches the rare dense slide. */
-    font-size: clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) !important;
+    font-size: calc(
+        clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+    ) !important;
     /* Clip anything that still overflows rather than letting it
        bleed visibly past the paper edge — better to lose half a
        trailing line than show it sliced in two. */
@@ -1603,11 +1607,12 @@ body.slides-print-mode [is-~='slide']::after {
    DOE wordmark at right, a black title slide over the cover line art, and
    black section slides (<Slide variant="dark">). The ANL corner logo is
    swapped out for the footer. Colours come from themes/doe.css. */
-[data-deck-theme='doe'] .deck-corner-logo {
+html[data-webtui-theme='doe'] .deck-corner-logo {
     display: none !important;
 }
 /* No corner logo, so no gutter to clear it. */
-[is-~='presentation'][data-deck-theme='doe']
+html[data-webtui-theme='doe']
+    [is-~='presentation']
     [is-~='slide'][data-current]
     .slide-inner {
     --deck-logo-gutter: 0;
@@ -1638,17 +1643,19 @@ body.slides-print-mode [is-~='slide']::after {
     width: auto;
     margin-bottom: 0.09lh;
 }
-/* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh). rlh,
-   not lh: both bars are set in the root font, the slide is not, and a
-   slide-font 3lh reserved twice the room and clipped dense slides. */
-[is-~='presentation'][data-deck-theme='doe'] [is-~='slide'] .slide-inner {
-    bottom: 3rlh;
+/* Clear the status bar plus the taller ALCF footer (its top edge
+   sits at ~3.8rlh with the vh-sized lockups). */
+html[data-webtui-theme='alcf']
+    [is-~='presentation']
+    [is-~='slide']
+    .slide-inner {
+    bottom: 4rlh;
 }
-[data-deck-theme='doe']:has(#title-slide[data-current]) .doe-footer {
+html[data-webtui-theme='doe']:has(#title-slide[data-current]) .doe-footer {
     display: none;
 }
 
-[data-deck-theme='doe'] :is(#title-slide, [data-variant='dark']) {
+html[data-webtui-theme='doe'] :is(#title-slide, [data-variant='dark']) {
     --background0: oklch(from #000000 l c h);
     --background1: oklch(from #1a1a1c l c h);
     --background2: oklch(from #26272b l c h);
@@ -1685,17 +1692,17 @@ body.slides-print-mode [is-~='slide']::after {
 /* The cover art is a full 16:9 slide: span the width and anchor it to the
    bottom, as the template does. On a taller viewport the extra height is
    black above it. */
-[data-deck-theme='doe'] #title-slide {
+html[data-webtui-theme='doe'] #title-slide {
     background: var(--background0) url('/doe-template/cover-lines.webp') center
         bottom / 100% auto no-repeat;
 }
 /* Template cover: a large regular-weight title top-left, the subtitle right
    under it, then the name and date block well below, all upright. */
-[data-deck-theme='doe'] #title-slide .slide-inner {
+html[data-webtui-theme='doe'] #title-slide .slide-inner {
     justify-content: flex-start;
     padding-block-start: 2lh;
 }
-[data-deck-theme='doe'] #title-slide h1 {
+html[data-webtui-theme='doe'] #title-slide h1 {
     /* Kept inside the left half: the art's lines fill the top right. */
     max-inline-size: 30ch;
     font-size: 1.4lh;
@@ -1704,45 +1711,45 @@ body.slides-print-mode [is-~='slide']::after {
     line-height: 1.1;
     margin-block-end: 0;
 }
-[data-deck-theme='doe'] #title-slide h1 * {
+html[data-webtui-theme='doe'] #title-slide h1 * {
     font-weight: inherit;
 }
-[data-deck-theme='doe'] #title-slide .title-slide-thesis {
+html[data-webtui-theme='doe'] #title-slide .title-slide-thesis {
     margin-block-start: 0.25lh;
     font-style: normal;
     color: var(--foreground0);
 }
-[data-deck-theme='doe'] #title-slide .title-slide-thesis + p,
-[data-deck-theme='doe'] #title-slide h1 + p:not(.title-slide-thesis) {
+html[data-webtui-theme='doe'] #title-slide .title-slide-thesis + p,
+html[data-webtui-theme='doe'] #title-slide h1 + p:not(.title-slide-thesis) {
     margin-block-start: 2lh;
 }
-[data-deck-theme='doe'] #title-slide p {
+html[data-webtui-theme='doe'] #title-slide p {
     color: var(--foreground0);
 }
-[data-deck-theme='doe'] #title-slide :is(em, i) {
+html[data-webtui-theme='doe'] #title-slide :is(em, i) {
     font-style: normal;
 }
-[data-deck-theme='doe'] #title-slide strong {
+html[data-webtui-theme='doe'] #title-slide strong {
     font-weight: 500;
 }
 /* Full-width art fills the top right, where the QR sat. The black below
    the art's horizontal line is free, but its height is 0.2 of the slide
    width, so the QR shrinks to fit a 4:3 screen too. */
-[data-deck-theme='doe'] #title-slide .title-slide-qr {
+html[data-webtui-theme='doe'] #title-slide .title-slide-qr {
     top: auto;
     bottom: 0.5lh;
 }
-[data-deck-theme='doe'] #title-slide .title-slide-qr img {
+html[data-webtui-theme='doe'] #title-slide .title-slide-qr img {
     width: 8ch;
     height: 8ch;
 }
-[data-deck-theme='doe'] [is-~='slide'][data-variant='dark'] {
+html[data-webtui-theme='doe'] [is-~='slide'][data-variant='dark'] {
     background: var(--background0) url('/doe-template/contents-lines.webp')
         center / cover no-repeat;
 }
 /* Code on the black slides: every token already carries the one-dark-pro
    colours as --shiki-custom-dark, so switch to those. No extra HTML. */
-[data-deck-theme='doe']
+html[data-webtui-theme='doe']
     :is(#title-slide, [data-variant='dark'])
     .astro-code
     span:not(.line) {
@@ -1752,7 +1759,7 @@ body.slides-print-mode [is-~='slide']::after {
     text-decoration: var(--shiki-custom-dark-text-decoration) !important;
 }
 /* QR SVGs resolve to black as <img>; invert them on the black slides. */
-[data-deck-theme='doe']
+html[data-webtui-theme='doe']
     :is(#title-slide, [data-variant='dark'])
     :is(.title-slide-qr, .thanks-qr)
     img {
@@ -1846,11 +1853,354 @@ body.slides-print-mode [is-~='slide']::after {
 }
 /* Title slide has no footer — the wave is the whole slide. */
 /* Print: hide the fixed wave + footer, give each page a light border. */
+/* Print: the fixed footer repeats on every page but can only carry
+   one lockup set for the whole document, so print replaces it with a
+   per-slide footer (the ::before layers below) and hides the fixed
+   one. The DOE title slide carries no footer, as on screen. */
 @media print {
     .doe-footer {
         display: none !important;
     }
 }
 body.slides-print-mode .doe-footer {
+    display: none !important;
+}
+/* Per-slide print footer, DOE: Genesis mark bottom-left, DOE strip
+   bottom-right (the fixed footer's space-between layout, at its
+   sizes). Dark slides take the on-dark art; the title slide takes
+   none. Background layers are only fetched in print contexts, and
+   print-color-adjust keeps them printing with background graphics
+   off. The same ruleset appears under @media print and under
+   .slides-print-mode, like the rest of the print layout. */
+@media print {
+    html[data-webtui-theme='doe'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            url('/doe-template/genesis-on-light.png'),
+            url('/doe-template/doe-on-light.png');
+        background-position:
+            left 2ch bottom 1.5lh,
+            right 2ch bottom 1.6lh;
+        background-size:
+            auto 1lh,
+            auto 0.56lh;
+        background-repeat: no-repeat;
+        pointer-events: none;
+        z-index: 5;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    html[data-webtui-theme='doe'] [is-~='slide'][data-variant='dark']::before {
+        background-image:
+            url('/doe-template/genesis-on-dark.png'),
+            url('/doe-template/doe-on-dark.png');
+    }
+    html[data-webtui-theme='doe'] #title-slide::before {
+        content: none;
+    }
+}
+html[data-webtui-theme='doe'] body.slides-print-mode [is-~='slide']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        url('/doe-template/genesis-on-light.png'),
+        url('/doe-template/doe-on-light.png');
+    background-position:
+        left 2ch bottom 1.5lh,
+        right 2ch bottom 1.6lh;
+    background-size:
+        auto 1lh,
+        auto 0.56lh;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 5;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+html[data-webtui-theme='doe']
+    body.slides-print-mode
+    [is-~='slide'][data-variant='dark']::before {
+    background-image:
+        url('/doe-template/genesis-on-dark.png'),
+        url('/doe-template/doe-on-dark.png');
+}
+html[data-webtui-theme='doe'] body.slides-print-mode #title-slide::before {
+    content: none;
+}
+/* ── ALCF deck chrome ────────────────────────────────────────────────────
+   Decks with `theme: alcf` in frontmatter follow the ALCF slide
+   template (ALCF-Template_MASTER): white content slides with a blue
+   bar down the left edge, black headlines, blue subtitles, and the
+   DOE + Argonne/ALCF lockups at the foot of the slide, directly on
+   the ground as in the template. The title slide and section slides
+   (<Slide variant="dark">) sit on the template's navy instead, with
+   white text and the white lockups — the footer swaps sets with the
+   current slide. The ANL corner logo is swapped out for the footer.
+   Colours come from themes/alcf.css. */
+html[data-webtui-theme='alcf'] .deck-corner-logo {
+    display: none !important;
+}
+/* No corner logo, so no gutter to clear it. */
+html[data-webtui-theme='alcf']
+    [is-~='presentation']
+    [is-~='slide'][data-current]
+    .slide-inner {
+    --deck-logo-gutter: 0;
+}
+/* The template's blue left-edge bar, full height on every slide. */
+html[data-webtui-theme='alcf'] [is-~='presentation']::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    z-index: 6;
+    background: var(--alcf-blue);
+    pointer-events: none;
+}
+.alcf-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 1lh;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0.5lh 2ch;
+    pointer-events: none;
+}
+.alcf-footer > span {
+    display: flex;
+    align-items: flex-end;
+}
+/* Lockup sizes come from the template's layouts, measured on the ink,
+   not the placed box (the placed images carry transparent padding):
+   Argonne + ALCF ink is 3.5% of the slide height, DOE ink 3.0%. They
+   are set in vh because the footer has to scale with the slide, and
+   lh does not — the slide font scales to the window while the root
+   line height barely moves. (An earlier cut used the placed-box
+   fractions, 5.9% / 3.6%, and came out cartoonishly large.) */
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe,
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-doe-dark {
+    height: 2.9vh;
+    width: auto;
+    margin-bottom: 0.06lh;
+}
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl,
+html[data-webtui-theme='alcf'] .alcf-footer .alcf-footer-anl-dark {
+    height: 3.4vh;
+    width: auto;
+}
+/* The white lockups are for the navy slides; the footer carries both
+   sets and shows the one that matches the current slide. */
+.alcf-footer .alcf-footer-doe-dark,
+.alcf-footer .alcf-footer-anl-dark {
+    display: none;
+}
+html[data-webtui-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-doe,
+html[data-webtui-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-anl {
+    display: none;
+}
+html[data-webtui-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-doe-dark,
+html[data-webtui-theme='alcf']:has(
+        [is-~='slide'][data-current]:is(#title-slide, [data-variant='dark'])
+    )
+    .alcf-footer
+    .alcf-footer-anl-dark {
+    display: block;
+}
+/* Clear the status bar (1rlh) plus the footer (0.5 + 1 + 0.5 rlh), as
+   with the DOE footer. */
+html[data-webtui-theme='alcf']
+    [is-~='presentation']
+    [is-~='slide']
+    .slide-inner {
+    bottom: 3rlh;
+}
+
+/* The navy slides: the title slide and the section slides share the
+   template's dark ground (#1d1651, sampled #1c164e in the editor) with
+   white text and the sky-blue subtitle colour. Variables the slides
+   resolve locally are restated here for the same reason as in the DOE
+   block: derived vars resolve where they are declared (on <html>), so
+   they keep the light values unless restated. */
+html[data-webtui-theme='alcf'] :is(#title-slide, [data-variant='dark']) {
+    --background0: var(--alcf-navy);
+    --background1: oklch(from #292361 l c h);
+    --background2: oklch(from #352d75 l c h);
+    --background3: oklch(from #463d8f l c h);
+    --foreground0: oklch(from #ffffff l c h);
+    --foreground1: oklch(from #edeef7 l c h);
+    --foreground2: oklch(from #c9ccf0 l c h);
+    --foreground3: oklch(from #8fa0ff l c h);
+    --text: var(--foreground1);
+    --base: var(--background0);
+    --mantle: var(--background1);
+    --crust: var(--background2);
+    --code-bg: var(--background1);
+    --code-fg: var(--foreground2);
+    --callout-color: var(--foreground2);
+    --url: var(--alcf-sky);
+    /* Inline code chips: the dark-theme values (see custom-dark). */
+    --chip-l: 0.84;
+    --chip-fill-l: 0.84;
+    --chip-fill-a: 0.12;
+    --h1: var(--foreground0);
+    --h2: var(--foreground0);
+    --h3: var(--foreground0);
+    --h4: var(--foreground0);
+    --h5: var(--foreground0);
+    --h6: var(--foreground0);
+    color: var(--foreground1);
+    background-color: var(--background0);
+}
+/* Template cover: a large bold white title top-left on the plain navy,
+   the tagline right under it, then the name block below. The deck's
+   title-slide markup differs, so this only sizes and positions. */
+html[data-webtui-theme='alcf'] #title-slide .slide-inner {
+    justify-content: flex-start;
+    padding-block-start: 2lh;
+}
+html[data-webtui-theme='alcf'] #title-slide h1 {
+    max-inline-size: 32ch;
+    font-size: 1.5lh;
+    font-weight: 700;
+    letter-spacing: -0.02ch;
+    line-height: 1.1;
+    margin-block-end: 0;
+}
+html[data-webtui-theme='alcf'] #title-slide h1 * {
+    font-weight: inherit;
+}
+html[data-webtui-theme='alcf'] #title-slide .title-slide-thesis {
+    margin-block-start: 0.25lh;
+    font-style: normal;
+    color: var(--alcf-sky);
+}
+html[data-webtui-theme='alcf'] #title-slide .title-slide-thesis + p,
+html[data-webtui-theme='alcf'] #title-slide h1 + p:not(.title-slide-thesis) {
+    margin-block-start: 2lh;
+}
+html[data-webtui-theme='alcf'] #title-slide :is(em, i) {
+    font-style: normal;
+}
+/* Code on the navy slides: every token already carries the
+   one-dark-pro colours as --shiki-custom-dark, so switch to those.
+   No extra HTML. */
+html[data-webtui-theme='alcf']
+    :is(#title-slide, [data-variant='dark'])
+    .astro-code
+    span:not(.line) {
+    color: var(--shiki-custom-dark) !important;
+    font-style: var(--shiki-custom-dark-font-style) !important;
+    font-weight: var(--shiki-custom-dark-font-weight) !important;
+    text-decoration: var(--shiki-custom-dark-text-decoration) !important;
+}
+/* QR SVGs resolve to black as <img>; invert them on the navy slides. */
+html[data-webtui-theme='alcf']
+    :is(#title-slide, [data-variant='dark'])
+    :is(.title-slide-qr, .thanks-qr)
+    img {
+    filter: invert(1);
+}
+/* Print: the bar stays (it is slide-independent), but the fixed
+   footer is replaced by the per-slide footer below — the fixed one
+   can only carry one lockup set for the whole document. */
+@media print {
+    .alcf-footer {
+        display: none !important;
+    }
+}
+body.slides-print-mode .alcf-footer {
+    display: none !important;
+}
+/* Per-slide print footer, ALCF: DOE lockup bottom-left, Argonne + ALCF
+   lockup bottom-right, at the fixed footer's vh sizes and offsets.
+   The navy slides (title + dark variants) take the on-dark art,
+   resolved from the slide itself rather than the current slide.
+   Background layers are only fetched in print contexts, and
+   print-color-adjust keeps them printing with background graphics
+   off. Duplicated under .slides-print-mode like the rest of the
+   print layout. */
+@media print {
+    html[data-webtui-theme='alcf'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            url('/alcf-template/doe-lockup.png'),
+            url('/alcf-template/argonne-alcf-lockup.png');
+        background-position:
+            left 2ch bottom 1.5lh,
+            right 2ch bottom 1.5lh;
+        background-size:
+            auto 2.9vh,
+            auto 3.4vh;
+        background-repeat: no-repeat;
+        pointer-events: none;
+        z-index: 5;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    html[data-webtui-theme='alcf']
+        [is-~='slide']:is(#title-slide, [data-variant='dark'])::before {
+        background-image:
+            url('/alcf-template/doe-lockup-on-dark.png'),
+            url('/alcf-template/argonne-alcf-lockup-on-dark.png');
+    }
+}
+html[data-webtui-theme='alcf'] body.slides-print-mode [is-~='slide']::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        url('/alcf-template/doe-lockup.png'),
+        url('/alcf-template/argonne-alcf-lockup.png');
+    background-position:
+        left 2ch bottom 1.5lh,
+        right 2ch bottom 1.5lh;
+    background-size:
+        auto 2.9vh,
+        auto 3.4vh;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 5;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+html[data-webtui-theme='alcf']
+    body.slides-print-mode
+    [is-~='slide']:is(#title-slide, [data-variant='dark'])::before {
+    background-image:
+        url('/alcf-template/doe-lockup-on-dark.png'),
+        url('/alcf-template/argonne-alcf-lockup-on-dark.png');
+}
+
+/* The branded footers follow the live theme, not the deck's pin: both
+   footers are rendered on branded decks (see Presentation.astro) and
+   only the live theme's shows. The pin only chooses the theme a deck
+   opens in; the rest of the chrome above is keyed to the live theme
+   for the same reason. */
+html:not([data-webtui-theme='doe']) .doe-footer {
+    display: none !important;
+}
+html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
 }

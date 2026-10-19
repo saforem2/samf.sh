@@ -84,9 +84,14 @@ html[data-webtui-theme='doe'] {
     --pink: oklch(from #ff3399 l c h);
     --rosewater: oklch(from #f4dbd6 l c h);
     --flamingo: oklch(from #f0c6c6 l c h);
+}
 
-    /* Figtree for prose, like the template. Code keeps its own axis
-       (--code-font-family), so blocks stay monospaced. */
+/* The template's face is this theme's default body font, not a lock:
+   it applies only while [data-font-default] stands — set pre-paint by
+   Layout.astro when no body font is stored — and any pick in the font
+   picker (command dialog or slide help) clears the mark and wins.
+   Code keeps its own axis (--code-font-family) throughout. */
+html[data-webtui-theme='doe'][data-font-default] {
     --font-stack:
         'Figtree Web', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }

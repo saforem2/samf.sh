@@ -19,12 +19,25 @@ const themeOptions = {
     catppuccin: 'Catppuccin Mocha',
     'catppuccin-latte': 'Catppuccin Latte',
     doe: 'DOE',
+    alcf: 'ALCF',
 }
 const fontOptions = {
     iosevka: 'Iosevka',
     'victor-mono': 'Victor Mono',
     'miosevka-term': 'mIosevka-Term',
     'miosevka-qp': 'mIosevka-QP',
+    system: 'System',
+    sans: 'Sans',
+    serif: 'Serif',
+    'iosevka-aile': 'Iosevka Aile',
+    'iosevka-etoile': 'Iosevka Etoile',
+}
+// Code font: true-monospace only — no QP (it breaks ASCII / column
+// alignment). Mirrors the code axis in Filter.astro's command dialog.
+const codeFontOptions = {
+    'miosevka-term': 'mIosevka-Term',
+    iosevka: 'Iosevka',
+    'victor-mono': 'Victor Mono',
     system: 'System',
 }
 const deckThemeOptions: Record<string, string> = {
@@ -100,6 +113,24 @@ const deckThemeOptions: Record<string, string> = {
                             data-font-option={key}
                             aria-selected="false"
                             class="shn-theme-chip shn-font-chip">
+                            {value}
+                        </button>
+                    ))
+                }
+            </row>
+        </section>
+
+        <section class="slide-help-section">
+            <span is-="badge" class="shs-title shs-title-blue"
+                >&#xf121; Code Font</span
+            >
+            <row class="shn-theme-buttons" gap-="0">
+                {
+                    Object.entries(codeFontOptions).map(([key, value]) => (
+                        <button
+                            data-code-font-option={key}
+                            aria-selected="false"
+                            class="shn-theme-chip shn-code-font-chip">
                             {value}
                         </button>
                     ))
@@ -493,7 +524,13 @@ const deckThemeOptions: Record<string, string> = {
         )
         const setFont = (font: string) => {
             document.documentElement.setAttribute('data-mono-font', font)
+            // A pick is explicit: clear the fallback mark so a template
+            // theme's default body font stops applying (Layout.astro).
+            document.documentElement.removeAttribute('data-font-default')
             localStorage.setItem('mono-font', font)
+            // A real choice — the boot migration drops unmarked QP
+            // values (Layout.astro).
+            localStorage.setItem('mono-font-explicit', '1')
             fontChips.forEach((btn) => {
                 const v = btn.getAttribute('data-font-option')
                 btn.setAttribute('aria-selected', String(v === font))
@@ -503,6 +540,26 @@ const deckThemeOptions: Record<string, string> = {
             btn.addEventListener('click', () => {
                 const v = btn.getAttribute('data-font-option')
                 if (v) setFont(v)
+            })
+        })
+
+        // Code font picker: the second, independent axis (see
+        // Filter.astro). Sets data-code-font + persists 'code-font'.
+        const codeFontChips = dlg.querySelectorAll<HTMLElement>(
+            '.shn-code-font-chip[data-code-font-option]',
+        )
+        const setCodeFont = (font: string) => {
+            document.documentElement.setAttribute('data-code-font', font)
+            localStorage.setItem('code-font', font)
+            codeFontChips.forEach((btn) => {
+                const v = btn.getAttribute('data-code-font-option')
+                btn.setAttribute('aria-selected', String(v === font))
+            })
+        }
+        codeFontChips.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const v = btn.getAttribute('data-code-font-option')
+                if (v) setCodeFont(v)
             })
         })
 
@@ -522,12 +579,29 @@ const deckThemeOptions: Record<string, string> = {
                 const v = btn.getAttribute('data-theme-option')
                 btn.setAttribute('aria-selected', String(v === curTheme))
             })
+            // With no stored body font, a branded theme's default font
+            // (the [data-font-default] mark; themes/doe.css, alcf.css)
+            // is what renders — mark no chip rather than the fallback.
+            const themeDefaultActive =
+                document.documentElement.hasAttribute('data-font-default') &&
+                ['doe', 'alcf'].includes(curTheme)
             const curFont =
-                document.documentElement.getAttribute('data-mono-font') ??
-                'miosevka-qp'
+                localStorage.getItem('mono-font') ??
+                (themeDefaultActive
+                    ? ''
+                    : (document.documentElement.getAttribute(
+                          'data-mono-font',
+                      ) ?? 'miosevka-qp'))
             fontChips.forEach((btn) => {
                 const v = btn.getAttribute('data-font-option')
                 btn.setAttribute('aria-selected', String(v === curFont))
+            })
+            const curCodeFont =
+                document.documentElement.getAttribute('data-code-font') ??
+                'miosevka-term'
+            codeFontChips.forEach((btn) => {
+                const v = btn.getAttribute('data-code-font-option')
+                btn.setAttribute('aria-selected', String(v === curCodeFont))
             })
         }
     }
