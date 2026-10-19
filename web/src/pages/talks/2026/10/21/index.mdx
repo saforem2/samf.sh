@@ -319,7 +319,7 @@ The table is the map. The next two slides verify it. Kernels footnote: one op mo
 | Portability | One gate on Aurora + Sunspot + Polaris + Perlmutter | [`ezpz`](https://github.com/saforem2/ezpz) |
 | Orchestration | Failover harness — 9 fixtures | [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 
-`` `±0.10` `` sits just above `` `~0.05` `` shuffle noise from the streaming loader — catches bad gradients without flaking on data order.
+`±0.10` sits just above `~0.05` shuffle noise from the streaming loader — catches bad gradients without flaking on data order.
 
 <SpeakerNotes>
 The loss gate caught silent gradient bugs that loaded, sharded, and timed correctly.
