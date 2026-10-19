@@ -1862,43 +1862,6 @@ html[data-webtui-theme='doe']
 body.slides-print-mode .pytorch-footer-lockup { display: block !important; }
 body.slides-print-mode .pytorch-footer-lockup-dark { display: none !important; }
 
-.pytorch-anl-footer {
-    position: fixed;
-    right: 2ch;
-    left: auto;
-    bottom: 2lh;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    padding: 0;
-    pointer-events: none;
-}
-.pytorch-anl-lockup,
-.pytorch-anl-lockup-dark {
-    width: 150px;
-    height: auto;
-}
-.pytorch-anl-lockup { display: block; }
-.pytorch-anl-lockup-dark { display: none !important; }
-:root[data-webtui-theme='custom-dark'] .pytorch-anl-lockup,
-:root[data-webtui-theme='catppuccin'] .pytorch-anl-lockup,
-:root[data-webtui-theme='nvim-dark'] .pytorch-anl-lockup {
-    display: none !important;
-}
-:root[data-webtui-theme='custom-dark'] .pytorch-anl-lockup-dark,
-:root[data-webtui-theme='catppuccin'] .pytorch-anl-lockup-dark,
-:root[data-webtui-theme='nvim-dark'] .pytorch-anl-lockup-dark {
-    display: block !important;
-}
-@media (max-width: 768px) { .pytorch-anl-footer { display: none !important; } }
-@media print {
-    .pytorch-anl-lockup { display: block !important; }
-    .pytorch-anl-lockup-dark { display: none !important; }
-}
-body.slides-print-mode .pytorch-anl-lockup { display: block !important; }
-body.slides-print-mode .pytorch-anl-lockup-dark { display: none !important; }
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-anl-footer { display: none; }
-
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */
 [data-deck-theme='pytorch'] #title-slide .title-authors {
