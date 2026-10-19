@@ -216,6 +216,13 @@ The 7.77T MDS run is the *baseline*, not a failure. The migration was about main
 <div class="portable-grid">
 <div class="portable-quad">
 
+- [`ezpz launch`](https://ezpz.cool/cli/launch/): ranks, bindings, hostfiles
+- [`ezpz test`](https://github.com/saforem2/ezpz): smoke on any fabric
+- [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
+
+</div>
+<div class="portable-quad">
+
 ```python
 # example.py
 import ezpz
@@ -223,13 +230,6 @@ rank = ezpz.setup_torch()
 world_size = ezpz.get_world_size()
 print(f"Hello from {rank}/{world_size}!")
 ```
-
-</div>
-<div class="portable-quad">
-
-- [`ezpz launch`](https://ezpz.cool/cli/launch/): ranks, bindings, hostfiles
-- [`ezpz test`](https://github.com/saforem2/ezpz): smoke on any fabric
-- [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
 
 </div>
 <div class="portable-quad">
