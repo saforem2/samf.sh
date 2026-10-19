@@ -53,6 +53,25 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 </Slide>
 
+{/* ── Prologue: what ALCF does ─────────────────────────────────── */}
+<Slide id="context">
+
+## Why this matters at PyTorch Conference
+
+| | |
+| --- | --- |
+| **ALCF** | One of three DOE computing facilities (`ALCF` at Argonne, `OLCF` at Oak Ridge, `NERSC` at Berkeley) — runs large-scale science on `Aurora` (`10,624` nodes · `63,744` tiles) and `Polaris` for the open research community |
+| **Aurora** | DOE's exascale pathfinder — Intel GPUs at scale before the `XPU` story was settled in upstream PyTorch. Every science team that trained on `Aurora` hit the same missing backend at the same time |
+| **Why PyTorch** | The framework every science team picked anyway — genomics, proteins, weather, LLMs. This talk is how it caught up to the machine |
+
+Aurora made the `XPU` gap impossible to ignore. The science in Act A is why it existed in the first place.
+
+<SpeakerNotes>
+ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, not internal. Aurora is the exascale poster child: 10k nodes, Intel's first data-center GPU at DOE scale, and up before the XPU surface was ported in PyTorch. That collision — new hardware, same PyTorch — is the talk's reason to be. One minute, no deeper.
+</SpeakerNotes>
+
+</Slide>
+
 {/* ── Frame: the 3-act contract ───────────────────────────────── */}
 <Slide id="frame">
 
