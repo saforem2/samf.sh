@@ -1870,6 +1870,8 @@ html[data-webtui-theme='doe']
     align-items: center;
     padding: 0;
     pointer-events: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
 }
 .pytorch-footer-lockup,
 .pytorch-footer-lockup-dark {
@@ -1952,6 +1954,9 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     background: rgba(0, 0, 0, 0.35);
     padding: 0.15ch 0.8ch;
     border-radius: 2px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 [data-deck-theme='pytorch'] #title-slide .title-conf-line {
     margin-top: 0.8lh;

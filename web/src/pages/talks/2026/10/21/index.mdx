@@ -342,6 +342,16 @@ flowchart LR
 <style>{`
   #portable-training .portable-demo-col em { font-size: 0.75em; color: var(--foreground2); line-height: 1.3; display: block; margin-block-start: 0.15lh; }
   #portable-training .portable-demo { align-items: start; }
+  /* Title QR: on screen the pill sits inside the QR block's flow, but in
+     print the 16:9 sheet is narrower and the pill's nowrap spills left over
+     the author line. In print, center it under the QR code at half scale. */
+  @media print {
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+      font-size: 0.52em !important;
+      letter-spacing: 0;
+      padding: 0.08ch 0.5ch;
+    }
+  }
 `}</style>
 
 <SpeakerNotes>
