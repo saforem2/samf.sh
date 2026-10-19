@@ -1817,27 +1817,34 @@ html[data-webtui-theme='doe']
     color: oklch(from #fff l c h / 0.92);
     font-style: normal;
 }
-/* PyTorch status bar: subtle red tint + conference mark in bottom-left. */
-/* PyTorch corner logo: flame + CONFERENCE mark, bottom-left above the status bar. */
+/* PyTorch footer: official CONFERENCE lockup (vector), bottom-right above the status bar. */
 .pytorch-footer {
     position: fixed;
-    left: 2ch;
+    right: 2ch;
     bottom: 1lh;
     z-index: 5;
     display: flex;
     align-items: center;
-    gap: 0.6ch;
-    padding: 0 1ch;
-    height: 1.5rlh;
+    padding: 0.3rlh 0;
     pointer-events: none;
-    color: var(--pt-near-black, var(--foreground1));
-    font-size: 0.72em;
-    letter-spacing: 0.04em;
 }
-.pytorch-footer-mark b { font-weight: 800; letter-spacing: 0.06em; }
-.pytorch-footer-sub { color: var(--pt-mid-grey, var(--foreground2)); letter-spacing: 0.06em; }
-.pytorch-footer-flame { width: 1.05lh; height: 1.05lh; flex: none; color: var(--pt-red, #ee3b24); }
-@media (max-width: 768px) { .pytorch-footer { display: none; } }
+.pytorch-footer-lockup,
+.pytorch-footer-lockup-dark {
+    height: 2rem;
+    width: auto;
+}
+.pytorch-footer-lockup-dark { display: none; }
+:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
+:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
+:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
+    display: none;
+}
+:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup-dark,
+:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup-dark,
+:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
+    display: block;
+}
+@media (max-width: 768px) { .pytorch-footer { display: none !important; } }
 
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */

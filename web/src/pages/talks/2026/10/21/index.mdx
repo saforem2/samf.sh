@@ -11,7 +11,17 @@ theme: pytorch
 import Slide from '@/components/slides/Slide.astro'
 import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
+{/* ================================================================
+    TALK ARC (20 slides, ~20 min + 5 Q&A)
+    Thesis: Aurora at ~120k XPUs made the backend visible — we trace
+    a single XPU surface (torch.xpu → XCCL/oneCCL → DTensor/FSDP2),
+    a fork-to-titan migration proved at 256→512 nodes, and the watchdog
+    + failover machinery that keeps long jobs alive.
+    Footer: official vector bottom-right (pytorchcon-na26-color.svg @ 2rem).
+    Aurora: 10,624 nodes · 63,744 tiles (≈120k XPUs incl. tile count per PVC).
+    ================================================================ */}
 
+{/* ── Title ───────────────────────────────────────────────────── */}
 <Slide id="title-slide">
 
 # Scaling PyTorch on Intel XPU
@@ -24,252 +34,124 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
     <span>Tanima Dey · Intel</span>
 </div>
 
-_PyTorch Conference · October 21, 2026_
+_PyTorch Conference · October 21, 2026 — San Jose_
 
 <SpeakerNotes>
-The program gives us 25 minutes. Aim for about 20 minutes of slides and leave
-five for questions. Confirm the speaker handoffs before rehearsal.
+25 minutes total: ~20 of slides, 5 for Q&A. Confirm handoffs with Panagiotis and Tanima before rehearsal — P+T own the XCCL/oneCCL layer, Sam owns migration + ops.
 </SpeakerNotes>
 
 </Slide>
 
-<Slide id="why-this-work">
+{/* ── Frame: the 3-act contract ───────────────────────────────── */}
+<Slide id="frame">
 
-## Four scientific workloads, one scaling problem
+## The arc
 
-| Project | Science | Result |
+| Act | Question | You will steal |
 | --- | --- | --- |
-| [GenSLM](https://journals.sagepub.com/doi/10.1177/10943420231201154) | Viral evolution | Genome language models identified SARS-CoV-2 variants of concern |
-| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) | Protein design | Multimodal DPO at exaflop scale |
-| [AERIS](https://arxiv.org/abs/2509.13523) | Weather and climate | Global forecasts; training across 10,080 Aurora nodes |
-| [AuroraGPT](https://samf.sh/talks/2026/08/03/) | Scientific foundation models | A 2B reference run consumed 7.77T tokens; production moved to `torchtitan` |
+| **A · Needed** | What does a first-class XPU backend actually require? | The 3 breaks we fixed + the ladder that catches the next one |
+| **B · Accomplished** | How do you leave a Megatron-DeepSpeed fork for composable PyTorch? | The 50-step gate + the 768-rank proof |
+| **C · Remains** | What keeps a 14-day job alive at 60k XPUs? | Watchdog + bad-node quarantine + layered restarts |
 
-These projects did **not** all use the same training code. Together they
-exposed the backend, distributed, and operational work needed at scale.
+One science prologue, then systems all the way down.
 
 <SpeakerNotes>
-Open with the science, then explain why this is a PyTorch talk. GenSLM predates
-Aurora and is not an Intel XPU case study. AERIS also has a separate training
-stack. MProt-DPO and AuroraGPT provide the direct Aurora examples.
+Set the contract: every act promises a stealable pattern, not a science result. The abstract's three bullets map 1:1 to A/B/C.
 </SpeakerNotes>
 
 </Slide>
 
-<Slide id="genslm">
+{/* ── Prologue: why scale matters (60s) ───────────────────────── */}
+<Slide id="prologue">
 
-## GenSLM: genome-scale models for viral evolution
+## Why Aurora needed a real backend
 
-<div class="application-split genslm-layout">
-    <figure>
-        <video
-            class="genslm-video"
-            data-autoplay
-            controls
-            loop
-            muted
-            playsinline
-            preload="metadata"
-            poster="/assets/genslm-variants.jpeg"
-            aria-label="GenSLM latent-space visualization colored by sequence length"
-        >
-            <source src="/assets/genslm-latent-420p.mp4" type="video/mp4" media="(max-width: 768px)" />
-            <source src="/assets/genslm-latent-720p.mp4" type="video/mp4" />
-        </video>
-        <figcaption>
-            GenSLM latent-space visualization, colored by sequence length. Still:
-            Bharat Kale, Max Zvyagin, and Michael E. Papka, Argonne National Laboratory.
-        </figcaption>
-    </figure>
-    <div>
-        <p>Pretrained on <strong>110M+ prokaryotic gene sequences</strong>,
-        then fine-tuned on <strong>1.5M SARS-CoV-2 genomes</strong> to
-        identify variants of concern.[^genslm-paper]</p>
-        <p>The team scaled its end-to-end workflow across
-        <strong>560 Polaris nodes</strong> and Cerebras CS-2 systems.[^genslm-alcf]</p>
-        <p><strong>2022 ACM Gordon Bell Special Prize</strong> for HPC-Based
-        COVID-19 Research.[^genslm-award]</p>
-    </div>
-</div>
+| Workload | What it taught us |
+| --- | --- |
+| [GenSLM](https://journals.sagepub.com/doi/10.1177/10943420231201154) — viral genomes | Portability before Aurora existed (Polaris + Cerebras → Gordon Bell) |
+| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) — protein design | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
+| [AERIS](https://arxiv.org/abs/2509.13523) — weather diffusion | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
+| [AuroraGPT](https://samf.sh/talks/2026/08/03/) — foundation LLM | 7.77T-token MDS reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
-[^genslm-paper]: [Zvyagin et al., *GenSLMs*](https://journals.sagepub.com/doi/10.1177/10943420231201154).
-[^genslm-alcf]: [ALCF project report](https://ar22.alcf.anl.gov/science/highlights/ramanathan).
-[^genslm-award]: [Argonne Leadership Computing Facility](https://www.alcf.anl.gov/news/argonne-led-team-wins-gordon-bell-special-prize-hpc-based-covid-19-research).
+Aurora is **10,624 nodes · 63,744 tiles** — ~120k XPUs at 2 tiles/GPU.[^aurora]
+[ezpz](https://github.com/saforem2/ezpz) is the glue: same training program on Intel, NVIDIA, and AMD.
+
+[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [AuroraGPT companion talk](https://samf.sh/talks/2026/08/03/).
 
 <SpeakerNotes>
-This is the cross-hardware precedent, not a claim that GenSLM ran on Aurora's
-XPU backend. Keep the scientific result in view and move on quickly.
+Prologue in 60s: the workloads are the *reason* we needed the backend, not the talk's subject. GenSLM predates Aurora's XPU path; AERIS uses its own stack. Credit: MProt, GenSLM, and AERIS teams + ALCF + Intel.
 </SpeakerNotes>
 
 </Slide>
 
-<Slide id="mprot">
-
-## MProt-DPO: protein design at exaflop scale
-
-<div class="application-split mprot-layout">
-    <div class="mprot-media">
-        <div class="mprot-video-grid">
-            <figure>
-                <video
-                    data-autoplay
-                    controls
-                    loop
-                    muted
-                    playsinline
-                    preload="metadata"
-                    poster="/assets/mprot-designed-proteins.jpg"
-                    aria-label="MProt-DPO model attention visualization across transformer layers"
-                >
-                    <source src="/assets/mprot-attention.mp4" type="video/mp4" />
-                </video>
-                <figcaption>Model attention across layers</figcaption>
-            </figure>
-            <figure>
-                <video
-                    data-autoplay
-                    controls
-                    loop
-                    muted
-                    playsinline
-                    preload="metadata"
-                    poster="/assets/mprot-designed-proteins.jpg"
-                    aria-label="MProt-DPO protein-design latent-space visualization"
-                >
-                    <source src="/assets/mprot-latent-space.mp4" type="video/mp4" />
-                </video>
-                <figcaption>Protein-design latent visualization</figcaption>
-            </figure>
-        </div>
-        <p class="mprot-image-credit">Generated malate dehydrogenase design. Image: Arvind Ramanathan / Argonne.</p>
-    </div>
-    <div>
-        <p>MProt-DPO combines protein sequences, experimental measurements,
-        molecular simulations, and text. Preference feedback steers later
-        designs toward desired properties.</p>
-        <p><strong>3.5B</strong> parameters<br />
-        <strong>38,400</strong> XPU ranks<br />
-        <strong>4.11 EFLOP/s</strong> sustained mixed precision on Aurora.[^mprot]</p>
-    </div>
-</div>
-
-[^mprot]: [Dharuman et al., *MProt-DPO*](https://doi.org/10.1109/SC41406.2024.00013); [ALCF project summary](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design).
-
-<SpeakerNotes>
-The figure is reused from the existing MProt-DPO slides. Check the paper's
-GPU/rank terminology when speaking: the chart counts 38,400 XPU ranks across
-3,200 Aurora nodes. The result is a team accomplishment.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="aeris">
-
-## AERIS: diffusion training across Aurora
-
-<figure class="application-hero">
-    <img
-        src="/assets/aeris/science/hurricane.png"
-        alt="AERIS hurricane-track ensemble forecasts and pressure-intensity curves compared with ERA5"
-    />
-    <figcaption>
-        Hurricane Laura tracks at 7, 5, and 3 days before landfall; red shows
-        AERIS and black shows ERA5.
-    </figcaption>
-</figure>
-
-**10,080 nodes · 10.21 sustained mixed-precision EFLOP/s · 95.5% weak
-scaling efficiency.**[^aeris]
-
-The model produces global forecasts and remains stable in rollouts to
-**90 days**. It uses its own training stack.[^aeris-image]
-
-[^aeris]: [Hatanpää et al., *AERIS*](https://arxiv.org/abs/2509.13523).
-[^aeris-image]: [AERIS forecast figure and study](https://arxiv.org/abs/2509.13523).
-
-<SpeakerNotes>
-Do not present AERIS as a TorchTitan result. It is evidence that the machine,
-precision, scaling, and restart problems extend beyond an LLM stack.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auroragpt">
-
-## AuroraGPT: from reference run to a new stack
-
-<figure class="project-figure" id="auroragpt-reference-figure">
-    <img
-        src="/talks/2026-08-03/figures/mds-loss.svg"
-        alt="AuroraGPT-2B reference training loss over 7.77 trillion tokens"
-    />
-    <figcaption>
-        One continuous 2B Megatron-DeepSpeed reference run: **7.77T tokens**.
-        The production stack then moved to XPU-enabled `torchtitan`.
-    </figcaption>
-</figure>
-
-[^agpt]: [AuroraGPT production talk and run evidence](https://samf.sh/talks/2026/08/03/).
-
-<SpeakerNotes>
-This chart belongs to the Megatron-DeepSpeed reference, not the newer
-TorchTitan runs. The migration slide later explains what changed.
-</SpeakerNotes>
-
-</Slide>
-
+{/* ── A1: what a first-class backend required ─────────────────── */}
 <Slide id="backend-path">
 
-## What a first-class XPU backend required
-
-Aurora has **10,624 nodes and 63,744 Intel GPU cards**.[^aurora-scale]
+## A first-class XPU backend — the actual surface
 
 ```mermaid
 flowchart LR
-    TRAIN["torchtitan training step"]
-    TRAIN --> DEVICE["torch.xpu<br/>device API"]
-    DEVICE --> KERNELS["PyTorch ops<br/>and XPU kernels"]
+    TRAIN["torchtitan step"] --> DEVICE["torch.xpu<br/>device API"]
+    DEVICE --> KERNELS["ops + XPU kernels"]
     KERNELS --> RUNTIME["oneAPI runtime"]
     RUNTIME --> GPU["Intel GPU tiles"]
     TRAIN --> PARALLEL["DTensor<br/>FSDP2"]
     PARALLEL --> DIST["torch.distributed"]
-    DIST --> XCCL["XCCL ProcessGroup"]
+    DIST --> XCCL["XCCL (torch-ccl)<br/>ProcessGroup"]
     XCCL --> COLLECTIVE["oneCCL collectives<br/>fabric"]
     COLLECTIVE --> GPU
 ```
 
-IPEX and external oneCCL bindings filled early gaps. Native `torch.xpu` and
-XCCL moved more of the path into PyTorch; end-to-end validation still mattered.
+Every edge is a place a job can pass a unit test and still die at scale.
+IPEX shims → [native `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) + [`torch-ccl`/XCCL](https://github.com/intel/torch-ccl) + [`oneCCL`](https://github.com/oneapi-src/oneCCL) is the migration behind this diagram.
 
-[^aurora-scale]: [ALCF Aurora system and AERIS report](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights).
+[^xpu]: [PyTorch XPU docs](https://pytorch.org/docs/stable/notes/xpu.html) · [Intel torch-ccl (XCCL)](https://github.com/intel/torch-ccl) · [oneAPI oneCCL](https://github.com/oneapi-src/oneCCL) · [PyTorch distributed overview](https://pytorch.org/docs/stable/distributed.html)
 
 <SpeakerNotes>
-Panagiotis and Tanima can adjust ownership and exact PyTorch version/history
-for the Intel integration section. Distinguish API availability from measured
-performance and job reliability.
+Panagiotis/Tanima can correct ownership and timeline. Distinguish "API exists" from "collective scales and timeout fires."
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── A2: where it broke (3 concrete bugs) ────────────────────── */}
 <Slide id="xpu-gaps" size="sm">
 
-## Where the XPU path broke
+## Three XPU breaks — same pattern every time
 
-| Symptom | Cause | Status |
+| Symptom | Root cause | What we run now |
 | --- | --- | --- |
-| `torch 2.13`: `expected DTensor, got plain tensor` at FSDP wrap | Missing [pytorch#181519](https://github.com/pytorch/pytorch/pull/181519) | Fixed in `2.14.0+xpu` |
-| Nested `DeviceMesh` raises `does not support splitting` | `ProcessGroupXCCL` inherits `supportsSplitting() == false` | [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548); local shim |
-| `train_timeout_seconds` does nothing | `_set_pg_timeout` has no `xpu` branch; XCCL stores the timeout but never enforces it | Two-PR upstream plan |
+| `torch 2.13`: `expected DTensor, got plain tensor` on FSDP wrap | Missing [pytorch#181519](https://github.com/pytorch/pytorch/pull/181519) | Fixed in `2.14.0+xpu` · A/B on Sunspot job `12477670` |
+| `DeviceMesh` → `does not support splitting` | `ProcessGroupXCCL` inherits [`supportsSplitting() == false`](https://github.com/pytorch/pytorch/issues/186548) | Local shim · [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548) |
+| `train_timeout_seconds` is a no-op | `_set_pg_timeout` has no `xpu` branch — XCCL stores the timeout, never arms it | Watchdog heartbeat (Act C) + two-PR upstream |
 
-Same shape every time: **works on CUDA, inherits a default on XPU.**
+Pattern: **works on CUDA, inherits a silent default on XPU.**
 
 <SpeakerNotes>
-The 2.13 to 2.14 result is a controlled A/B on Sunspot: same tree, script,
-and node shape, only torch differing (job 12477670). The timeout row is the
-backend gap the operations slide points back to.
+The point is the *shape* of XPU gaps: not missing kernels, but missing dispatch branches. Every row is a real commit/issue, not a hypothetical.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── A3: why we had to leave the fork ───────────────────────── */}
+<Slide id="why-fork-broke">
+
+## Why the fork broke
+
+| A Megatron-DeepSpeed fork | `torchtitan` + `DTensor` + `FSDP2` |
+| --- | --- |
+| 7.77T-token reference did ship (on [`2B MDS`](https://samf.sh/talks/2026/08/03/)) | New production stack — same tokens, composable path |
+| Parallelism baked into the fork | [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) + [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) as composable primitives |
+| Every PT release → rebase + patch audit | XPU integration in upstreamable layers |
+
+The fork didn't fail scientifically. It failed operationally — it couldn't carry the XPU work without re-patching every release.
+
+<SpeakerNotes>
+The 7.77T MDS run is the *baseline*, not a failure. The migration was about maintainability and XPU composability, not scientific correctness.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── A4: one program across vendors ──────────────────────────── */}
 <Slide id="portable-training">
 
 ## One training program across vendors
@@ -285,213 +167,268 @@ dist.init_process_group(backend=backend)
 torch.set_default_device(device)
 ```
 
-In production, [`ezpz`](https://github.com/saforem2/ezpz) chooses the device,
-backend, ranks, and scheduler launch. The **model and training step** remain
-the same across Intel, NVIDIA, and AMD systems.
+The model code doesn't branch. The *launch* does — and that's [`ezpz`](https://github.com/saforem2/ezpz)'s job:
+
+[`ezpz launch`](https://ezpz.cool/cli/launch/) — ranks, bindings, hostfiles · [`ezpz test-dist`](https://github.com/saforem2/ezpz/blob/main/ezpz/test_dist.py) — smoke on any fabric · [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
 
 <SpeakerNotes>
-This is deliberately a schematic excerpt, not a complete launch recipe.
-The AMD path also uses the CUDA API in PyTorch; the launcher and environment
-still differ by machine. Show the ezpz source or a real launch command if the
-audience wants the implementation details.
+AMD uses the CUDA API in PyTorch; launch/env still differ. Show ezpz source if asked.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── A5: environment IS backend ─────────────────────────────── */}
 <Slide id="environment">
 
 ## The environment is part of the backend
 
-Collective settings from a live Sunspot production log (`12478562`):
+Live Sunspot production env (`job 12478562`):
 
 ```bash
 export CCL_PROCESS_LAUNCHER=pmix
 export CCL_OP_SYNC=1
 export CCL_ATL_SYNC_COLL=1
 export ZE_FLAT_DEVICE_HIERARCHY=FLAT
+# CCL_KVS_MODE=pmi — only on Aurora next-eval queue
 ```
 
-- `CCL_KVS_MODE=pmi` is required on the Aurora `next-eval` queue only.
-- Login and compute nodes run **different release trees** (torch `2.10` vs
-  `2.13`). A login-node probe reports a module as absent, not broken.
-- XCCL mesh ladder: **48 / 192 / 384 / 768 ranks**, all exit 0 with
-  value-validated collectives.
+Two release trees: login `torch 2.10` vs compute `2.13` — a login-node probe lies.
+
+XCCL mesh ladder that gates every change: **48 → 192 → 384 → 768 ranks**, value-checked, must exit `0`.
 
 <SpeakerNotes>
-The KVS setting came from ALCF guidance. Intel speakers may want to add or
-correct the oneCCL tuning story here.
+KVS guidance came from ALCF. Intel should correct the tuning story live; the point is that env *is* the backend at 10k nodes.
 </SpeakerNotes>
 
 </Slide>
 
-<Slide id="measure-the-backend">
+{/* ── A6: benchmark the real path ───────────────────────────── */}
+<Slide id="measure-backend">
 
 ## Benchmark the path the job actually uses
 
-1. Pin the software build, model, batch, precision, and node count.
-2. Run the same training step on each backend.
-3. Measure step time, tokens/s, memory, and collective time.
-4. Scale the node count; remeasure after every kernel or collective change.
+1. Freeze build + model + batch + precision + node count
+2. Run the **training step** (not a micro-kernel) on each backend
+3. Measure step time · tokens/s · collective time · memory
+4. Scale node count; **remeasure after every kernel or collective change**
 
-**A passing unit test tells us an operation exists.** A repeatable training
-run tells us whether it is useful at scale.
+> A passing unit test proves an op exists. A repeatable step proves it's useful at scale.
+
+This is how the `2.13 → 2.14.0+xpu` fix, the ladder, and Act C's watchdog were all validated.
 
 <SpeakerNotes>
-Ask the Intel speakers for one concrete XCCL collective comparison or tuning
-result. Do not invent a speedup. The Genesis profiling deck has real Aurora
-traces if a measurement visual is needed.
+Don't invent a speedup. The Genesis profiling deck has real Aurora traces if a visual is needed.
 </SpeakerNotes>
 
 </Slide>
 
-<Slide id="migration" size="sm">
+{/* ── B1: what moved ─────────────────────────────────────────── */}
+<Slide id="what-moved" size="sm">
 
-## We moved AuroraGPT from MDS to `torchtitan`
+## What moved: MDS → `torchtitan`
 
-| Megatron-DeepSpeed fork | `torchtitan` + `DTensor` + FSDP2 |
-| --- | --- |
-| Production reference run | New production training stack |
-| Parallelism in a specialized fork | Composable PyTorch parallelism |
-| Local patches to maintain | XPU integration plus upstream sync |
+| Layer | Before (MDS fork) | After ([`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz)) |
+| --- | --- | --- |
+| Parallelism | Custom tensor-parallel + pipeline in fork | [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) + [`DTensor`](https://pytorch.org/docs/stable/distributed.tensor.html) sharding |
+| Collectives | DeepSpeed's NCCL assumptions | [XCCL](https://github.com/intel/torch-ccl) (`ProcessGroupXCCL`) → [oneCCL](https://github.com/oneapi-src/oneCCL) |
+| Kernels | Fork-local fused kernels | Upstreamable XPU kernels via `torch.xpu` |
+| Launch | Fork's scheduler coupling | [`ezpz`](https://github.com/saforem2/ezpz) — [`ezpz launch`](https://ezpz.cool/cli/launch/) + [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
+| Checkpoint | DeepSpeed engine's save | [`torch.distributed.checkpoint`](https://pytorch.org/docs/stable/distributed.checkpoint.html) (DCP) |
 
-The migration meant testing **correctness, throughput, and restart behavior**
-at every layer, from fused kernels and collectives through orchestration.
+Not a rebrand — a different place for every decision to live.
 
 <SpeakerNotes>
-The reference run established a scientific baseline. We did not replace it
-with an unmeasured framework switch. The fork still has a maintenance cost;
-avoid implying every XPU change is already upstream.
+The table is the map. The next two slides are how we knew the map was correct.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── B2: testing at every layer ─────────────────────────────── */}
 <Slide id="layer-tests" size="sm">
 
 ## Testing at every layer
 
-| Layer | Check |
-| --- | --- |
-| Numerics | 50-step loss baseline on every upstream sync; `±0.10` on final loss and last-10 mean |
-| Collectives | XCCL ladder to 768 ranks, values verified |
-| Parallelism | TP1 / TP2 / MoE on Aurora; parity on Sunspot |
-| Portability | One gate on Aurora, Sunspot, Polaris, and Perlmutter |
-| Orchestration | Failover harness, 9 fixtures |
+| Layer | Gate | Link |
+| --- | --- | --- |
+| Numerics | 50-step loss — `±0.10` on final + last-10 mean | [Production loss figure](https://samf.sh/talks/2026/08/03/) |
+| Collectives | XCCL ladder `48 → 768` ranks, value-checked | [`ezpz/test_dist.py`](https://github.com/saforem2/ezpz/blob/main/ezpz/test_dist.py) |
+| Parallelism | TP1 / TP2 / MoE on Aurora; parity on Sunspot | [`experiments/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) |
+| Portability | One gate on Aurora + Sunspot + Polaris + Perlmutter | [`ezpz`](https://github.com/saforem2/ezpz) |
+| Orchestration | Failover harness — 9 fixtures | [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 
-The loss baseline catches changes that import and parallelize cleanly but
-break gradients.
+The `±0.10` tolerance sits just above the `~0.05` shuffle noise of the streaming loader — tight enough to catch a bad gradient, loose enough to not flake on data order.
 
 <SpeakerNotes>
-The tolerance sits above the roughly 0.05 run-to-run shuffle noise of the
-streaming data loader.
+The loss gate is the hero: it caught silent gradient bugs that loaded, sharded, and even timed correctly.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── B3: does the new stack train? ──────────────────────────── */}
 <Slide id="migration-evidence">
 
-## Validate the new stack with training runs
+## Does the new stack train? Production says yes.
 
 <div class="project-figure">
     <img
         src="/talks/2026-08-03/figures/all-production-loss.svg"
-        alt="AuroraGPT 2B and 20B training loss over tokens for the MDS reference and TorchTitan production runs"
+        alt="AuroraGPT 2B and 20B training loss over tokens — MDS reference vs torchtitan production runs"
     />
 </div>
 
-The 2B reference and newer 2B/20B `torchtitan` runs share one tokens axis.
-The `torchtitan` 2B runs at 256 and 512 nodes both completed their
-**4.674T**-token target. Different models and data mixes make this a production record, not an isolated
-framework benchmark.
+`torchtitan` 2B at 256 and 512 nodes both hit **4.674T** tokens. Not a benchmark — a continuation of the 7.77T `MDS` reference with a new mix.
+
+[SAMF companion — AuroraGPT on 50k ranks](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 
 <SpeakerNotes>
-The source figure includes different model sizes and data mixtures. Use it as
-evidence that the new stack trains real production models, not as a claim of
-TorchTitan being faster or better by itself. Update the figure before the
-conference if newer runs change the story.
+Don't claim torchtitan is faster. Claim it trains real production models with the same science baseline.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── C1: a healthy process can still be a dead job ─────────── */}
 <Slide id="operations">
 
 ## A healthy process can still be a dead job
 
-**AuroraGPT job `8505298`:** training reached step 37, then stopped making
-progress without a traceback. The stdout-idle watchdog fired after 30
-minutes; the wrapper swapped a node and relaunched. The second attempt
-reached step 296 before walltime.[^hang]
+**Job `8505298`** — step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
 
 ```mermaid
 flowchart LR
     TRAIN["step 37"] -->|"stdout idle 30 min"| WATCH["watchdog<br/>exit 124"]
     WATCH --> TRACE{"bad host in log?"}
     TRACE -->|yes| EXCLUDE["exclude host"]
-    TRACE -->|no| SWAP["blind swap<br/>one spare node"]
-    EXCLUDE --> RETRY["retry from checkpoint"]
+    TRACE -->|no| SWAP["blind swap<br/>1 spare"]
+    EXCLUDE --> RETRY["retry from ckpt"]
     SWAP --> RETRY
-    RETRY -->|"step 296 before walltime"| DONE["attempt recovered"]
+    RETRY -->|"step 296"| DONE["recovered"]
 ```
 
-Recovery has three scopes: **process retry · node failover · scheduler
-resubmit**. Checkpointing determines how much work a restart loses.
+The backend bug that enables this: `_set_pg_timeout` has no `xpu` branch — timeout is stored, never enforced.[^hang]
 
-[^hang]: [Production failover incident writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md).
+[^hang]: [Failover incident — 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md)
 
 <SpeakerNotes>
-This is a documented production incident, not a hypothetical. Make clear that
-the watchdog observed missing stdout progress, not a reliable collective
-timeout. The "Where the XPU path broke" slide names that backend gap.
+Watchdog measures stdout progress, not the collective timeout. The XPU gaps slide names the missing branch.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── C2: failure taxonomy ───────────────────────────────────── */}
+<Slide id="failure-taxonomy">
+
+## Failure taxonomy at ~120k XPUs
+
+| Mode | Signal | What helps | What doesn't |
+| --- | --- | --- | --- |
+| **Silent hang** | Stdout stalls, no error | Watchdog on log progress | `_set_pg_timeout` (`xpu` never arms) |
+| **Lost collective** | Rank times out in `XCCL` | Node exclude + retry | Retrying on the same host |
+| **Crash / OOM** | Traceback + exit code | Process restart from ckpt | Scheduler resubmit alone |
+| **Stale FS / DCP** | Checkpoint read stalls | Async save + local staging | Sync save on shared FS at 10k ranks |
+
+At this scale, **every job is a test of the recovery path**.
+
+<SpeakerNotes>
+The taxonomy is the mental model. The next two slides are the two rows you hit weekly.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── C3: layered restarts ───────────────────────────────────── */}
+<Slide id="layered-restarts">
+
+## Layered restarts — the actual system
+
+| Layer | Scope | Trigger | Cost of being wrong |
+| --- | --- | --- | --- |
+| Process | 1 rank | Crash / OOM | Tokens since last ckpt |
+| Node | 12 XPUs | Hang on one host | 1 node's work + re-shard |
+| Allocation | 10k nodes | Bad FS / scheduler | Whole-job walltime |
+
+`ezpz` handles the outer two: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. DCP handles the inner save.
+
+Long jobs aren't an ops concern bolted on — they **are** the product. Design them first.
+
+<SpeakerNotes>
+The re-shard is not free — DeviceMesh rebuild is part of the cost model. The checkpoint talk at 2026/08/03 has the interval math.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── C4: what's still hard ──────────────────────────────────── */}
 <Slide id="remaining-work">
 
-## What still needs work
+## What remains
 
-| Layer | Remaining gap |
-| --- | --- |
-| Kernels | Fused operations across the model and optimizer path |
-| Collectives | Tuning, diagnostics, and reliable timeouts |
-| Checkpoints | Async saves without saturating the shared filesystem |
-| Operations | Progress detection, bad-node failover, layered restarts |
+| Layer | Gap | What we'd steal |
+| --- | --- | --- |
+| Kernels | Fused attn + MLP + optimizer across XPU | A composable kernel story that survives `torch.compile` |
+| Collectives | Tuning, diagnostics, **real timeouts** | XCCL timeout enforcement + `DTensor` split fix upstream |
+| Checkpoints | Async DCP at 10k ranks without FS collapse | Local staging → async flush |
+| Operations | Bad-node detection before walltime burns | Heartbeat at the `ProcessGroup` level, not stdout grep |
 
-The next accelerator team should test these with **a real, restartable
-training job**, not just a collection of isolated kernels.
+If you bring up the next accelerator, **test it with a restartable training job** — not isolated kernels.
+
+[^dcp]: [Distributed Checkpoint (DCP)](https://pytorch.org/docs/stable/distributed.checkpoint.html) · [torch.compile on XPU](https://pytorch.org/docs/stable/torch.compiler.html)
 
 <SpeakerNotes>
-Leave time to distinguish what works today from what is in progress. The
-checkpoint problem is especially visible at many ranks sharing a filesystem.
+Be honest about what's upstream vs local shim. The "test with a real job" line is the talk's most actionable takeaway.
 </SpeakerNotes>
 
 </Slide>
 
+{/* ── Takeaway ───────────────────────────────────────────────── */}
 <Slide id="takeaways">
 
 ## What we would do again
 
-1. Bring up the PyTorch device and distributed path together.
-2. Keep one model program across vendors; isolate launch and backend choices.
-3. Preserve a scientific baseline through every framework migration.
-4. Measure the whole step before tuning kernels or collectives.
-5. Design checkpoint and recovery paths before the long run.
+1. **Backend + distributed together** — `torch.xpu` without `XCCL` is a demo, not a trainer.
+2. **One program, many launches** — [`ezpz`](https://github.com/saforem2/ezpz) owns the schedule, the model doesn't branch.
+3. **A science baseline that survives the migration** — 7.77T → 4.674T on the same tokens axis.
+4. **Measure the step, not the kernel** — the whole training step, at the job's real scale.
+5. **Recovery before throughput** — checkpoint + watchdog + quarantine before you tune.
 
-**GenSLM · MProt-DPO · AERIS · AuroraGPT** show what scientific teams can
-build when the accelerator and the training operation both hold up.
+**GenSLM · MProt-DPO · AERIS · AuroraGPT** — not case studies, but the workloads that forced each layer.
 
 <SpeakerNotes>
-Finish on the practices another accelerator team can copy. Credit the
-project teams, ALCF, Intel, and PyTorch contributors verbally or on a final
-acknowledgment slide once the co-speakers confirm names.
+End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── QR: links ─────────────────────────────────────────────── */}
+<Slide id="links">
+
+## Steal this
+
+<div class="links-grid">
+
+| Stack | Link |
+| --- | --- |
+| [`ezpz`](https://github.com/saforem2/ezpz) | [Launch](https://ezpz.cool/cli/launch/) · [Checkpoint](https://ezpz.cool/guides/checkpoint-restart/) · [All docs](https://ezpz.cool) |
+| [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) | [Experiments](https://github.com/saforem2/torchtitan/tree/ezpz/torchtitan/experiments/ezpz) · [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
+| PyTorch XPU | [`torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) · [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) · [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) · [DCP](https://pytorch.org/docs/stable/distributed.checkpoint.html) |
+| Distributed | [`torch-ccl` / XCCL](https://github.com/intel/torch-ccl) · [`oneCCL`](https://github.com/oneapi-src/oneCCL) · [torch.distributed](https://pytorch.org/docs/stable/distributed.html) |
+| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news — 120k-XPU scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
+| Science | [AuroraGPT companion](https://samf.sh/talks/2026/08/03/) · [AERIS](https://arxiv.org/abs/2509.13523) · [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) · [GenSLM](https://journals.sagepub.com/doi/10.1177/10943420231201154) |
+
+</div>
+
+_All links are in the deck at [`samf.sh/talks/2026/10/21`](https://samf.sh/talks/2026/10/21)._
+
+<SpeakerNotes>
+Point at this slide. Stay on it for Q&A — every project name is clickable and every claim has a receipt.
 </SpeakerNotes>
 
 </Slide>
 
 <style>{`
-  #why-this-work table { font-size: 0.86em; }
-  #why-this-work table td:first-child { white-space: nowrap; }
-  #migration table { width: 100%; table-layout: fixed; }
-  #migration table th, #migration table td { width: 50%; }
+  #frame table { font-size: 0.9em; }
+  #prologue table { font-size: 0.86em; }
+  #prologue table td:first-child { white-space: nowrap; }
+  #why-fork-broke table, #what-moved table { width: 100%; table-layout: fixed; }
+  #why-fork-broke table th, #why-fork-broke table td,
+  #what-moved table th, #what-moved table td { width: 50%; }
   .project-figure { display: flex; flex-direction: column; align-items: center; width: 100%; max-height: 13lh; margin: 0; }
   .project-figure img { width: 100%; max-height: 13lh; object-fit: contain; }
   .project-figure figcaption, .application-hero figcaption, .application-split figcaption { margin-top: 0.3lh; font-size: 0.66em; color: var(--foreground2); }
@@ -507,21 +444,15 @@ acknowledgment slide once the co-speakers confirm names.
   .mprot-video-grid video { aspect-ratio: 16 / 10; }
   .mprot-video-grid figcaption { min-height: 2.4lh; }
   .mprot-image-credit { margin: 0.3lh 0 0; font-size: 0.58em; color: var(--foreground2); }
-  .genslm-layout { grid-template-columns: 1.3fr 0.7fr; }
-  .genslm-layout video { max-height: 15lh; }
-  .mprot-layout { grid-template-columns: 1fr; gap: 0.5lh; }
-  .mprot-video-grid video { max-height: 13lh; }
   #auroragpt-reference-figure { max-height: 17lh; }
   #auroragpt-reference-figure img { max-height: 15lh; }
   #operations .mermaid { width: 100%; }
-  .path-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1lh 2ch; }
-  .path-grid div { display: flex; flex-direction: column; gap: 0.25lh; padding: 0.6lh 1.5ch; border: 1px solid var(--foreground2); border-radius: 0.5ch; }
-  .path-grid span { font-size: 0.85em; }
-  .recovery-flow { display: flex; align-items: center; justify-content: space-between; gap: 1ch; margin: 2lh 0; font-size: 1.15em; font-weight: 700; }
+  .links-grid { width: 100%; }
+  .links-grid table { width: 100%; font-size: 0.82em; }
+  .links-grid td:first-child { white-space: nowrap; font-weight: 600; }
   @media (max-width: 768px) {
-    #why-this-work table { font-size: 0.7em; }
-    .path-grid { grid-template-columns: 1fr; }
-    .recovery-flow { flex-wrap: wrap; justify-content: center; }
+    #prologue table, #frame table { font-size: 0.7em; }
+    .links-grid table { font-size: 0.68em; }
     .application-split { grid-template-columns: 1fr; }
   }
 `}</style>
