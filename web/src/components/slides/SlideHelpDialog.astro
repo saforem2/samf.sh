@@ -91,16 +91,28 @@ const deckThemeOptions: Record<string, string> = {
             </row>
         </section>
 
-        {Object.keys(deckThemeOptions).length > 0 && (
-            <section class="slide-help-section">
-                <span is-="badge" class="shs-title shs-title-purple">▣ Deck</span>
-                <row class="shn-theme-buttons" gap-="0">
-                    {Object.entries(deckThemeOptions).map(([key, value]) => (
-                        <button data-theme-dropdown="true" data-theme-option={key} aria-selected="false" class="shn-theme-chip">{value}</button>
-                    ))}
-                </row>
-            </section>
-        )}
+        {
+            Object.keys(deckThemeOptions).length > 0 && (
+                <section class="slide-help-section">
+                    <span is-="badge" class="shs-title shs-title-purple">
+                        ▣ Deck
+                    </span>
+                    <row class="shn-theme-buttons" gap-="0">
+                        {Object.entries(deckThemeOptions).map(
+                            ([key, value]) => (
+                                <button
+                                    data-theme-dropdown="true"
+                                    data-theme-option={key}
+                                    aria-selected="false"
+                                    class="shn-theme-chip">
+                                    {value}
+                                </button>
+                            ),
+                        )}
+                    </row>
+                </section>
+            )
+        }
 
         <section class="slide-help-section">
             <span is-="badge" class="shs-title shs-title-blue"

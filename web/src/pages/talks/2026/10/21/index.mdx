@@ -60,11 +60,14 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 | | |
 | --- | --- |
-| **ALCF** | One of three DOE computing facilities (`ALCF` at Argonne, `OLCF` at Oak Ridge, `NERSC` at Berkeley) — runs large-scale science on `Aurora` (`10,624` nodes · `63,744` tiles) and `Polaris` for the open research community |
-| **Aurora** | DOE's exascale pathfinder — Intel GPUs at scale before the `XPU` story was settled in upstream PyTorch. Every science team that trained on `Aurora` hit the same missing backend at the same time |
-| **Why PyTorch** | The framework every science team picked anyway — genomics, proteins, weather, LLMs. This talk is how it caught up to the machine |
+| [**ALCF**](https://alcf.anl.gov) | DOE leadership computing — runs [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` for open science |
+| [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `63,744` tiles of Intel XPU — up before `torch.xpu` existed |
+| **This talk** | Every team picked PyTorch anyway. How we closed the gap |
 
-Aurora made the `XPU` gap impossible to ignore. The science in Act A is why it existed in the first place.
+<figure class="context-hero">
+<img src="/talks/2026-10-21/figures/aurora-hero.jpg" alt="Aurora's HPE Cray EX racks at the Argonne Leadership Computing Facility" />
+<figcaption>Aurora's HPE Cray EX rows at the ALCF — 10,624 nodes, 63,744 tiles. Photo: [Argonne / ALCF](https://www.alcf.anl.gov/sites/default/files/2025-08/34302D_110_LCF_Aurora_1600x900_0.jpg).</figcaption>
+</figure>
 
 <SpeakerNotes>
 ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, not internal. Aurora is the exascale poster child: 10k nodes, Intel's first data-center GPU at DOE scale, and up before the XPU surface was ported in PyTorch. That collision — new hardware, same PyTorch — is the talk's reason to be. One minute, no deeper.
@@ -77,7 +80,7 @@ ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, 
 
 ## The arc
 
-| Act | Question | You will steal |
+| Act | Question | Reusable pattern |
 | --- | --- | --- |
 | **A · Needed** | What does a first-class XPU backend actually require? | The 3 breaks we fixed + the ladder that catches the next one |
 | **B · Accomplished** | How do you leave a Megatron-DeepSpeed fork for composable PyTorch? | The 50-step gate + the 768-rank proof |
@@ -87,7 +90,7 @@ ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, 
 <div class="frame-footer-spacer"></div>
 
 <SpeakerNotes>
-Set the contract: every act promises a stealable pattern, not a science result. The abstract's three bullets map 1:1 to A/B/C.
+Set the contract: every act promises a reusable pattern, not a science result. The abstract's three bullets map 1:1 to A/B/C.
 </SpeakerNotes>
 
 </Slide>
@@ -121,20 +124,22 @@ Prologue in 60s: the workloads are the *reason* we needed the backend, not the t
 ## When the backend landed
 
 ```mermaid
-%%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:0.95rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.9rem!important}.sectionTitle{font-size:1rem!important;font-weight:700}.tick text{font-size:1.05rem!important}.grid .tick line{opacity:0.42}.section0{fill:#f0eaf6!important}.section1{fill:#e8f6f8!important}.done,.active{fill:#e2ddf0!important;stroke:#3532a8!important}.crit{fill:#ee3b24!important;stroke:#c02e1c!important}.milestone{fill:#5149b8!important;stroke:#3532a8!important}'}}%%
+%%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:0.95rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.9rem!important}.sectionTitle{font-size:1rem!important;font-weight:700}.tick text{font-size:1.05rem!important}.grid .tick line{stroke:var(--background3)!important;opacity:0.6}.section0{fill:color-mix(in oklch,var(--background1) 72%,transparent)!important}.section1{fill:color-mix(in oklch,var(--blue) 38%,transparent)!important}.done,.active{fill:color-mix(in srgb,var(--blue) 72%,white 28%)!important;stroke:var(--blue)!important}.crit{fill:var(--red)!important;stroke:var(--red)!important}.task.crit text{fill:#fff!important}.task.crit + text,.task.critText{fill:#fff!important}.milestone{fill:var(--red)!important;stroke:var(--red)!important}'}}%%
 gantt
     title Intel PyTorch and Aurora milestones
     dateFormat  YYYY-MM-DD
     axisFormat  %Y
 
     section Intel and PyTorch
-    IPEX (shim era)                    :i1, 2023-01-01, 2024-03-27
+    IPEX — before native XPU           :i1, 2023-01-01, 2024-03-27
     PyTorch Fdn Premier (Intel)        :milestone, i2, 2023-08-15, 1d
     PT 2.4 XPU prototype               :milestone, i3, 2024-07-24, 1d
     PT 2.5 native Intel GPU            :milestone, i4, 2024-10-17, 1d
     PT 2.7 eager/compile parity        :milestone, i5, 2025-04-23, 1d
     PT 2.8 XCCL ProcessGroup           :milestone, i6, 2025-08-06, 1d
     IPEX EOL                           :crit, i7, 2024-03-31, 1d
+    PT 2.9                             :milestone, i8, 2025-10-15, 1d
+    PT 2.10 + PTC talk                 :milestone, crit, i9, 2026-01-15, 1d
 
     section Aurora and science
     Install complete 10624 nodes       :milestone, a1e, 2023-06-22, 1d
@@ -143,10 +148,12 @@ gantt
     MProt-DPO 38k 4.1 EFLOP/s           :milestone, a5, 2024-10-15, 1d
     Aurora in production               :milestone, a6, 2025-01-27, 1d
     Megatron-DeepSpeed                 :a7, 2024-08-01, 2025-03-15
-    torchtitan/ezpz                      :crit, a8, 2025-04-01, 2025-10-21
+    torchtitan/ezpz                      :crit, a8, 2025-04-06, 2026-01-15
+    AERIS 10k nodes 10 EFLOP/s         :milestone, a9, 2025-09-15, 1d
+    AuroraGPT on torchtitan            :milestone, a10, 2026-01-10, 1d
 ```
 
-<span class="timeline-caption">Condensed from the [two-timelines post](https://samf.sh/posts/2026/01/10/#the-two-timelines) plus verified Aurora dates — the two lanes overlap: Intel shipped the `XPU` surface in 4 releases, Aurora's jobs forced it to scale.</span>
+<span class="timeline-caption">From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates — the two lanes overlap: Intel shipped the `XPU` surface in 4 releases, Aurora's jobs forced it to scale.</span>
 
 <SpeakerNotes>
 60s. The punchline: Intel compressed 14 years of AMD-style work into 5 PT releases (2.4→2.8), and Aurora's science jobs landed right as that window opened — GenSLM before the XPU path, MProt/AERIS during it, AuroraGPT straddling the fork→titan cutover. Every PT milestone here has a oneCCL/env fix to tell if asked.
@@ -214,7 +221,7 @@ Not missing kernels — missing dispatch branches. Every row is a real commit an
 
 | [Megatron-DeepSpeed fork](https://github.com/microsoft/Megatron-DeepSpeed)[^mds] | [`torchtitan`](https://github.com/pytorch/torchtitan) + `DTensor` + `FSDP2` |
 | --- | --- |
-| 7.77T-token reference did ship (on [`2B MDS`](https://samf.sh/talks/2026/08/03/)) | New production stack — same tokens, composable path |
+| `2B` to `7.77T` tokens shipped on the fork ([Aug talk](https://samf.sh/talks/2026/08/03/)) | Same run continues on `torchtitan` — `4.67T` at `256`→`512` nodes |
 | Parallelism baked into the fork | [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) + [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) as composable primitives |
 | Every PT release → rebase + patch audit | XPU integration in upstreamable layers · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
@@ -233,36 +240,24 @@ The 7.77T MDS run is the *baseline*, not a failure. The migration was about main
 
 ## One training program across vendors
 
-<div class="portable-grid">
-<div class="portable-quad">
+<div class="portable-demo">
 
-- [`ezpz launch`](https://ezpz.cool/cli/launch/): ranks, bindings, hostfiles
-- [`ezpz test`](https://github.com/saforem2/ezpz): smoke on any fabric
-- [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
+<div class="portable-demo-col">
 
-</div>
-<div class="portable-quad">
+**Hello world:**
 
 ```python
 # example.py
 import ezpz
 rank = ezpz.setup_torch()
 world_size = ezpz.get_world_size()
+dev = ezpz.get_torch_device()      # {xpu, cuda, cpu, ...}
+
+# FSDP2 by default — accepts DeviceMesh
+model = ezpz.wrap_model(torch.nn.Linear(128, 10).to(dev))
+
 print(f"Hello from {rank}/{world_size}!")
 ```
-
-</div>
-<div class="portable-quad">
-
-| Machine | Stack | Scheduler | Lab |
-| --- | --- | --- | --- |
-| Aurora | `XPU` + `XCCL` | `PBS` | `ANL` |
-| Polaris | `CUDA` + `NCCL` | `PBS` | `ANL` |
-| Perlmutter | `CUDA` + `NCCL` | `SLURM` | `LBNL` |
-| Frontier | `AMD` + `RCCL` | `SLURM` | `ORNL` |
-
-</div>
-<div class="portable-quad">
 
 ```bash
 $ ezpz launch python3 example.py
@@ -271,11 +266,65 @@ Hello from rank 1/24!
 # ... etc
 ```
 
-</div>
+**Other examples:**
+
+```bash
+    # your own script — no changes needed
+    ezpz launch python3 your_training_script.py
+
+    # full HF model + dataset via ezpz examples
+    ezpz launch python3 -m ezpz.examples.fsdp_tp \
+        --dataset=allenai/olmo-mix-1124
+        --model=meta-models/Muse-Spark-Open-816B-A42B \
+        --local-batch-size=1
+        # ...etc
+    ```
+
 </div>
 
+<div class="portable-demo-col">
+
+Same command on every machine — [`ezpz`](https://github.com/saforem2/ezpz) picks the backend.
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
+flowchart LR
+    EZ(["<span style='font-weight:700'>ezpz launch</span>"])
+    EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
+    EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
+    EZ --> PM["<i>SLURM · NVIDIA</i><br/><span style='font-weight:700'>Perlmutter</span>"]
+    EZ --> FRONTIER["<i>SLURM · AMD</i><br/><span style='font-weight:700'>Frontier</span>"]
+    EZ --> MAC["<span style='font-weight:700'>Multi-CPU</span>"]
+    EZ --> MPS["<i>MPS · Apple</i><br/><span style='font-weight:700'>Multi-MPS*</span>"]
+
+    classDef hub        fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef aurora     fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
+    classDef polaris    fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
+    classDef perlmutter fill:#06b6d408,stroke:#06b6d4,color:#06b6d4,stroke-width:1.5px
+    classDef frontier   fill:#ef444408,stroke:#ef4444,color:#ef4444,stroke-width:1.5px
+    classDef mac        fill:#a78bfa08,stroke:#a78bfa,color:#a78bfa,stroke-width:1.5px
+    classDef mps        fill:#f59e0b08,stroke:#f59e0b,color:#d97706,stroke-width:1.5px
+    class EZ hub
+    class AURORA aurora
+    class POLARIS polaris
+    class PM perlmutter
+    class FRONTIER frontier
+    class MAC mac
+    class MPS mps
+```
+*\*`mccl` — [mps-ddp/mccl](https://github.com/mps-ddp/mccl): `MPS` on Apple silicon — `ezpz launch` even on a laptop.*
+
+</div>
+
+</div>
+
+<style>{`
+  #portable-training .portable-demo-col em { font-size: 0.75em; color: var(--foreground2); line-height: 1.3; display: block; margin-block-start: 0.15lh; }
+  #portable-training .portable-demo { align-items: start; }
+`}</style>
+
 <SpeakerNotes>
-`AMD` uses the `CUDA` API in `PyTorch`; launch and env still differ. Show `ezpz` source if asked.
+`AMD` uses the `CUDA` API in `PyTorch`; launch and env still differ. Show `ezpz` source if asked. The right column's point: any script, any HF dataset/model — same `ezpz launch` on Aurora, Polaris, Perlmutter, Frontier, and now Apple MPS via mccl.
 </SpeakerNotes>
 
 </Slide>
@@ -361,7 +410,7 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
 
 `torchtitan` 2B at 256 and 512 nodes both hit **4.674T** tokens. Not a benchmark — a continuation of the 7.77T `MDS` reference with a new mix.
 
-[SAMF companion — AuroraGPT on 50k ranks](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
+For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_ — ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 
 <SpeakerNotes>
 `torchtitan` trains real production models on the same science baseline — not a throughput claim.
@@ -434,8 +483,39 @@ The taxonomy is the mental model. The next two slides cover the two rows you hit
 
 Long jobs are not an ops concern bolted on — they **are** the product. Design them first.
 
+<div class="layered-visual">
+
+```mermaid
+flowchart TB
+    subgraph job["📋 JOB scope: PBS · hours"]
+        JOB_TXT["<i>crash / walltime</i> →<br/><span style='font-weight:700'>chained resubmit</span>"]
+        subgraph node["🖥 NODE scope: failover wrapper · minutes"]
+            NODE_TXT["<i>bad host detected</i> →<br/><span style='font-weight:700'>swap from spare pool</span>"]
+            subgraph proc["⏱ PROCESS scope: ezpz launch · seconds"]
+                PROC_TXT["<i>stdout idle ≥ N s</i> →<br/><span style='font-weight:700'>kill + backoff</span>"]
+            end
+        end
+    end
+    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
+    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
+    classDef procTxt fill:transparent,stroke:none,color:#1da811
+    class JOB_TXT jobTxt
+    class NODE_TXT nodeTxt
+    class PROC_TXT procTxt
+    class job jobC
+    class node nodeC
+    class proc procC
+```
+
+<span class="layered-visual-caption">Nested recovery scopes — adapted from the [August talk](https://samf.sh/talks/2026/08/03/#32) (`#32`). Inner loops catch most failures; outer loops catch the rest.</span>
+
+</div>
+
 <SpeakerNotes>
-Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The companion talk at `2026/08/03` has the interval math.
+Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The companion talk at `2026/08/03` has the interval math. The nested diagram is the same one from the August talk (#32) — three scopes, inner→outer time horizon.
 </SpeakerNotes>
 
 </Slide>
@@ -445,7 +525,7 @@ Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The com
 
 ## What remains
 
-| Layer | Gap | What we'd steal |
+| Layer | Gap | What's needed |
 | --- | --- | --- |
 | Kernels | Fused attn + MLP + optimizer across XPU | A composable kernel story that survives `torch.compile` |
 | Collectives | Tuning, diagnostics, **real timeouts** | `XCCL` timeout enforcement + `DTensor` split fix upstream |
@@ -478,7 +558,7 @@ Honest about upstream vs local shim. The last line is the most actionable takeaw
 _Patterns for running PyTorch at scale on a new accelerator._
 
 <SpeakerNotes>
-End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links. Closing line mirrors the abstract verbatim for reviewers scoring against the submission.
+End on reusable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links. Closing line mirrors the abstract verbatim for reviewers scoring against the submission.
 </SpeakerNotes>
 
 </Slide>
@@ -486,7 +566,7 @@ End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; th
 {/* ── QR: links ─────────────────────────────────────────────── */}
 <Slide id="links">
 
-## Steal this
+## Links and further reading
 
 <div class="links-grid">
 
@@ -501,10 +581,68 @@ End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; th
 
 </div>
 
+**Elsewhere by Sam:** [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) (source chronology for the timeline) · [Running 50k Python processes on Aurora with `ezpz yeet`](https://samf.sh/posts/2026/05/01/) · [_Pre-Training LLMs on a Supercomputer_ — ATPESC Aug 2026](https://samf.sh/talks/2026/08/03/) · [BlendCorpus + TorchTitan @ ALCF](https://samf.sh/posts/2025/09/12/) · _Upcoming:_ SC publication on the AuroraGPT training system
+
 _All links are in the deck at [`samf.sh/talks/2026/10/21`](https://samf.sh/talks/2026/10/21)._
 
 <SpeakerNotes>
-Point at this slide. Stay on it for Q&A — every project name is clickable and every claim has a receipt.
+Point at this slide. Stay on it for Q&A — every project name is clickable and every claim has a receipt. Call out the elsewhere-by-Sam line if time: the two blog posts are the deeper write-ups behind the timeline and the Lustre/yeet sections.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── Acknowledgements ─────────────────────────────────────── */}
+<Slide id="acks">
+
+## Acknowledgements
+
+This work used resources of the **Argonne Leadership Computing Facility**, a DOE Office of Science user facility at Argonne National Laboratory, supported under contract **DE-AC02-06CH11357**.
+
+**Aurora** was built in partnership with **HPE** and **Intel** — Intel Max 1550 XPU (`PVC`), `oneAPI` / `oneCCL` / `XCCL`, and the upstream `torch.xpu` work tracked in Act A. Thanks to the ALCF operations and support teams, the `PyTorch` and `torchtitan` maintainers, and the science teams behind `GenSLM`, `MProt-DPO`, `AERIS`, and `AuroraGPT`.
+
+<div class="acks-grid">
+
+| | |
+| --- | --- |
+| Facility | [ALCF](https://www.alcf.anl.gov) · [Aurora](https://www.alcf.anl.gov/aurora) · [Polaris](https://www.alcf.anl.gov/polaris) |
+| Partners | [HPE](https://www.hpe.com) · [Intel](https://www.intel.com) (Max 1550 / `oneAPI` / `oneCCL`) · [PyTorch Foundation](https://pytorch.org/foundation) |
+| Teams | `GenSLM` · `MProt-DPO` · `AERIS` · `AuroraGPT` — see [Links](#links) for papers |
+
+</div>
+
+<SpeakerNotes>
+Read the DOE contract line — it's required on any ALCF-acknowledged talk. Keep it brief; the names are on screen.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── Get time on Aurora ───────────────────────────────────── */}
+<Slide id="allocations">
+
+## Want to run on Aurora?
+
+Aurora and Polaris are **open to any researcher** through DOE's allocation programs — not just Argonne staff.
+
+<div class="alloc-grid">
+
+| Program | Best for | Cadence |
+| --- | --- | --- |
+| [**INCITE**](https://www.doeleadershipcomputing.org/proposal/call-for-proposals/) | Large, peer-reviewed science campaigns | Annual |
+| [**ALCC**](https://www.doeleadershipcomputing.org/proposal/call-for-proposals/) | DOE-mission-aligned projects | Annual |
+| [**Director's Discretionary (DD)**](https://www.alcf.anl.gov/directors-discretionary-allocation-program) | Porting, benchmarking, getting started — **start here** | Rolling, weeks |
+
+</div>
+
+If you'd like to get access, **reach out** — happy to help scope a DD proposal or connect you with ALCF staff. Find me after the talk or at `samf@anl.gov` / [@saforem2](https://github.com/saforem2).
+
+<div class="alloc-links">
+
+[ALCF allocations overview](https://www.alcf.anl.gov/science/allocations) · [DD program details](https://www.alcf.anl.gov/directors-discretionary-allocation-program) · [ALCF support center](https://www.alcf.anl.gov/support-center)
+
+</div>
+
+<SpeakerNotes>
+The pitch: INCITE/ALCC are the big annual calls, but DD is the on-ramp — a few hundred node-hours to port, benchmark, or reproduce something from this talk. Encourage people to come talk after.
 </SpeakerNotes>
 
 </Slide>
@@ -558,30 +696,39 @@ Point at this slide. Stay on it for Q&A — every project name is clickable and 
   .portable-split > div { min-width: 0; }
   .portable-split > div > ul { margin-block: 0.35lh 0; font-size: 0.76em; }
   .portable-split > div > ul > li { margin-block: 0.12lh 0; }
-  .portable-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5lh 2ch; width: 100%; align-items: start; }
-  .portable-quad { min-width: 0; }
-  #portable-training .portable-grid { gap: 0.4lh 2ch; }
+  .portable-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5ch; width: 100%; align-items: start; }
+  .portable-demo-col { min-width: 0; }
+  .portable-demo-col ul { margin-block: 0; }
+  .portable-demo-col > ul > li:has(> p:only-child) > p { margin-block-end: 0.08lh; }
+  .portable-demo-col li ul { margin-block-start: 0.12lh; }
+  /* Align flush without hanging indent; reset text-indent on li
+     itself so block children (pre/code) don't ghost-indent. */
+  #portable-training .portable-demo-col li { text-indent: 0 !important; padding-inline-start: 0 !important; }
+  #portable-training .portable-demo-col li > p { text-indent: 0 !important; padding-inline-start: 0 !important; }
+  #portable-training .portable-demo-col li > ul { padding-inline-start: 0 !important; margin-inline-start: 0 !important; }
+  .portable-demo-col pre.astro-code { font-size: 0.72em; padding-block: 0.25lh; --pre-background: transparent !important; background: var(--background0) !important; width: 100%; max-width: 100%; }
+  .portable-demo-col pre.astro-code::before { border-color: oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.28); }
+  .portable-demo-col pre.astro-code code { background: transparent !important; }
+  .portable-demo-col pre { margin-block: 0.15lh 0; }
+  #portable-training { --portable-bottom-pad: 3lh; }
+  #portable-training .slide-inner { padding-block-end: var(--portable-bottom-pad); overflow: auto; justify-content: flex-start; }
+  @media print { #portable-training { --portable-bottom-pad: 0; } }
+  #portable-training .portable-demo-col > p { margin-block: 0.35lh 0; }
+  #portable-training .portable-demo-col > p:has(> strong) { font-size: 0.92em; margin-block: 0.25lh 0.15lh; }
+  #portable-training .portable-demo-col pre + p > strong { margin-block-start: 0.2lh; display: inline-block; }
+  .portable-demo-col > p { font-size: 0.82em; line-height: 1.4; margin-block: 0.25lh 0; }
   #portable-training h2 { margin-block-end: 0.3lh; }
-  #portable-training table { font-size: 0.74em; }
-  #portable-training .portable-grid pre { font-size: 0.68em; }
-  #portable-training h2 { margin-block-end: 0.4lh; }
-  .portable-grid table { font-size: 0.72em; margin: 0; }
-  .portable-grid pre { margin: 0; font-size: 0.66em; }
-  .portable-grid pre.astro-code { padding-block: 0.2lh; }
-  .portable-grid ul { margin: 0.2lh 0 0; font-size: 0.68em; }
-  .portable-grid li { margin-block: 0.08lh; }
-  .portable-grid .portable-quad ul { margin: 0.2lh 0 0; font-size: 0.68em; }
-  .portable-grid .portable-quad li { margin-block: 0.08lh; }
-  @media (max-width: 768px) { .portable-grid { grid-template-columns: 1fr; } }
-  #portable-training table { font-size: 0.84em; }
-  #portable-training table { margin-block-end: 0.35lh; }
+  @media (max-width: 768px) { .portable-demo { grid-template-columns: 1fr; } }
   #portable-training .slide-inner { gap: 0.3lh; }
   #backend-path .mermaid { font-size: 1.15em; margin-block: 0.7lh; }
+  #operations .mermaid { font-size: 1.05em; margin-block: 0.7lh; }
   .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
   #portable-training > .slide-inner > ul { margin-bottom: 0.5lh; }
   .project-figure { display: flex; flex-direction: column; align-items: center; width: 100%; max-height: 13lh; margin: 0; }
   .project-figure img { width: 100%; max-height: 13lh; object-fit: contain; }
+  #migration-evidence .project-figure { max-height: none; flex: 1; min-height: 0; margin-block: 0.2lh; }
+  #migration-evidence .project-figure img { max-height: none; flex: 1; min-height: 0; width: 100%; height: 100%; object-fit: contain; }
   .project-figure figcaption, .application-hero figcaption, .application-split figcaption { margin-top: 0.3lh; font-size: 0.66em; color: var(--foreground2); }
   .application-hero { width: 100%; margin: 0 0 0.4lh; }
   .application-hero img { display: block; width: 100%; max-height: 14lh; object-fit: contain; margin-inline: auto; }
@@ -597,13 +744,36 @@ Point at this slide. Stay on it for Q&A — every project name is clickable and 
   .mprot-image-credit { margin: 0.3lh 0 0; font-size: 0.58em; color: var(--foreground2); }
   #auroragpt-reference-figure { max-height: 17lh; }
   #auroragpt-reference-figure img { max-height: 15lh; }
+  .context-hero { margin: 0.25lh 0 0; width: 100%; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .context-hero img { width: 100%; flex: 1; min-height: 0; max-height: none; object-fit: contain; display: block; }
+  .context-hero figcaption { font-size: 0.56em; color: var(--foreground2); margin-block-start: 0.15lh; line-height: 1.3; flex: none; }
+  #context table { font-size: 0.96em; }
+  #context .slide-inner { gap: 0.25lh; }
   #timeline .timeline-caption { font-size: 0.95em; line-height: 1.35; color: var(--foreground2); }
   #timeline .mermaid { margin-block-end: 0.5lh; }
   #timeline .mermaid svg { max-height: 44vh !important; }
-  #operations .mermaid { width: 100%; }
+  /* (migrated: #operations .mermaid sizing now unified under #backend-path rule above) */
   .links-grid { width: 100%; }
   .links-grid table { width: 100%; font-size: 0.82em; }
   .links-grid td:first-child { white-space: nowrap; font-weight: 600; }
+  .layered-visual { width: 100%; margin-block-start: 0.4lh; }
+  .layered-visual .mermaid { margin-block: 0.3lh 0; }
+  .layered-visual .mermaid svg { max-height: 28vh !important; }
+  .layered-visual-caption { display: block; font-size: 0.62em; color: var(--foreground2); margin-block-start: 0.2lh; line-height: 1.3; }
+  /* Figcaption/caption code + links shouldn't get the body inline-chip
+     highlight — it sprays pink/red across every token in a caption. */
+  .layered-visual-caption code, .layered-visual-caption a > code {
+      background: none !important; color: inherit !important;
+      text-decoration: none !important; padding: 0 !important; border: none !important;
+  }
+  .layered-visual-caption a { color: var(--foreground2) !important; text-decoration: underline dotted; }
+  .layered-visual-caption a:hover { color: var(--url, var(--accent)) !important; }
+  .acks-grid { width: 100%; margin-block-start: 0.4lh; }
+  .acks-grid table { width: 100%; font-size: 0.78em; }
+  .acks-grid td:first-child { white-space: nowrap; font-weight: 600; }
+  .alloc-grid { width: 100%; margin-block-start: 0.3lh; }
+  .alloc-grid table { width: 100%; font-size: 0.84em; }
+  .alloc-links { margin-block-start: 0.4lh; font-size: 0.82em; line-height: 1.4; }
   @media (max-width: 768px) {
     #prologue table, #frame table { font-size: 0.7em; }
     .links-grid table { font-size: 0.68em; }

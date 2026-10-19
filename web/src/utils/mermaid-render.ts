@@ -403,20 +403,68 @@ function stabilizeMermaidSvgLayout() {
             })
         }
 
-        // Dedup gantt year ticks: mermaid's gantt interpolates ticks at
-        // quarterly granularity regardless of axisFormat, so "2023" appears
-        // 4× when the range is short. Collapse to one label per unique year
-        // and hide the extra grid lines; keeps the axis readable from distance.
-        if (node.closest('#timeline')) {
+        // Timeline readability: match the blog version — keep all grid lines
+        // (they anchor every milestone to the time axis) and just hide
+        // duplicate year labels. Blog does this via CSS alone
+        // (.grid .tick line { stroke:…; opacity:0.6 }) — no index math.
+        const mermaidBlock = node.closest<HTMLElement>('.mermaid')
+        if (mermaidBlock?.closest('#timeline')) {
             const seen = new Set<string>()
-            for (const g of node.querySelectorAll<SVGGElement>(
-                '.grid .tick, g.tick',
-            )) {
+            for (const g of node.querySelectorAll<SVGGElement>('g.tick')) {
                 const label = g.querySelector('text')?.textContent?.trim() ?? ''
                 if (!label) continue
-                if (seen.has(label)) g.style.display = 'none'
-                else seen.add(label)
+                if (seen.has(label)) {
+                    const t = g.querySelector('text')
+                    if (t) t.style.display = 'none'
+                } else seen.add(label)
             }
+        }
+        if (mermaidBlock?.closest('#timeline')) {
+            for (const el of node.querySelectorAll<SVGTextElement>(
+                '.critText',
+            )) {
+                el.style.fill = '#fff'
+                el.setAttribute('fill', '#fff')
+            }
+            // Mermaid puts .task.crit text INSIDE the bar's <g> but
+            // with dark inherited fill — force all texts inside crit
+            // groups to white. Use display text query too.
+            for (const g of node.querySelectorAll('g.task.crit, g.crit')) {
+                g.querySelectorAll('text').forEach((t) => {
+                    ;(t as SVGTextElement).style.fill = '#fff'
+                    t.setAttribute('fill', '#fff')
+                })
+            }
+            // Broader: any text whose content is the problematic label
+            // and sits inside a red fill — covers label-outside-text too
+            node.querySelectorAll('text').forEach((t) => {
+                const txt = t.textContent?.trim() ?? ''
+                if (txt === 'torchtitan/ezpz') {
+                    const fill =
+                        (t as SVGTextElement).style.fill ||
+                        t.getAttribute('fill') ||
+                        ''
+                    // Only override if parent has red fill
+                    const parent = t.closest('g')
+                    if (
+                        parent?.querySelector(
+                            'rect[fill=\"#ee3b24\"], rect[style*=\"ee3b24\"]',
+                        ) ||
+                        parent?.classList.contains('crit')
+                    ) {
+                        ;(t as SVGTextElement).style.fill = '#fff'
+                        t.setAttribute('fill', '#fff')
+                    } else if (
+                        !fill ||
+                        fill === 'var(--foreground0)' ||
+                        fill === '#000'
+                    ) {
+                        // label-outside on a crit milestone — force white with shadow context
+                        ;(t as SVGTextElement).style.fill = '#fff'
+                        t.setAttribute('fill', '#fff')
+                    }
+                }
+            })
         }
 
         const block = node.closest('.mermaid')

@@ -58,26 +58,28 @@ const canonical = `samf.sh${url}`
             </div>
         )
     }
-    {pytorch && (
-        <div class="pytorch-footer" aria-hidden="true">
-            <img
-                src="/pytorch-template/pytorchcon-na26-color.svg"
-                alt=""
-                class="pytorch-footer-lockup"
-                width="414"
-                height="218"
-                loading="eager"
-            />
-            <img
-                src="/pytorch-template/pytorchcon-na26-white.svg"
-                alt=""
-                class="pytorch-footer-lockup-dark"
-                width="414"
-                height="218"
-                loading="eager"
-            />
-        </div>
-    )}
+    {
+        pytorch && (
+            <div class="pytorch-footer" aria-hidden="true">
+                <img
+                    src="/pytorch-template/pytorchcon-na26-color.svg"
+                    alt=""
+                    class="pytorch-footer-lockup"
+                    width="414"
+                    height="218"
+                    loading="eager"
+                />
+                <img
+                    src="/pytorch-template/pytorchcon-na26-white.svg"
+                    alt=""
+                    class="pytorch-footer-lockup-dark"
+                    width="414"
+                    height="218"
+                    loading="eager"
+                />
+            </div>
+        )
+    }
     {
         branded && (
             <div class="alcf-footer" aria-hidden="true">

@@ -241,6 +241,17 @@
     .slide-inner > p + :is(ul, ol) {
         margin-block-start: 0.5lh;
     }
+    /* Prevent orphan punctuation after inline code chips: `PBS` + `)` must
+       not break apart. Mark each code span as non-breakable with its
+       trailing punct so `)`/`,` never leads a line. */
+    .nowrap {
+        white-space: nowrap;
+    }
+    p,
+    li {
+        orphans: 2;
+        widows: 2;
+    }
     table,
     th,
     td {
@@ -352,7 +363,8 @@
        from the fill being a real step off the background rather than from
        hue. Scoped to inline code only — `pre.astro-code > code` (the shiki
        codeblock body) keeps its theme. */
-    :is(p, li, td, h1, h2, h3, h4, figcaption) code {
+    :is(p, li, td, h1, h2, h3, h4, figcaption)
+        code:not(pre code):not(pre code *) {
         /* Derive the chip from whatever it sits in rather than hardcoding
            a grey. --callout-color is already set per callout variant
            (red for warning, orange for important, green for tip, ...) and
@@ -1240,13 +1252,13 @@ body[data-speaker-window] [is-~='notes'] {
     /* default deck mode unchanged */
 }
 
-/* Paper: zero margins only. Do NOT set an @page `size` here -- Chrome's
-   print dialog keeps whatever paper the user picked, so a hardcoded size
-   is ignored while the slide keeps the height that size implied. A 540px
-   slide on a 1632px Tabloid sheet then breaks across THREE pages, which
-   is how 25 slides became 75. Let the sheet be whatever it is and make
-   the slide fill it (see the height rules below). */
+/* 16:9 for PDF export — the portable grid uses viewport-relative
+   sizing on screen (vw ch lh) but @page is a fixed sheet; 11in holds
+   the longest content slides without overflow. Chrome's print shim
+   still respects this from the main CSS even when triggered via
+   ?print-pdf / p key. */
 @page {
+    size: 11in 6.1875in;
     margin: 0;
 }
 
@@ -1798,9 +1810,25 @@ html[data-webtui-theme='doe']
     color: var(--background0);
     text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
     bottom: 0;
+    font-size: clamp(1.55rem, 2.6vw + 0.7rem, 2.8rem) !important;
+    line-height: 1.35;
 }
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) [is-~='slide-status'] { display: none; }
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer { display: none; }
+[data-deck-theme='pytorch'] #title-slide h1 {
+    font-size: 1.65em !important;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+}
+[data-deck-theme='pytorch'] #title-slide h3,
+[data-deck-theme='pytorch'] #title-slide .title-slide-thesis {
+    font-size: 0.72em;
+}
+[data-deck-theme='pytorch']:has(#title-slide[data-current])
+    [is-~='slide-status'] {
+    display: none;
+}
+[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer {
+    display: none;
+}
 /* Content slides: plain white (template's default), no wave. */
 [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) {
     background: var(--background0);
@@ -1842,8 +1870,12 @@ html[data-webtui-theme='doe']
     width: 130px;
     height: auto;
 }
-.pytorch-footer-lockup { display: block; }
-.pytorch-footer-lockup-dark { display: none !important; }
+.pytorch-footer-lockup {
+    display: block;
+}
+.pytorch-footer-lockup-dark {
+    display: none !important;
+}
 :root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
 :root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
 :root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
@@ -1854,13 +1886,25 @@ html[data-webtui-theme='doe']
 :root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
     display: block !important;
 }
-@media (max-width: 768px) { .pytorch-footer { display: none !important; } }
-@media print {
-    .pytorch-footer-lockup { display: block !important; }
-    .pytorch-footer-lockup-dark { display: none !important; }
+@media (max-width: 768px) {
+    .pytorch-footer {
+        display: none !important;
+    }
 }
-body.slides-print-mode .pytorch-footer-lockup { display: block !important; }
-body.slides-print-mode .pytorch-footer-lockup-dark { display: none !important; }
+@media print {
+    .pytorch-footer-lockup {
+        display: block !important;
+    }
+    .pytorch-footer-lockup-dark {
+        display: none !important;
+    }
+}
+body.slides-print-mode .pytorch-footer-lockup {
+    display: block !important;
+}
+body.slides-print-mode .pytorch-footer-lockup-dark {
+    display: none !important;
+}
 
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */
@@ -1891,15 +1935,15 @@ body.slides-print-mode .pytorch-footer-lockup-dark { display: none !important; }
     width: 10ch;
     height: 10ch;
     display: block;
-    filter: invert(1) drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+    filter: invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
     font-size: 0.6em;
     color: #fff;
     white-space: nowrap;
     letter-spacing: 0.02em;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-    background: rgba(0,0,0,0.35);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.35);
     padding: 0.15ch 0.8ch;
     border-radius: 2px;
 }
