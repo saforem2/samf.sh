@@ -166,6 +166,8 @@ gantt
 
 ## A first-class XPU backend — the actual surface
 
+<div class="backend-mermaid-desktop">
+
 ```mermaid
 %%{init: {'themeCSS': '.nodeLabel{font-size:1.05rem!important} .edgeLabel{font-size:0.85rem!important}'}}%%
 flowchart LR
@@ -179,6 +181,25 @@ flowchart LR
     XCCL --> COLLECTIVE["oneCCL collectives<br/>fabric"]
     COLLECTIVE --> GPU
 ```
+
+</div>
+<div class="backend-mermaid-mobile">
+
+```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:0.95rem!important} .edgeLabel{font-size:0.78rem!important}'}}%%
+flowchart TB
+    TRAIN["torchtitan step"] --> DEVICE["torch.xpu device API"]
+    DEVICE --> KERNELS["ops + XPU kernels"]
+    KERNELS --> RUNTIME["oneAPI runtime"]
+    RUNTIME --> GPU["Intel GPU tiles"]
+    TRAIN --> DIST["torch.distributed"]
+    DIST --> PARALLEL["DTensor / FSDP2"]
+    PARALLEL --> XCCL["XCCL (torch-ccl) ProcessGroup"]
+    XCCL --> COLLECTIVE["oneCCL collectives / fabric"]
+    COLLECTIVE --> GPU
+```
+
+</div>
 
 <div class="backend-caption">
 
@@ -633,7 +654,7 @@ Aurora and Polaris are **open to any researcher** through DOE's allocation progr
 
 </div>
 
-If you'd like to get access, **reach out** — happy to help scope a DD proposal or connect you with ALCF staff. Find me after the talk or at `samf@anl.gov` / [@saforem2](https://github.com/saforem2).
+If you'd like to get access, **reach out** — happy to help scope a DD proposal or connect you with ALCF staff. Find me after the talk or at `foremans@anl.gov` / [@saforem2](https://github.com/saforem2).
 
 <div class="alloc-links">
 
@@ -659,6 +680,13 @@ The pitch: INCITE/ALCC are the big annual calls, but DD is the on-ramp — a few
   #prologue th, #prologue td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
   #why-fork-broke table { width: 100%; table-layout: fixed; }
   #why-fork-broke th, #why-fork-broke td { width: 50%; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  @media (max-width: 768px) {
+    #why-fork-broke table { table-layout: fixed; font-size: 0.82em; }
+    #why-fork-broke th, #why-fork-broke td { word-break: break-word; overflow-wrap: anywhere; }
+    #why-fork-broke table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #why-fork-broke th:first-child, #why-fork-broke td:first-child { width: 44% !important; }
+    #why-fork-broke th:last-child, #why-fork-broke td:last-child { width: 56% !important; }
+  }
   #what-moved table { table-layout: fixed; width: 100%; }
   #what-moved th:first-child, #what-moved td:first-child { width: 18%; }
   #what-moved th:nth-child(2), #what-moved td:nth-child(2) { width: 40%; }
@@ -721,6 +749,12 @@ The pitch: INCITE/ALCC are the big annual calls, but DD is the on-ramp — a few
   @media (max-width: 768px) { .portable-demo { grid-template-columns: 1fr; } }
   #portable-training .slide-inner { gap: 0.3lh; }
   #backend-path .mermaid { font-size: 1.15em; margin-block: 0.7lh; }
+  #backend-path .backend-mermaid-mobile { display: none; }
+  @media (max-width: 768px) {
+    #backend-path .backend-mermaid-desktop { display: none; }
+    #backend-path .backend-mermaid-mobile { display: block; }
+    #backend-path .backend-mermaid-mobile .mermaid { font-size: 0.92em; margin-block: 0.5lh; }
+  }
   #operations .mermaid { font-size: 1.05em; margin-block: 0.7lh; }
   .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }

@@ -421,6 +421,30 @@ const canonical = `samf.sh${url}`
             }
         })
 
+        // Tap zones for phones/VNC where swipe is awkward: tap the outer
+        // 20% strips to navigate. Narrower than before to avoid stealing
+        // clicks on links/images/mermaid in the center.
+        const handleTap = (e: MouseEvent) => {
+            if (deck.dataset.mode === 'overview') return
+            const t = e.target as HTMLElement | null
+            if (
+                t?.closest(
+                    'a, button, summary, input, textarea, img, .footnote-popover, .mermaid',
+                )
+            )
+                return
+            const w = window.innerWidth
+            const x = (e as MouseEvent).clientX
+            if (x < w * 0.2) {
+                e.preventDefault()
+                advance(-1)
+            } else if (x > w * 0.8) {
+                e.preventDefault()
+                advance(1)
+            }
+        }
+        deck.addEventListener('click', handleTap)
+
         // Click a slide in overview to jump to it
         slides.forEach((s, idx) => {
             s.addEventListener('click', () => {
