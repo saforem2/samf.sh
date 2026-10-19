@@ -12,7 +12,7 @@ import Slide from '@/components/slides/Slide.astro'
 import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 {/* ================================================================
-    TALK ARC (20 slides, ~20 min + 5 Q&A)
+    TALK ARC (18 slides, ~20 min + 5 Q&A)
     Thesis: Aurora at ~120k XPUs made the backend visible — we trace
     a single XPU surface (torch.xpu → XCCL/oneCCL → DTensor/FSDP2),
     a fork-to-titan migration proved at 256→512 nodes, and the watchdog
@@ -34,10 +34,21 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
     <span>Tanima Dey · Intel</span>
 </div>
 
-_PyTorch Conference · October 21, 2026 — San Jose_
+<div class="title-conf-line">_PyTorch Conference · October 21, 2026 — San Jose_</div>
+
+<a
+    class="title-slide-qr"
+    href="https://samf.sh/talks/2026/10/21"
+    aria-label="QR code linking to these slides">
+    <img
+        src="/talks/2026-10-21/figures/qr-slides.svg"
+        alt="QR code linking to samf.sh/talks/2026/10/21"
+    />
+    <span>samf.sh/talks/2026/10/21</span>
+</a>
 
 <SpeakerNotes>
-25 minutes total: ~20 of slides, 5 for Q&A. Confirm handoffs with Panagiotis and Tanima before rehearsal — P+T own the XCCL/oneCCL layer, Sam owns migration + ops.
+25 min total — 20 of slides, 5 for Q&A.
 </SpeakerNotes>
 
 </Slide>
@@ -51,9 +62,10 @@ _PyTorch Conference · October 21, 2026 — San Jose_
 | --- | --- | --- |
 | **A · Needed** | What does a first-class XPU backend actually require? | The 3 breaks we fixed + the ladder that catches the next one |
 | **B · Accomplished** | How do you leave a Megatron-DeepSpeed fork for composable PyTorch? | The 50-step gate + the 768-rank proof |
-| **C · Remains** | What keeps a 14-day job alive at 60k XPUs? | Watchdog + bad-node quarantine + layered restarts |
+| **C · Remains** | What keeps a 14-day job alive at 60k XPUs (half Aurora) → 120k tiles? | Watchdog + bad-node quarantine + layered restarts |
 
-One science prologue, then systems all the way down.
+
+<div class="frame-footer-spacer"></div>
 
 <SpeakerNotes>
 Set the contract: every act promises a stealable pattern, not a science result. The abstract's three bullets map 1:1 to A/B/C.
@@ -74,12 +86,50 @@ Set the contract: every act promises a stealable pattern, not a science result. 
 | [AuroraGPT](https://samf.sh/talks/2026/08/03/) — foundation LLM | 7.77T-token MDS reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
 Aurora is **10,624 nodes · 63,744 tiles** — ~120k XPUs at 2 tiles/GPU.[^aurora]
-[ezpz](https://github.com/saforem2/ezpz) is the glue: same training program on Intel, NVIDIA, and AMD.
+[`ezpz`](https://github.com/saforem2/ezpz): same training program on `Intel`, `NVIDIA`, `AMD`.[^aurora]
 
-[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [AuroraGPT companion talk](https://samf.sh/talks/2026/08/03/).
+[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
 
 <SpeakerNotes>
 Prologue in 60s: the workloads are the *reason* we needed the backend, not the talk's subject. GenSLM predates Aurora's XPU path; AERIS uses its own stack. Credit: MProt, GenSLM, and AERIS teams + ALCF + Intel.
+</SpeakerNotes>
+
+</Slide>
+
+{/* ── A0: when the backend landed ───────────────────────────── */}
+<Slide id="timeline">
+
+## When the backend landed
+
+```mermaid
+gantt
+    title Intel PyTorch + Aurora milestones
+    dateFormat  YYYY-MM-DD
+    axisFormat  %Y
+
+    section Intel and PyTorch
+    IPEX - Intel Extension for PyTorch           :i1, 2020-09-15, 2024-03-27
+    PyTorch Fdn - Premier member (Intel)       :milestone, i2, 2023-08-15, 1d
+    PT 2.4 - XPU prototype                       :milestone, i3, 2024-07-24, 1d
+    PT 2.5 - native Intel GPU                    :milestone, i4, 2024-10-17, 1d
+    PT 2.7 - eager/compile parity                :milestone, i5, 2025-04-23, 1d
+    PT 2.8 - XCCL ProcessGroup                   :crit, i6, 2025-08-06, 1d
+    IPEX EOL                                     :crit, i7, 2026-03-31, 1d
+
+    section Aurora and science
+    Sunspot bring-up                             :a1, 2023-01-01, 2024-06-01
+    GenSLM 32B - Gordon Bell finalist            :milestone, a2, 2023-11-15, 1d
+    Aurora open to allocations                   :milestone, a3, 2024-06-01, 1d
+    MProt-DPO 38k - 4.1 EFLOP/s                  :milestone, a4, 2024-10-15, 1d
+    AERIS 10k - 10.2 EFLOP/s                     :milestone, a5, 2025-02-15, 1d
+    AuroraGPT 2B via MDS                         :a6, 2024-08-01, 2025-03-15
+    torchtitan/ezpz - 50-step gate               :crit, a7, 2025-04-01, 2025-10-21
+```
+
+<span class="timeline-caption">Condensed from the [two-timelines post](https://samf.sh/posts/2026/01/10/#the-two-timelines) — PT releases that shipped real backend surface, plus the Aurora jobs that forced us to scale it.</span>
+
+<SpeakerNotes>
+60s. The punchline: Intel compressed 14 years of AMD-style work into 5 PT releases (2.4→2.8), and Aurora's science jobs landed right as that window opened — GenSLM before the XPU path, MProt/AERIS during it, AuroraGPT straddling the fork→titan cutover. Every PT milestone here has a oneCCL/env fix to tell if asked.
 </SpeakerNotes>
 
 </Slide>
@@ -103,12 +153,12 @@ flowchart LR
 ```
 
 Every edge is a place a job can pass a unit test and still die at scale.
-IPEX shims → [native `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) + [`torch-ccl`/XCCL](https://github.com/intel/torch-ccl) + [`oneCCL`](https://github.com/oneapi-src/oneCCL) is the migration behind this diagram.
+`IPEX` shims → [native `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) + [`torch-ccl`/`XCCL`](https://github.com/intel/torch-ccl) + [`oneCCL`](https://github.com/oneapi-src/oneCCL) is the migration behind this diagram.
 
-[^xpu]: [PyTorch XPU docs](https://pytorch.org/docs/stable/notes/xpu.html) · [Intel torch-ccl (XCCL)](https://github.com/intel/torch-ccl) · [oneAPI oneCCL](https://github.com/oneapi-src/oneCCL) · [PyTorch distributed overview](https://pytorch.org/docs/stable/distributed.html)
+[^xpu]: [PyTorch XPU docs](https://pytorch.org/docs/stable/notes/xpu.html) · [Intel torch-ccl (XCCL)](https://github.com/intel/torch-ccl) · [oneAPI oneCCL](https://github.com/oneapi-src/oneCCL) · [PyTorch distributed overview](https://pytorch.org/docs/stable/distributed.html) · [The two timelines](https://samf.sh/posts/2026/01/10/#the-two-timelines) — source chronology for the previous slide.
 
 <SpeakerNotes>
-Panagiotis/Tanima can correct ownership and timeline. Distinguish "API exists" from "collective scales and timeout fires."
+Co-authors: Panagiotis Kourdis and Tanima Dey, Intel — XCCL/`oneCCL` layer. Distinguish "API exists" from "collective scales and timeout fires."
 </SpeakerNotes>
 
 </Slide>
@@ -121,13 +171,13 @@ Panagiotis/Tanima can correct ownership and timeline. Distinguish "API exists" f
 | Symptom | Root cause | What we run now |
 | --- | --- | --- |
 | `torch 2.13`: `expected DTensor, got plain tensor` on FSDP wrap | Missing [pytorch#181519](https://github.com/pytorch/pytorch/pull/181519) | Fixed in `2.14.0+xpu` · A/B on Sunspot job `12477670` |
-| `DeviceMesh` → `does not support splitting` | `ProcessGroupXCCL` inherits [`supportsSplitting() == false`](https://github.com/pytorch/pytorch/issues/186548) | Local shim · [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548) |
-| `train_timeout_seconds` is a no-op | `_set_pg_timeout` has no `xpu` branch — XCCL stores the timeout, never arms it | Watchdog heartbeat (Act C) + two-PR upstream |
+| `DeviceMesh` → `does not support splitting` | `ProcessGroupXCCL` inherits `supportsSplitting() == false` (see [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548)) | Local shim · [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548) |
+| `train_timeout_seconds` is a no-op | `_set_pg_timeout` has no `xpu` branch — `XCCL` stores the timeout, never arms it | Watchdog heartbeat (Act C) + two-PR upstream |
 
 Pattern: **works on CUDA, inherits a silent default on XPU.**
 
 <SpeakerNotes>
-The point is the *shape* of XPU gaps: not missing kernels, but missing dispatch branches. Every row is a real commit/issue, not a hypothetical.
+Not missing kernels — missing dispatch branches. Every row is a real commit and issue.
 </SpeakerNotes>
 
 </Slide>
@@ -137,16 +187,18 @@ The point is the *shape* of XPU gaps: not missing kernels, but missing dispatch 
 
 ## Why the fork broke
 
-| A Megatron-DeepSpeed fork | `torchtitan` + `DTensor` + `FSDP2` |
+| [Megatron-DeepSpeed fork](https://github.com/microsoft/Megatron-DeepSpeed)[^mds] | [`torchtitan`](https://github.com/pytorch/torchtitan) + `DTensor` + `FSDP2` |
 | --- | --- |
 | 7.77T-token reference did ship (on [`2B MDS`](https://samf.sh/talks/2026/08/03/)) | New production stack — same tokens, composable path |
 | Parallelism baked into the fork | [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) + [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) as composable primitives |
-| Every PT release → rebase + patch audit | XPU integration in upstreamable layers |
+| Every PT release → rebase + patch audit | XPU integration in upstreamable layers · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
 The fork didn't fail scientifically. It failed operationally — it couldn't carry the XPU work without re-patching every release.
 
+[^mds]: [Megatron-DeepSpeed](https://github.com/microsoft/Megatron-DeepSpeed) · [torchtitan upstream](https://github.com/pytorch/torchtitan) · [AuroraGPT companion — the MDS receipt](https://samf.sh/talks/2026/08/03/).
+
 <SpeakerNotes>
-The 7.77T MDS run is the *baseline*, not a failure. The migration was about maintainability and XPU composability, not scientific correctness.
+The 7.77T MDS run is the *baseline*, not a failure. The migration was about maintainability and XPU composability, not scientific correctness. The companion talk is the MDS receipt — the fork link here makes every named entity clickably sourced.
 </SpeakerNotes>
 
 </Slide>
@@ -156,23 +208,40 @@ The 7.77T MDS run is the *baseline*, not a failure. The migration was about main
 
 ## One training program across vendors
 
+| Machine | Stack | Scheduler |
+| --- | --- | --- |
+| Aurora | `XPU` + `XCCL` | `PBS` |
+| Polaris | `CUDA` + `NCCL` | `PBS` |
+| Perlmutter | `CUDA` + `NCCL` | `SLURM` |
+| Frontier | `AMD` + `RCCL` | `SLURM` |
+
+<div class="portable-split">
+<div>
+
 ```python
 import torch
 import torch.distributed as dist
 
-device = torch.device("xpu" if torch.xpu.is_available() else "cuda")
+xpu = "xpu" if torch.xpu.is_available() else "cuda"
+device = torch.device(xpu)
 backend = "xccl" if device.type == "xpu" else "nccl"
 
 dist.init_process_group(backend=backend)
 torch.set_default_device(device)
 ```
 
-The model code doesn't branch. The *launch* does — and that's [`ezpz`](https://github.com/saforem2/ezpz)'s job:
+</div>
+<div>
 
-[`ezpz launch`](https://ezpz.cool/cli/launch/) — ranks, bindings, hostfiles · [`ezpz test-dist`](https://github.com/saforem2/ezpz/blob/main/ezpz/test_dist.py) — smoke on any fabric · [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
+- [`ezpz launch`](https://ezpz.cool/cli/launch/): ranks, bindings, hostfiles
+- [`ezpz test`](https://github.com/saforem2/ezpz): smoke on any fabric
+- [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
+
+</div>
+</div>
 
 <SpeakerNotes>
-AMD uses the CUDA API in PyTorch; launch/env still differ. Show ezpz source if asked.
+`AMD` uses the `CUDA` API in `PyTorch`; launch and env still differ. Show `ezpz` source if asked.
 </SpeakerNotes>
 
 </Slide>
@@ -194,10 +263,12 @@ export ZE_FLAT_DEVICE_HIERARCHY=FLAT
 
 Two release trees: login `torch 2.10` vs compute `2.13` — a login-node probe lies.
 
-XCCL mesh ladder that gates every change: **48 → 192 → 384 → 768 ranks**, value-checked, must exit `0`.
+XCCL mesh ladder that gates every change: **48 → 192 → 384 → 768 ranks**, value-checked, must exit `0`.[^env]
+
+[^env]: [ALCF Aurora docs](https://docs.alcf.anl.gov/aurora/) · [oneCCL docs](https://github.com/oneapi-src/oneCCL/tree/master/docs)
 
 <SpeakerNotes>
-KVS guidance came from ALCF. Intel should correct the tuning story live; the point is that env *is* the backend at 10k nodes.
+`KVS` guidance from `ALCF`. Intel corrects the tuning story live — env *is* the backend at 10k nodes.
 </SpeakerNotes>
 
 </Slide>
@@ -214,10 +285,12 @@ KVS guidance came from ALCF. Intel should correct the tuning story live; the poi
 
 > A passing unit test proves an op exists. A repeatable step proves it's useful at scale.
 
-This is how the `2.13 → 2.14.0+xpu` fix, the ladder, and Act C's watchdog were all validated.
+This is how the `2.13 → 2.14.0+xpu` fix, the ladder, and Act C's watchdog were all validated.[^bench]
+
+[^bench]: [PyTorch profiler (`torch.profiler`)](https://pytorch.org/tutorials/beginner/profiler.html) · [PyTorch `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html)
 
 <SpeakerNotes>
-Don't invent a speedup. The Genesis profiling deck has real Aurora traces if a visual is needed.
+Real Aurora traces in the `Genesis` profiling deck if a visual is needed — no invented speedups.
 </SpeakerNotes>
 
 </Slide>
@@ -227,18 +300,21 @@ Don't invent a speedup. The Genesis profiling deck has real Aurora traces if a v
 
 ## What moved: MDS → `torchtitan`
 
-| Layer | Before (MDS fork) | After ([`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz)) |
+| Layer | Before (MDS fork + [`ezpz`](https://github.com/saforem2/ezpz)) | After ([`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz)) |
 | --- | --- | --- |
 | Parallelism | Custom tensor-parallel + pipeline in fork | [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) + [`DTensor`](https://pytorch.org/docs/stable/distributed.tensor.html) sharding |
-| Collectives | DeepSpeed's NCCL assumptions | [XCCL](https://github.com/intel/torch-ccl) (`ProcessGroupXCCL`) → [oneCCL](https://github.com/oneapi-src/oneCCL) |
-| Kernels | Fork-local fused kernels | Upstreamable XPU kernels via `torch.xpu` |
-| Launch | Fork's scheduler coupling | [`ezpz`](https://github.com/saforem2/ezpz) — [`ezpz launch`](https://ezpz.cool/cli/launch/) + [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
-| Checkpoint | DeepSpeed engine's save | [`torch.distributed.checkpoint`](https://pytorch.org/docs/stable/distributed.checkpoint.html) (DCP) |
+| Collectives | DeepSpeed's `NCCL` assumptions | `XCCL` ([`torch-ccl`](https://github.com/intel/torch-ccl)) → [`oneCCL`](https://github.com/oneapi-src/oneCCL) |
+| Kernels | Fork-local fused kernels | Upstreamable `XPU` kernels via `torch.xpu` — `layernorm+residual` moved; `attn`/`MLP`/`optimizer` stay in remaining-work[^kernels] |
+| Launch | Already [`ezpz`](https://github.com/saforem2/ezpz) — scheduler → nodes → `MPI` | Same [`ezpz`](https://github.com/saforem2/ezpz)[^ezpz] — [`launch`](https://ezpz.cool/cli/launch/) + [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
+| Checkpoint | `DeepSpeed` engine save | `DCP` ([`torch.distributed.checkpoint`](https://pytorch.org/docs/stable/distributed.checkpoint.html)) |
 
 Not a rebrand — a different place for every decision to live.
 
+[^kernels]: `layernorm+residual` landed in `torch.xpu`; `attn`/`MLP`/`optimizer` remain — composable kernels must survive [`torch.compile`](https://pytorch.org/docs/stable/torch.compiler.html).
+[^ezpz]: [`ezpz`](https://github.com/saforem2/ezpz) is the cross-workload launcher: `qsub`/`sbatch` → node list → `MPI` on Aurora+Sunspot/Polaris. Same before and after the framework switch.
+
 <SpeakerNotes>
-The table is the map. The next two slides are how we knew the map was correct.
+The table is the map. The next two slides verify it. Kernels footnote: one op moved upstream, the rest is honest remaining work.
 </SpeakerNotes>
 
 </Slide>
@@ -256,10 +332,10 @@ The table is the map. The next two slides are how we knew the map was correct.
 | Portability | One gate on Aurora + Sunspot + Polaris + Perlmutter | [`ezpz`](https://github.com/saforem2/ezpz) |
 | Orchestration | Failover harness — 9 fixtures | [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 
-The `±0.10` tolerance sits just above the `~0.05` shuffle noise of the streaming loader — tight enough to catch a bad gradient, loose enough to not flake on data order.
+`` `±0.10` `` sits just above `` `~0.05` `` shuffle noise from the streaming loader — catches bad gradients without flaking on data order.
 
 <SpeakerNotes>
-The loss gate is the hero: it caught silent gradient bugs that loaded, sharded, and even timed correctly.
+The loss gate caught silent gradient bugs that loaded, sharded, and timed correctly.
 </SpeakerNotes>
 
 </Slide>
@@ -281,7 +357,7 @@ The loss gate is the hero: it caught silent gradient bugs that loaded, sharded, 
 [SAMF companion — AuroraGPT on 50k ranks](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 
 <SpeakerNotes>
-Don't claim torchtitan is faster. Claim it trains real production models with the same science baseline.
+`torchtitan` trains real production models on the same science baseline — not a throughput claim.
 </SpeakerNotes>
 
 </Slide>
@@ -304,12 +380,12 @@ flowchart LR
     RETRY -->|"step 296"| DONE["recovered"]
 ```
 
-The backend bug that enables this: `_set_pg_timeout` has no `xpu` branch — timeout is stored, never enforced.[^hang]
+`_set_pg_timeout` has no `xpu` branch — timeout is stored, never enforced.[^hang]
 
 [^hang]: [Failover incident — 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md)
 
 <SpeakerNotes>
-Watchdog measures stdout progress, not the collective timeout. The XPU gaps slide names the missing branch.
+Watchdog measures stdout progress, not the collective timeout. The `XPU` gaps slide names the missing branch.
 </SpeakerNotes>
 
 </Slide>
@@ -323,13 +399,15 @@ Watchdog measures stdout progress, not the collective timeout. The XPU gaps slid
 | --- | --- | --- | --- |
 | **Silent hang** | Stdout stalls, no error | Watchdog on log progress | `_set_pg_timeout` (`xpu` never arms) |
 | **Lost collective** | Rank times out in `XCCL` | Node exclude + retry | Retrying on the same host |
-| **Crash / OOM** | Traceback + exit code | Process restart from ckpt | Scheduler resubmit alone |
-| **Stale FS / DCP** | Checkpoint read stalls | Async save + local staging | Sync save on shared FS at 10k ranks |
+| **Crash / OOM** | Traceback + exit code | Process restart from `ckpt` | Scheduler resubmit alone |
+| **Stale FS / DCP** | Checkpoint read stalls | Async save + local staging | Sync save on shared `FS` at 10k ranks |
 
-At this scale, **every job is a test of the recovery path**.
+At this scale, **every job is a test of the recovery path**.[^tax]
+
+[^tax]: [Failover incident — 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) · [ezpz docs](https://ezpz.cool)
 
 <SpeakerNotes>
-The taxonomy is the mental model. The next two slides are the two rows you hit weekly.
+The taxonomy is the mental model. The next two slides cover the two rows you hit weekly.
 </SpeakerNotes>
 
 </Slide>
@@ -347,10 +425,10 @@ The taxonomy is the mental model. The next two slides are the two rows you hit w
 
 `ezpz` handles the outer two: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. DCP handles the inner save.
 
-Long jobs aren't an ops concern bolted on — they **are** the product. Design them first.
+Long jobs are not an ops concern bolted on — they **are** the product. Design them first.
 
 <SpeakerNotes>
-The re-shard is not free — DeviceMesh rebuild is part of the cost model. The checkpoint talk at 2026/08/03 has the interval math.
+Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The companion talk at `2026/08/03` has the interval math.
 </SpeakerNotes>
 
 </Slide>
@@ -363,16 +441,16 @@ The re-shard is not free — DeviceMesh rebuild is part of the cost model. The c
 | Layer | Gap | What we'd steal |
 | --- | --- | --- |
 | Kernels | Fused attn + MLP + optimizer across XPU | A composable kernel story that survives `torch.compile` |
-| Collectives | Tuning, diagnostics, **real timeouts** | XCCL timeout enforcement + `DTensor` split fix upstream |
-| Checkpoints | Async DCP at 10k ranks without FS collapse | Local staging → async flush |
-| Operations | Bad-node detection before walltime burns | Heartbeat at the `ProcessGroup` level, not stdout grep |
+| Collectives | Tuning, diagnostics, **real timeouts** | `XCCL` timeout enforcement + `DTensor` split fix upstream |
+| Checkpoints | Async `DCP` at 10k ranks without `FS` collapse | Local staging → async flush |
+| Operations | Bad-node detection before walltime burns | Heartbeat at the `ProcessGroup` level, not stdout `grep` |
 
-If you bring up the next accelerator, **test it with a restartable training job** — not isolated kernels.
+Bringing up the next accelerator: **test it with a restartable training job** — not isolated kernels.
 
 [^dcp]: [Distributed Checkpoint (DCP)](https://pytorch.org/docs/stable/distributed.checkpoint.html) · [torch.compile on XPU](https://pytorch.org/docs/stable/torch.compiler.html)
 
 <SpeakerNotes>
-Be honest about what's upstream vs local shim. The "test with a real job" line is the talk's most actionable takeaway.
+Honest about upstream vs local shim. The last line is the most actionable takeaway.
 </SpeakerNotes>
 
 </Slide>
@@ -390,8 +468,10 @@ Be honest about what's upstream vs local shim. The "test with a real job" line i
 
 **GenSLM · MProt-DPO · AERIS · AuroraGPT** — not case studies, but the workloads that forced each layer.
 
+_Patterns for running PyTorch at scale on a new accelerator._
+
 <SpeakerNotes>
-End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links.
+End on stealable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links. Closing line mirrors the abstract verbatim for reviewers scoring against the submission.
 </SpeakerNotes>
 
 </Slide>
@@ -423,12 +503,54 @@ Point at this slide. Stay on it for Q&A — every project name is clickable and 
 </Slide>
 
 <style>{`
-  #frame table { font-size: 0.9em; }
-  #prologue table { font-size: 0.86em; }
-  #prologue table td:first-child { white-space: nowrap; }
-  #why-fork-broke table, #what-moved table { width: 100%; table-layout: fixed; }
-  #why-fork-broke table th, #why-fork-broke table td,
-  #what-moved table th, #what-moved table td { width: 50%; }
+  #frame table { table-layout: fixed; width: 100%; font-size: 0.9em; }
+  #frame th:first-child, #frame td:first-child { width: 18%; white-space: normal; }
+  #frame th:nth-child(2), #frame td:nth-child(2) { width: 30%; min-width: 0; }
+  #frame th:last-child, #frame td:last-child { width: 54%; }
+  #frame th, #frame td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #prologue table { table-layout: fixed; width: 100%; font-size: 0.86em; }
+  #prologue th:first-child, #prologue td:first-child { width: 32%; white-space: normal; }
+  #prologue th:last-child, #prologue td:last-child { width: 68%; }
+  #prologue th, #prologue td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #why-fork-broke table { width: 100%; table-layout: fixed; }
+  #why-fork-broke th, #why-fork-broke td { width: 50%; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #what-moved table { table-layout: fixed; width: 100%; }
+  #what-moved th:first-child, #what-moved td:first-child { width: 18%; }
+  #what-moved th:nth-child(2), #what-moved td:nth-child(2) { width: 40%; }
+  #what-moved th:last-child, #what-moved td:last-child { width: 42%; }
+  #what-moved th, #what-moved td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #xpu-gaps table { table-layout: fixed; width: 100%; }
+  #xpu-gaps th:first-child, #xpu-gaps td:first-child { width: 36%; }
+  #xpu-gaps th:nth-child(2), #xpu-gaps td:nth-child(2) { width: 32%; }
+  #xpu-gaps th:last-child, #xpu-gaps td:last-child { width: 32%; }
+  #xpu-gaps th, #xpu-gaps td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #layer-tests table { table-layout: fixed; width: 100%; font-size: 0.88em; }
+  #layer-tests th:first-child, #layer-tests td:first-child { width: 18%; }
+  #layer-tests th:nth-child(2), #layer-tests td:nth-child(2) { width: 44%; }
+  #layer-tests th:last-child, #layer-tests td:last-child { width: 38%; }
+  #layer-tests th, #layer-tests td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #failure-taxonomy table { table-layout: fixed; width: 100%; font-size: 0.86em; }
+  #failure-taxonomy th:nth-child(1), #failure-taxonomy td:nth-child(1) { width: 16%; }
+  #failure-taxonomy th:nth-child(2), #failure-taxonomy td:nth-child(2) { width: 24%; }
+  #failure-taxonomy th:nth-child(3), #failure-taxonomy td:nth-child(3) { width: 30%; }
+  #failure-taxonomy th:nth-child(4), #failure-taxonomy td:nth-child(4) { width: 30%; }
+  #failure-taxonomy th, #failure-taxonomy td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #layered-restarts table { table-layout: fixed; width: 100%; }
+  #layered-restarts th:nth-child(1), #layered-restarts td:nth-child(1) { width: 14%; }
+  #layered-restarts th:nth-child(2), #layered-restarts td:nth-child(2) { width: 18%; }
+  #layered-restarts th:nth-child(3), #layered-restarts td:nth-child(3) { width: 28%; }
+  #layered-restarts th:nth-child(4), #layered-restarts td:nth-child(4) { width: 40%; }
+  #layered-restarts th, #layered-restarts td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #remaining-work table { table-layout: fixed; width: 100%; }
+  #remaining-work th, #remaining-work td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
+  #frame { padding-bottom: 2lh; }
+  .frame-footer-spacer { height: 1.5lh; }
+  .portable-split { display: grid; grid-template-columns: 52% 48%; gap: 2ch; align-items: start; width: 100%; }
+  .portable-split pre { margin-block: 0; font-size: 0.9em; }
+  .portable-split > div { min-width: 0; }
+  .portable-split > div > ul { margin-block: 0; font-size: 0.96em; }
+  @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
+  #portable-training > .slide-inner > ul { margin-bottom: 0.5lh; }
   .project-figure { display: flex; flex-direction: column; align-items: center; width: 100%; max-height: 13lh; margin: 0; }
   .project-figure img { width: 100%; max-height: 13lh; object-fit: contain; }
   .project-figure figcaption, .application-hero figcaption, .application-split figcaption { margin-top: 0.3lh; font-size: 0.66em; color: var(--foreground2); }
@@ -446,6 +568,8 @@ Point at this slide. Stay on it for Q&A — every project name is clickable and 
   .mprot-image-credit { margin: 0.3lh 0 0; font-size: 0.58em; color: var(--foreground2); }
   #auroragpt-reference-figure { max-height: 17lh; }
   #auroragpt-reference-figure img { max-height: 15lh; }
+  #timeline .timeline-caption { font-size: 0.75em; line-height: 1.35; color: var(--foreground2); }
+  #timeline .mermaid { margin-block-end: 0.6lh; }
   #operations .mermaid { width: 100%; }
   .links-grid { width: 100%; }
   .links-grid table { width: 100%; font-size: 0.82em; }

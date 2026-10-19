@@ -74,16 +74,25 @@
     inset: 0;
     overflow: hidden;
     opacity: 0;
+    visibility: hidden;
+    contain: paint;
     pointer-events: none;
+    transform: translateX(2ch);
     transition:
         opacity 200ms ease-out,
-        transform 200ms ease-out;
-    transform: translateX(2ch);
+        transform 200ms ease-out,
+        visibility 0s 200ms;
 
     &[data-current] {
         opacity: 1;
+        visibility: visible;
+        contain: none;
         pointer-events: auto;
         transform: translateX(0);
+        transition:
+            opacity 200ms ease-out,
+            transform 200ms ease-out,
+            visibility 0s 0s;
     }
 
     /* The slide-inner is the actual content box. It fills the slide in
@@ -1800,7 +1809,6 @@ html[data-webtui-theme='doe']
     background: var(--background0);
     bottom: 1lh;
 }
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer { display: none; }
 
 [data-deck-theme='pytorch'] #title-slide h1,
 [data-deck-theme='pytorch'] #title-slide h2,
@@ -1820,31 +1828,76 @@ html[data-webtui-theme='doe']
 /* PyTorch footer: official CONFERENCE lockup (vector), bottom-right above the status bar. */
 .pytorch-footer {
     position: fixed;
-    right: 2ch;
-    bottom: 1lh;
+    left: 2ch;
+    right: auto;
+    bottom: 2lh;
     z-index: 5;
     display: flex;
     align-items: center;
-    padding: 0.3rlh 0;
+    padding: 0;
     pointer-events: none;
 }
 .pytorch-footer-lockup,
 .pytorch-footer-lockup-dark {
-    height: 2rem;
-    width: auto;
+    width: 130px;
+    height: auto;
 }
-.pytorch-footer-lockup-dark { display: none; }
+.pytorch-footer-lockup { display: block; }
+.pytorch-footer-lockup-dark { display: none !important; }
 :root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
 :root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
 :root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
-    display: none;
+    display: none !important;
 }
 :root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup-dark,
 :root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup-dark,
 :root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
-    display: block;
+    display: block !important;
 }
 @media (max-width: 768px) { .pytorch-footer { display: none !important; } }
+@media print {
+    .pytorch-footer-lockup { display: block !important; }
+    .pytorch-footer-lockup-dark { display: none !important; }
+}
+body.slides-print-mode .pytorch-footer-lockup { display: block !important; }
+body.slides-print-mode .pytorch-footer-lockup-dark { display: none !important; }
+
+.pytorch-anl-footer {
+    position: fixed;
+    right: 2ch;
+    left: auto;
+    bottom: 2lh;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    pointer-events: none;
+}
+.pytorch-anl-lockup,
+.pytorch-anl-lockup-dark {
+    width: 150px;
+    height: auto;
+}
+.pytorch-anl-lockup { display: block; }
+.pytorch-anl-lockup-dark { display: none !important; }
+:root[data-webtui-theme='custom-dark'] .pytorch-anl-lockup,
+:root[data-webtui-theme='catppuccin'] .pytorch-anl-lockup,
+:root[data-webtui-theme='nvim-dark'] .pytorch-anl-lockup {
+    display: none !important;
+}
+:root[data-webtui-theme='custom-dark'] .pytorch-anl-lockup-dark,
+:root[data-webtui-theme='catppuccin'] .pytorch-anl-lockup-dark,
+:root[data-webtui-theme='nvim-dark'] .pytorch-anl-lockup-dark {
+    display: block !important;
+}
+@media (max-width: 768px) { .pytorch-anl-footer { display: none !important; } }
+@media print {
+    .pytorch-anl-lockup { display: block !important; }
+    .pytorch-anl-lockup-dark { display: none !important; }
+}
+body.slides-print-mode .pytorch-anl-lockup { display: block !important; }
+body.slides-print-mode .pytorch-anl-lockup-dark { display: none !important; }
+[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-anl-footer { display: none; }
 
 /* Title slide authors: one name per line (MDX wraps consecutive lines
    into separate <p> tags when blank-line separated). */
@@ -1852,12 +1905,45 @@ html[data-webtui-theme='doe']
     display: flex;
     flex-direction: column;
     gap: 0.15lh;
-    margin-block: 0.3lh 0;
+    margin-block: 0.3lh 0.6lh;
 }
 [data-deck-theme='pytorch'] #title-slide .title-authors span {
     display: block;
     line-height: 1.35;
 }
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+    position: absolute;
+    top: 1.5lh;
+    right: 3ch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3lh;
+    padding: 0;
+    background: transparent;
+    text-decoration: none;
+    z-index: 2;
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr img {
+    width: 10ch;
+    height: 10ch;
+    display: block;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+    font-size: 0.6em;
+    color: #fff;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.35);
+    padding: 0.15ch 0.8ch;
+    border-radius: 2px;
+}
+[data-deck-theme='pytorch'] #title-slide .title-conf-line {
+    margin-top: 0.8lh;
+}
+
 /* Title slide has no footer — the wave is the whole slide. */
 /* Print: hide the fixed wave + footer, give each page a light border. */
 /* Print: the fixed footer repeats on every page but can only carry

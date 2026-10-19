@@ -84,5 +84,10 @@ bun.lockb
 # Lighthouse HTML reports left in the project root by ad-hoc runs.
 *.report.html
 
+# One-off preview / audit artifacts (worktree-scrap inventory 2026-10-18).
+# Prevents _ptconf.html-style dumps and tmp-evidence/ from showing as ??.
+_*.html
+tmp-*/
+
 # Agent scratch: per-run todo checklists and lessons notes, not site content.
 tasks/
