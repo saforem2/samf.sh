@@ -1814,13 +1814,15 @@ html[data-webtui-theme='doe']
     color: var(--background0);
     text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
     bottom: 0;
-    font-size: clamp(1.55rem, 2.6vw + 0.7rem, 2.8rem) !important;
+    font-size: clamp(1.25rem, 1.8vw + 0.5rem, 1.95rem) !important;
     line-height: 1.35;
+    /* Cap width so title doesn't run under QR */
+    max-width: calc(100% - 14ch);
 }
 [data-deck-theme='pytorch'] #title-slide h1 {
-    font-size: 1.65em !important;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
+    font-size: 1.45em !important;
+    line-height: 1.06;
+    letter-spacing: -0.015em;
 }
 [data-deck-theme='pytorch'] #title-slide h3,
 [data-deck-theme='pytorch'] #title-slide .title-slide-thesis {
