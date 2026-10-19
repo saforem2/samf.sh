@@ -1324,14 +1324,22 @@ body[data-speaker-window] [is-~='notes'] {
         flex-direction: column !important;
         justify-content: safe center !important;
         padding: 1lh 4ch !important;
-        /* Scale type to the sheet, the way the screen deck scales it to
-           the viewport (clamp with a vw term, ~line 123). A flat em here
-           meant the same physical text size on Letter and on Tabloid, so
-           the bigger the paper the more of it sat empty. */
+        /* Print sheet is 11in wide — vw scales huge. Pull clamp down so
+           the 3-code-block slide and other dense pages fit without clip. */
         font-size: calc(
-            clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+            clamp(0.62rem, 0.9vw + 0.2rem, 1.15rem) * var(--print-fit, 1)
         ) !important;
         overflow: hidden !important;
+    }
+    /* Footer is position:fixed, which doesn't paginate — convert to
+       per-slide absolute so it appears on every page, not just once. */
+    @media print {
+        .pytorch-footer {
+            position: absolute !important;
+            left: 2ch !important;
+            right: 2ch !important;
+            bottom: 1lh !important;
+        }
     }
 }
 body.slides-print-mode [is-~='presentation'] {
@@ -1384,15 +1392,10 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
        the footer stamp lands. */
     justify-content: safe center !important;
     padding: 1lh 4ch !important;
-    /* Scale type to the sheet rather than fixing it, so the deck reads
-       the same on Letter and Tabloid. The overflow:hidden clip below
-       still catches the rare dense slide. */
+    /* Same tightened clamp as @media print above. */
     font-size: calc(
-        clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+        clamp(0.62rem, 0.9vw + 0.2rem, 1.15rem) * var(--print-fit, 1)
     ) !important;
-    /* Clip anything that still overflows rather than letting it
-       bleed visibly past the paper edge — better to lose half a
-       trailing line than show it sliced in two. */
     overflow: hidden !important;
 }
 
@@ -1400,6 +1403,13 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
    repeat across paginated pages, so each printed slide gets its own
    URL stamp in the bottom-left corner via a ::after pseudo-element.
    The URL is read from --slide-url, set on the presentation root by
+body.slides-print-mode .pytorch-footer {
+    position: absolute !important;
+    left: 2ch !important;
+    right: 2ch !important;
+    bottom: 1lh !important;
+}
+
    the runtime (Presentation.astro). Falls back to an empty string if
    unset so older sessions don't print a literal `var(...)`. */
 body.slides-print-mode [is-~='slide']::after {
