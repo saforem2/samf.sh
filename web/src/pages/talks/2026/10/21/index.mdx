@@ -140,6 +140,7 @@ gantt
 ## A first-class XPU backend — the actual surface
 
 ```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:1.05rem!important} .edgeLabel{font-size:0.85rem!important}'}}%%
 flowchart LR
     TRAIN["torchtitan step"] --> DEVICE["torch.xpu<br/>device API"]
     DEVICE --> KERNELS["ops + XPU kernels"]
@@ -152,8 +153,12 @@ flowchart LR
     COLLECTIVE --> GPU
 ```
 
+<div class="backend-caption">
+
 Every edge is a place a job can pass a unit test and still die at scale.
 `IPEX` shims → [native `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) + [`torch-ccl`/`XCCL`](https://github.com/intel/torch-ccl) + [`oneCCL`](https://github.com/oneapi-src/oneCCL) is the migration behind this diagram.
+
+</div>
 
 [^xpu]: [PyTorch XPU docs](https://pytorch.org/docs/stable/notes/xpu.html) · [Intel torch-ccl (XCCL)](https://github.com/intel/torch-ccl) · [oneAPI oneCCL](https://github.com/oneapi-src/oneCCL) · [PyTorch distributed overview](https://pytorch.org/docs/stable/distributed.html) · [The two timelines](https://samf.sh/posts/2026/01/10/#the-two-timelines) — source chronology for the previous slide.
 
@@ -208,34 +213,43 @@ The 7.77T MDS run is the *baseline*, not a failure. The migration was about main
 
 ## One training program across vendors
 
-| Machine | Stack | Scheduler |
-| --- | --- | --- |
-| Aurora | `XPU` + `XCCL` | `PBS` |
-| Polaris | `CUDA` + `NCCL` | `PBS` |
-| Perlmutter | `CUDA` + `NCCL` | `SLURM` |
-| Frontier | `AMD` + `RCCL` | `SLURM` |
-
-<div class="portable-split">
-<div>
+<div class="portable-grid">
+<div class="portable-quad">
 
 ```python
-import torch
-import torch.distributed as dist
-
-xpu = "xpu" if torch.xpu.is_available() else "cuda"
-device = torch.device(xpu)
-backend = "xccl" if device.type == "xpu" else "nccl"
-
-dist.init_process_group(backend=backend)
-torch.set_default_device(device)
+# example.py
+import ezpz
+rank = ezpz.setup_torch()
+world_size = ezpz.get_world_size()
+print(f"Hello from {rank}/{world_size}!")
 ```
 
 </div>
-<div>
+<div class="portable-quad">
 
 - [`ezpz launch`](https://ezpz.cool/cli/launch/): ranks, bindings, hostfiles
 - [`ezpz test`](https://github.com/saforem2/ezpz): smoke on any fabric
 - [`DTensor` tutorial](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html)
+
+</div>
+<div class="portable-quad">
+
+| Machine | Stack | Scheduler | Lab |
+| --- | --- | --- | --- |
+| Aurora | `XPU` + `XCCL` | `PBS` | `ANL` |
+| Polaris | `CUDA` + `NCCL` | `PBS` | `ANL` |
+| Perlmutter | `CUDA` + `NCCL` | `SLURM` | `LBNL` |
+| Frontier | `AMD` + `RCCL` | `SLURM` | `ORNL` |
+
+</div>
+<div class="portable-quad">
+
+```bash
+$ ezpz launch python3 example.py
+Hello from rank 0/24!
+Hello from rank 1/24!
+# ... etc
+```
 
 </div>
 </div>
@@ -246,34 +260,7 @@ torch.set_default_device(device)
 
 </Slide>
 
-{/* ── A5: environment IS backend ─────────────────────────────── */}
-<Slide id="environment">
-
-## The environment is part of the backend
-
-Live Sunspot production env (`job 12478562`):
-
-```bash
-export CCL_PROCESS_LAUNCHER=pmix
-export CCL_OP_SYNC=1
-export CCL_ATL_SYNC_COLL=1
-export ZE_FLAT_DEVICE_HIERARCHY=FLAT
-# CCL_KVS_MODE=pmi — only on Aurora next-eval queue
-```
-
-Two release trees: login `torch 2.10` vs compute `2.13` — a login-node probe lies.
-
-XCCL mesh ladder that gates every change: **48 → 192 → 384 → 768 ranks**, value-checked, must exit `0`.[^env]
-
-[^env]: [ALCF Aurora docs](https://docs.alcf.anl.gov/aurora/) · [oneCCL docs](https://github.com/oneapi-src/oneCCL/tree/master/docs)
-
-<SpeakerNotes>
-`KVS` guidance from `ALCF`. Intel corrects the tuning story live — env *is* the backend at 10k nodes.
-</SpeakerNotes>
-
-</Slide>
-
-{/* ── A6: benchmark the real path ───────────────────────────── */}
+{/* ── A5: benchmark the real path ───────────────────────────── */}
 <Slide id="measure-backend">
 
 ## Benchmark the path the job actually uses
@@ -285,7 +272,7 @@ XCCL mesh ladder that gates every change: **48 → 192 → 384 → 768 ranks**, 
 
 > A passing unit test proves an op exists. A repeatable step proves it's useful at scale.
 
-This is how the `2.13 → 2.14.0+xpu` fix, the ladder, and Act C's watchdog were all validated.[^bench]
+The `XCCL` timeout fix that Act C's ops story depends on, the `XPU`/`XCCL` scaling ladder at `Sunspot`, and the watchdog that saved `job 8505298` all passed this way.[^bench]
 
 [^bench]: [PyTorch profiler (`torch.profiler`)](https://pytorch.org/tutorials/beginner/profiler.html) · [PyTorch `torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html)
 
@@ -545,10 +532,32 @@ Point at this slide. Stay on it for Q&A — every project name is clickable and 
   #remaining-work th, #remaining-work td { word-break: normal; overflow-wrap: break-word; hyphens: none; }
   #frame { padding-bottom: 2lh; }
   .frame-footer-spacer { height: 1.5lh; }
-  .portable-split { display: grid; grid-template-columns: 52% 48%; gap: 2ch; align-items: start; width: 100%; }
-  .portable-split pre { margin-block: 0; font-size: 0.9em; }
+  .portable-split { display: grid; grid-template-columns: 50% 50%; gap: 1.5ch; align-items: start; width: 100%; }
+  .portable-split pre { margin-block: 0; font-size: 0.76em; }
+  .portable-split pre.astro-code { padding-block: 0.25lh; }
   .portable-split > div { min-width: 0; }
-  .portable-split > div > ul { margin-block: 0; font-size: 0.96em; }
+  .portable-split > div > ul { margin-block: 0.35lh 0; font-size: 0.76em; }
+  .portable-split > div > ul > li { margin-block: 0.12lh 0; }
+  .portable-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5lh 2ch; width: 100%; align-items: start; }
+  .portable-quad { min-width: 0; }
+  #portable-training .portable-grid { gap: 0.4lh 2ch; }
+  #portable-training h2 { margin-block-end: 0.3lh; }
+  #portable-training table { font-size: 0.74em; }
+  #portable-training .portable-grid pre { font-size: 0.68em; }
+  #portable-training h2 { margin-block-end: 0.4lh; }
+  .portable-grid table { font-size: 0.72em; margin: 0; }
+  .portable-grid pre { margin: 0; font-size: 0.66em; }
+  .portable-grid pre.astro-code { padding-block: 0.2lh; }
+  .portable-grid ul { margin: 0.2lh 0 0; font-size: 0.68em; }
+  .portable-grid li { margin-block: 0.08lh; }
+  .portable-grid .portable-quad ul { margin: 0.2lh 0 0; font-size: 0.68em; }
+  .portable-grid .portable-quad li { margin-block: 0.08lh; }
+  @media (max-width: 768px) { .portable-grid { grid-template-columns: 1fr; } }
+  #portable-training table { font-size: 0.84em; }
+  #portable-training table { margin-block-end: 0.35lh; }
+  #portable-training .slide-inner { gap: 0.3lh; }
+  #backend-path .mermaid { font-size: 1.15em; margin-block: 0.7lh; }
+  .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
   #portable-training > .slide-inner > ul { margin-bottom: 0.5lh; }
   .project-figure { display: flex; flex-direction: column; align-items: center; width: 100%; max-height: 13lh; margin: 0; }
