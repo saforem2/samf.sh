@@ -1285,6 +1285,8 @@ body[data-speaker-window] [is-~='notes'] {
         position: relative !important;
         inset: auto !important;
         opacity: 1 !important;
+        visibility: visible !important;
+        contain: none !important;
         pointer-events: auto !important;
         transform: none !important;
         width: 100%;
@@ -1345,6 +1347,8 @@ body.slides-print-mode [is-~='slide'] {
     position: relative !important;
     inset: auto !important;
     opacity: 1 !important;
+    visibility: visible !important;
+    contain: none !important;
     pointer-events: auto !important;
     transform: none !important;
     width: 100%;
