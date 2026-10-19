@@ -102,23 +102,22 @@ Prologue in 60s: the workloads are the *reason* we needed the backend, not the t
 ## When the backend landed
 
 ```mermaid
-%%{init: {'themeCSS': '.titleText{font-size:1rem!important;font-weight:700}.taskText{font-size:0.85rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.8rem!important}.sectionTitle{font-size:0.95rem!important;font-weight:700}.tick text{font-size:0.85rem!important}.grid .tick{opacity:0.7}.section0{fill:color-mix(in oklch,var(--pt-indigo) 10%,transparent)!important}.section1{fill:color-mix(in oklch,var(--pt-teal) 10%,transparent)!important}.done,.active{fill:color-mix(in oklch,var(--pt-indigo) 16%,var(--background1))!important;stroke:var(--pt-indigo)!important}.crit{fill:var(--pt-red)!important;stroke:color-mix(in oklch,var(--pt-red) 88%,black)!important}.milestone{fill:color-mix(in oklch,var(--pt-indigo) 85%,white)!important;stroke:var(--pt-indigo)!important}'}}%%
+%%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:0.95rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.9rem!important}.sectionTitle{font-size:1rem!important;font-weight:700}.tick text{font-size:1.05rem!important}.grid .tick line{opacity:0.42}.section0{fill:#f0eaf6!important}.section1{fill:#e8f6f8!important}.done,.active{fill:#e2ddf0!important;stroke:#3532a8!important}.crit{fill:#ee3b24!important;stroke:#c02e1c!important}.milestone{fill:#5149b8!important;stroke:#3532a8!important}'}}%%
 gantt
     title Intel PyTorch and Aurora milestones
     dateFormat  YYYY-MM-DD
     axisFormat  %Y
 
     section Intel and PyTorch
-    IPEX                               :i1, 2020-09-15, 2024-03-27
+    IPEX (shim era)                    :i1, 2023-01-01, 2024-03-27
     PyTorch Fdn Premier (Intel)        :milestone, i2, 2023-08-15, 1d
     PT 2.4 XPU prototype               :milestone, i3, 2024-07-24, 1d
     PT 2.5 native Intel GPU            :milestone, i4, 2024-10-17, 1d
     PT 2.7 eager/compile parity        :milestone, i5, 2025-04-23, 1d
-    PT 2.8 XCCL ProcessGroup           :crit, i6, 2025-08-06, 1d
-    IPEX EOL                           :crit, i7, 2026-03-31, 1d
+    PT 2.8 XCCL ProcessGroup           :milestone, i6, 2025-08-06, 1d
+    IPEX EOL                           :crit, i7, 2024-03-31, 1d
 
     section Aurora and science
-    Sunspot bring-up                   :a1d, 2023-05-01, 2024-01-15
     Install complete 10624 nodes       :milestone, a1e, 2023-06-22, 1d
     GenSLM 32B Gordon Bell              :milestone, a3, 2023-11-15, 1d
     Exascale 1.01 EF on HPL            :crit, a4, 2024-05-13, 1d

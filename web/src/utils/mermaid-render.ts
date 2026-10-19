@@ -403,6 +403,22 @@ function stabilizeMermaidSvgLayout() {
             })
         }
 
+        // Dedup gantt year ticks: mermaid's gantt interpolates ticks at
+        // quarterly granularity regardless of axisFormat, so "2023" appears
+        // 4× when the range is short. Collapse to one label per unique year
+        // and hide the extra grid lines; keeps the axis readable from distance.
+        if (node.closest('#timeline')) {
+            const seen = new Set<string>()
+            for (const g of node.querySelectorAll<SVGGElement>(
+                '.grid .tick, g.tick',
+            )) {
+                const label = g.querySelector('text')?.textContent?.trim() ?? ''
+                if (!label) continue
+                if (seen.has(label)) g.style.display = 'none'
+                else seen.add(label)
+            }
+        }
+
         const block = node.closest('.mermaid')
         if (block instanceof HTMLElement) {
             setupInteractiveViewport(block)

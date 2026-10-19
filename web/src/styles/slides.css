@@ -1891,7 +1891,7 @@ body.slides-print-mode .pytorch-footer-lockup-dark { display: none !important; }
     width: 10ch;
     height: 10ch;
     display: block;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+    filter: invert(1) drop-shadow(0 1px 4px rgba(0,0,0,0.5));
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
     font-size: 0.6em;
