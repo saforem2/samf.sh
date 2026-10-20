@@ -580,11 +580,11 @@ Honest about upstream vs local shim. The last line is the most actionable takeaw
 
 ## What we would do again
 
-1. **Backend + distributed together** — `torch.xpu` without `XCCL` is a demo, not a trainer.
-2. **One program, many launches** — [`ezpz`](https://github.com/saforem2/ezpz) owns the schedule, the model doesn't branch.
-3. **A science baseline that survives the migration** — 7.77T → 4.674T on the same tokens axis.
-4. **Measure the step, not the kernel** — the whole training step, at the job's real scale.
-5. **Recovery before throughput** — checkpoint + watchdog + quarantine before you tune.
+1. **Backend + distributed together:** `torch.xpu` without `XCCL` is a demo, not a trainer.
+2. **One program, many launches:** [`ezpz`](https://github.com/saforem2/ezpz) owns the schedule, the model doesn't branch.
+3. **A science baseline that survives the migration:** 7.77T → 4.674T on the same tokens axis.
+4. **Measure the step, not the kernel:** the whole training step, at the job's real scale.
+5. **Recovery before throughput:** checkpoint + watchdog + quarantine before you tune.
 
 **GenSLM · MProt-DPO · AERIS · AuroraGPT** — not case studies, but the workloads that forced each layer.
 
