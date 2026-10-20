@@ -15,8 +15,6 @@ const series = [
     ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#009E73', ''],
     ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#009E73', '10 4'],
     ['2b_v2_512_constlr_from9200', '2B 512N constant LR', '#8C52A2', '3 4'],
-    ['20b_v2_256', '20B 256N (cut at 0.20T)', '#EE4C2C', ''],
-    ['20b_v2_512', '20B 512N (cut at 0.40T)', '#EE4C2C', '10 4'],
 ].map(([key, label, color, dash]) => {
     const c = snapshot.chains[key]
     const tokens = (step) => (c.prior_tokens + step * c.gbs * c.seq_len) / 1e12
@@ -41,7 +39,7 @@ let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width
 svg += text(
     70,
     30,
-    'AuroraGPT: 2B production progress and 20B early training',
+    'AuroraGPT 2B: production training progress',
     25,
     'font-weight="700"',
 )
