@@ -87,6 +87,65 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 </Slide>
 
 {/* ── Frame: the 3-act contract ───────────────────────────────── */}
+<Slide id="aurora-node">
+
+## Inside an Aurora node
+
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28, 'padding': 12}}}%%
+flowchart TB
+    subgraph S0["CPU socket 0"]
+        C0["Xeon CPU Max · 52 cores<br/>64 GiB HBM + 512 GiB DDR5"]
+        G0["GPU 0 · 128 GiB HBM<br/>Tile A | Tile B"]
+        G1["GPU 1 · 128 GiB HBM<br/>Tile A | Tile B"]
+        G2["GPU 2 · 128 GiB HBM<br/>Tile A | Tile B"]
+        C0 ---|PCIe 5| G0
+        C0 --- G1
+        C0 --- G2
+        P0["PCIe switch"]
+        N0["4 Slingshot 11 NICs"]
+        C0 --- P0
+        P0 ---|PCIe 4| N0
+    end
+    subgraph S1["CPU socket 1"]
+        C1["Xeon CPU Max · 52 cores<br/>64 GiB HBM + 512 GiB DDR5"]
+        G3["GPU 3 · 128 GiB HBM<br/>Tile A | Tile B"]
+        G4["GPU 4 · 128 GiB HBM<br/>Tile A | Tile B"]
+        G5["GPU 5 · 128 GiB HBM<br/>Tile A | Tile B"]
+        C1 ---|PCIe 5| G3
+        C1 --- G4
+        C1 --- G5
+        P1["PCIe switch"]
+        N1["4 Slingshot 11 NICs"]
+        C1 --- P1
+        P1 ---|PCIe 4| N1
+    end
+    UPI["UPI · CPU interconnect"] --- C0
+    UPI --- C1
+    G0 -.- XE["Xe Link · all-to-all among 6 GPUs"]
+    G1 -.- XE
+    G2 -.- XE
+    G3 -.- XE
+    G4 -.- XE
+    G5 -.- XE
+    N0 --- NET["Slingshot network · Dragonfly topology"]
+    N1 --- NET
+```
+
+**6 GPUs × 2 tiles = 12 `torch.xpu` devices** in `FLAT` mode. GPU Max 1550 (`PVC`), 768 GiB GPU HBM per node.
+
+<div class="node-source">
+
+Schematic; Xe Link connections grouped for readability. [ALCF node topology](https://docs.alcf.anl.gov/aurora/images/aurora_node_dataflow.png) · [Machine overview](https://docs.alcf.anl.gov/aurora/) · [PyTorch tile configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/)
+
+</div>
+
+<SpeakerNotes>
+Two CPU sockets, three GPUs per socket, two tiles per GPU. The tile labels are local to each GPU; they are not runtime device ordinals. In FLAT mode PyTorch exposes the 12 tiles as devices. Xe Link connects all six GPUs; the central label groups those connections and is not a physical switch. Each CPU connects to a PCIe switch serving four Slingshot NICs. GPU traffic can reach the NICs without copying through host memory. The GPU memory total is 6 times 128 GiB, or 768 GiB.
+</SpeakerNotes>
+
+</Slide>
+
 <Slide id="frame">
 
 ## Talk outline
@@ -721,6 +780,11 @@ The GPU counts are announced plans. Check device support, collectives, launch, d
 </Slide>
 
 <style>{`
+  #aurora-node { --mermaid-max-height: 57vh; }
+  #aurora-node .mermaid { margin-block: 0.2lh; }
+  #aurora-node .slide-inner > p { font-size: 0.85em; margin-block: 0.3lh; }
+  #aurora-node .node-source { font-size: 0.6em; line-height: 1.3; }
+
   #title-slide .title-affiliations { position: absolute !important; width: max-content; right: auto; left: 4ch; bottom: 24px; display: flex; align-items: center; gap: 32px; padding: 0; background: transparent; }
   #title-slide .title-affiliations img { display: block; height: auto; object-fit: contain; filter: none !important; margin: 0; }
   #title-slide .title-anl-logo { width: 170px; }
