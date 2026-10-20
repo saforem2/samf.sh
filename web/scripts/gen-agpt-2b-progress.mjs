@@ -9,12 +9,14 @@ const snapshot = JSON.parse(
     readFileSync(resolve(dir, 'agpt-2b-progress.json'), 'utf8'),
 )
 const series = [
-    ['2b_v1_mds', 'MDS reference', '#118cc2', '7 4'],
-    ['2b_v2_256', '256N stage 1', '#e05560', ''],
-    ['2b_v2_512', '512N stage 1', '#a01a1a', ''],
-    ['2b_v2_256_stage2_dolmino', '256N stage 2', '#1a915c', ''],
-    ['2b_v2_512_stage2_dolmino', '512N stage 2', '#7454b8', ''],
-    ['2b_v2_512_constlr_from9200', '512N constant LR', '#d07d13', '5 3'],
+    ['2b_v1_mds', '2B MDS reference', '#118cc2', '7 4'],
+    ['2b_v2_256', '2B 256N stage 1', '#e05560', ''],
+    ['2b_v2_512', '2B 512N stage 1', '#a01a1a', ''],
+    ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#1a915c', ''],
+    ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#7454b8', ''],
+    ['2b_v2_512_constlr_from9200', '2B 512N constant LR', '#d07d13', '5 3'],
+    ['20b_v2_256', '20B 256N (cut at 0.67T)', '#ee4c2c', '3 3'],
+    ['20b_v2_512', '20B 512N (cut at 0.67T)', '#ad233d', '8 3 2 3'],
 ].map(([key, label, color, dash]) => {
     const c = snapshot.chains[key]
     const tokens = (step) => (c.prior_tokens + step * c.gbs * c.seq_len) / 1e12
@@ -39,11 +41,11 @@ let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width
 svg += text(
     70,
     30,
-    'AuroraGPT 2B: stage 2 and learning-rate branches',
+    'AuroraGPT: 2B production progress and 20B early training',
     25,
     'font-weight="700"',
 )
-svg += text(70, 56, 'Stage 1 and stage 2 · cumulative tokens', 16)
+svg += text(70, 56, 'Cumulative tokens · 20B curves truncated at 0.67T', 16)
 svg += `<defs><clipPath id="main"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`
 svg += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#aaa"/>`
 for (let t = 0; t <= 8; t++) {
@@ -80,7 +82,7 @@ for (const s of series) {
 svg += '</g>'
 // Legend sits above the training curves; endpoints are raw, not binned means.
 let y = 122
-svg += text(1145, 100, 'End tokens / raw loss', 14, 'text-anchor="end"')
+svg += text(1145, 100, 'Shown tokens / raw loss', 14, 'text-anchor="end"')
 for (const s of series) {
     svg +=
         `<path d="M690 ${y - 5}h25" stroke="${s.color}" stroke-width="3" stroke-dasharray="${s.dash}"/>` +
