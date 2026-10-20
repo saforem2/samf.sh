@@ -1333,6 +1333,29 @@ body[data-speaker-window] [is-~='notes'] {
     }
     /* Footer is position:fixed, which doesn't paginate — convert to
        per-slide absolute so it appears on every page, not just once. */
+    /* Title wave + QR shadow: text-shadow rasterizes via Skia as a
+       filled rect (p1 rect 35,98,451,152 fill 0,0,0) — strip shadow
+       for print; wave is supplied by the <img> (print bg alone
+       disappears when "Background graphics" is off). */
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        text-shadow: none !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+        text-shadow: none !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-wave {
+        display: block !important;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        pointer-events: none !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
     @media print {
         .pytorch-footer {
             position: absolute !important;
@@ -1408,6 +1431,25 @@ body.slides-print-mode .pytorch-footer {
     left: 2ch !important;
     right: 2ch !important;
     bottom: 1lh !important;
+}
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .title-wave {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    pointer-events: none !important;
+}
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .slide-inner {
+    text-shadow: none !important;
+}
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+    text-shadow: none !important;
 }
 
    the runtime (Presentation.astro). Falls back to an empty string if
@@ -1813,10 +1855,17 @@ html[data-webtui-theme='doe']
     .slide-inner {
     --deck-logo-gutter: 0;
 }
-/* Title slide: full-bleed wave behind white text. */
+/* Title slide: full-bleed wave behind white text. The CSS bg is the
+   screen path; print/PDF renderers skip CSS background-image when
+   "Background graphics" is off, so an <img class="title-wave"> inside
+   .slide-inner carries the same art as content so the PDF always has
+   a wave. Hidden on screen, surfaced only for print. */
 [data-deck-theme='pytorch'] #title-slide {
     background: var(--background0) url('/pytorch-template/bg.webp') center
         center / cover no-repeat;
+}
+[data-deck-theme='pytorch'] #title-slide .title-wave {
+    display: none;
 }
 [data-deck-theme='pytorch'] #title-slide .slide-inner {
     background: transparent;
@@ -1910,12 +1959,24 @@ html[data-webtui-theme='doe']
     }
 }
 @media print {
+    .pytorch-footer {
+        position: absolute !important;
+        right: 2ch !important;
+        left: auto !important;
+        bottom: 0.8lh !important;
+    }
     .pytorch-footer-lockup {
         display: block !important;
     }
     .pytorch-footer-lockup-dark {
         display: none !important;
     }
+}
+body.slides-print-mode .pytorch-footer {
+    position: absolute !important;
+    right: 2ch !important;
+    left: auto !important;
+    bottom: 0.8lh !important;
 }
 body.slides-print-mode .pytorch-footer-lockup {
     display: block !important;
@@ -1939,7 +2000,7 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr {
     position: absolute;
     top: 1.5lh;
-    right: 3ch;
+    right: 2ch;
     display: flex;
     flex-direction: column;
     align-items: center;
