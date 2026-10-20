@@ -156,6 +156,13 @@ ESLint setup:
 - `.github/copilot-instructions.md`: not found.
 
 <!-- ai-memory:start -->
+## Just-do-it default
+
+Prefer acting over asking for reversible work — see `_rules/just-do-it.md` in
+ai-memory (`global`). If the next step is obvious from what's on screen, do
+it and show the result; reserve ask-backs for destructive or
+out-of-scope actions per `~/.claude/CLAUDE.md`.
+
 ## Long-term memory (ai-memory)
 
 This project uses [ai-memory](https://github.com/akitaonrails/ai-memory) for cross-session and cross-harness continuity.
