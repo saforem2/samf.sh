@@ -547,36 +547,21 @@ Long jobs are not an ops concern bolted on — they **are** the product. Design 
 <div class="layered-visual">
 
 ```mermaid
-flowchart TB
-    subgraph job["📋 JOB scope: PBS · hours"]
-        JOB_TXT["<i>crash / walltime</i> →<br/><span style='font-weight:700'>chained resubmit</span>"]
-        subgraph node["🖥 NODE scope: failover wrapper · minutes"]
-            NODE_TXT["<i>bad host detected</i> →<br/><span style='font-weight:700'>swap from spare pool</span>"]
-            subgraph proc["⏱ PROCESS scope: ezpz launch · seconds"]
-                PROC_TXT["<i>stdout idle ≥ N s</i> →<br/><span style='font-weight:700'>kill + backoff</span>"]
-            end
-        end
-    end
-    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
-    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
-    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
-    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
-    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
-    classDef procTxt fill:transparent,stroke:none,color:#1da811
-    class JOB_TXT jobTxt
-    class NODE_TXT nodeTxt
-    class PROC_TXT procTxt
-    class job jobC
-    class node nodeC
-    class proc procC
+%%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 42, 'padding': 14}}}%%
+flowchart LR
+    LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
+    CLASSIFY -->|rc = 0| DONE["Done"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
+    SWAP -.-> LAUNCH
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
 ```
 
-<span class="layered-visual-caption">Nested recovery scopes — adapted from the [August talk](https://samf.sh/talks/2026/08/03/#32) (`#32`). Inner loops catch most failures; outer loops catch the rest.</span>
+<span class="layered-visual-caption">Exit trailer + crash patterns + idle watchdog (`exit 124`) determine the next action.</span>
 
 </div>
 
 <SpeakerNotes>
-Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The companion talk at `2026/08/03` has the interval math. The nested diagram is the same one from the August talk (#32) — three scopes, inner→outer time horizon.
+Re-shard is not free: DeviceMesh rebuild is part of the cost model. The table distinguishes recovery scopes; the diagram shows the auto-retry control flow adapted from the TPC workshop paper. After each attempt, parse the exit trailer and match crash patterns, including SIGTERM and the idle watchdog's exit 124. A successful exit terminates the loop. When a bad node is identified and a spare is available, swap it and retry. Stop when no retry is possible, including exhausted spares or failure before training. This is a summary, not a claim that every nonzero exit is a bad node.
 </SpeakerNotes>
 
 </Slide>
