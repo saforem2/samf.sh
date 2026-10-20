@@ -9,14 +9,14 @@ const snapshot = JSON.parse(
     readFileSync(resolve(dir, 'agpt-2b-progress.json'), 'utf8'),
 )
 const series = [
-    ['2b_v1_mds', '2B MDS reference', '#118cc2', '7 4'],
-    ['2b_v2_256', '2B 256N stage 1', '#e05560', ''],
-    ['2b_v2_512', '2B 512N stage 1', '#a01a1a', ''],
-    ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#1a915c', ''],
-    ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#7454b8', ''],
-    ['2b_v2_512_constlr_from9200', '2B 512N constant LR', '#d07d13', '5 3'],
-    ['20b_v2_256', '20B 256N (cut at 0.67T)', '#ee4c2c', '3 3'],
-    ['20b_v2_512', '20B 512N (cut at 0.67T)', '#ad233d', '8 3 2 3'],
+    ['2b_v1_mds', '2B MDS reference', '#666666', '8 4'],
+    ['2b_v2_256', '2B 256N stage 1', '#0072B2', ''],
+    ['2b_v2_512', '2B 512N stage 1', '#0072B2', '10 4'],
+    ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#009E73', ''],
+    ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#009E73', '10 4'],
+    ['2b_v2_512_constlr_from9200', '2B 512N constant LR', '#8C52A2', '3 4'],
+    ['20b_v2_256', '20B 256N (cut at 0.20T)', '#EE4C2C', ''],
+    ['20b_v2_512', '20B 512N (cut at 0.40T)', '#EE4C2C', '10 4'],
 ].map(([key, label, color, dash]) => {
     const c = snapshot.chains[key]
     const tokens = (step) => (c.prior_tokens + step * c.gbs * c.seq_len) / 1e12
@@ -45,7 +45,7 @@ svg += text(
     25,
     'font-weight="700"',
 )
-svg += text(70, 56, 'Cumulative tokens · 20B curves truncated at 0.67T', 16)
+svg += text(70, 56, 'Cumulative tokens · 20B shown through 0.30T / 0.40T', 16)
 svg += `<defs><clipPath id="main"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`
 svg += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#aaa"/>`
 for (let t = 0; t <= 8; t++) {
@@ -108,7 +108,7 @@ svg +=
 svg += text(
     70,
     637,
-    'Stage 2 includes stage-1 tokens. Training mixes differ between stages.',
+    'Solid: 256 nodes · dashed: 512 nodes. Stage 2 includes stage-1 tokens; training mixes differ.',
     14,
 )
 svg += '</svg>\n'
