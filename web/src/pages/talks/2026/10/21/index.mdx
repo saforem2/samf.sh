@@ -50,8 +50,8 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 </a>
 
 <div class="title-affiliations" aria-label="Author affiliations">
-    <img src="/anl-logos/anl-color-light.svg" alt="Argonne National Laboratory" class="title-anl-logo" />
-    <img src="/talks/2026-10-21/figures/intel-logo.png" alt="Intel" class="title-intel-logo" />
+    <img src="/anl-logos/anl-wireframe-dark.svg" alt="Argonne National Laboratory" class="title-anl-logo" />
+    <img src="/talks/2026-10-21/figures/intel-wordmark-white.svg" alt="Intel" class="title-intel-logo" />
 </div>
 
 <SpeakerNotes>
@@ -725,14 +725,14 @@ The announced accelerator counts are plans, not a statement of current availabil
 </Slide>
 
 <style>{`
-  #title-slide .title-affiliations { position: absolute !important; width: max-content; right: auto; left: 4ch; bottom: 24px; display: flex; align-items: center; gap: 28px; padding: 14px 20px; background: white; }
+  #title-slide .title-affiliations { position: absolute !important; width: max-content; right: auto; left: 4ch; bottom: 24px; display: flex; align-items: center; gap: 32px; padding: 0; background: transparent; }
   #title-slide .title-affiliations img { display: block; height: auto; object-fit: contain; filter: none !important; margin: 0; }
-  #title-slide .title-anl-logo { width: 140px; }
-  #title-slide .title-intel-logo { width: 82px; }
+  #title-slide .title-anl-logo { width: 170px; }
+  #title-slide .title-intel-logo { width: 96px; }
   @media print {
-    #title-slide .title-affiliations { left: 28px !important; bottom: 20px !important; gap: 20px; padding: 10px 14px; }
-    #title-slide .title-anl-logo { width: 112px; }
-    #title-slide .title-intel-logo { width: 66px; }
+    #title-slide .title-affiliations { left: 28px !important; bottom: 20px !important; gap: 26px; padding: 0; }
+    #title-slide .title-anl-logo { width: 140px; }
+    #title-slide .title-intel-logo { width: 78px; }
   }
 
   #frame table { table-layout: fixed; width: 100%; font-size: 0.9em; }
