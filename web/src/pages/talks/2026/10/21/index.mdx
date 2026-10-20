@@ -355,17 +355,7 @@ flowchart LR
 
 </div>
 
-<Slide id="session-feedback">
 
-## Session feedback
-
-Scan to share feedback with us and the organizers.
-
-<a class="session-feedback-qr" href="https://sfeedback.com/9H5heU" aria-label="Give feedback on this session">
-    <img src="/talks/2026-10-21/figures/session-feedback-qr.png" alt="QR code for feedback on Scaling PyTorch on Intel XPU" width="740" height="762" />
-</a>
-
-</Slide>
 
 <style>{`
   #session-feedback .slide-inner { align-items: center; text-align: center; }
@@ -797,6 +787,18 @@ Logical schematic, not a wiring diagram. Xe Link connections grouped. [ALCF node
 <SpeakerNotes>
 Two CPU sockets, three GPUs per socket, two tiles per GPU. The tile labels are local to each GPU; they are not runtime device ordinals. In FLAT mode PyTorch exposes the 12 tiles as devices. Xe Link connects all six GPUs; the central label groups those connections and is not a physical switch. Each CPU connects to a PCIe switch serving four Slingshot NICs. GPU traffic can reach the NICs without copying through host memory. The GPU memory total is 6 times 128 GiB, or 768 GiB.
 </SpeakerNotes>
+
+</Slide>
+
+<Slide id="session-feedback">
+
+## Session feedback
+
+Scan to share feedback with us and the organizers.
+
+<a class="session-feedback-qr" href="https://sfeedback.com/9H5heU" aria-label="Give feedback on this session">
+    <img src="/talks/2026-10-21/figures/session-feedback-qr.png" alt="QR code for feedback on Scaling PyTorch on Intel XPU" width="740" height="762" />
+</a>
 
 </Slide>
 
