@@ -450,6 +450,12 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
 
 Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
 
+<div class="production-pointer">
+
+[Production runs and training logs](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/production/README.md) · Look out for our upcoming paper at the **TPC workshop at SC26**.
+
+</div>
+
 <SpeakerNotes>
 The chart shows six production and reference trajectories from the selected dashboard view. The separate 200-step LR 3.22e-5 probe is omitted: it ends at loss 5.998, above the main plot range, and does not show stage-2 progress. Stage-2 token counts include their stage-1 checkpoints. Loss changes across stage boundaries include a data-mix change; this is training loss, not a held-out quality comparison. The dashboard upstream was unavailable; all 58 registered W&B runs were checked directly and remain terminal, with the newest logged samples on September 17, 2026.
 
@@ -936,6 +942,7 @@ The announced accelerator counts are plans, not a statement of current availabil
     #context .context-layout { grid-template-columns: 1fr; gap: 1lh; }
     #context .context-hero img { max-height: 36vh; }
   }
+  #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
   #migration-evidence .slide-inner { padding-bottom: 90px !important; }
   @media print {
     #timeline .mermaid svg {

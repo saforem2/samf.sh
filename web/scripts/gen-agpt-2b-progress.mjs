@@ -43,7 +43,7 @@ svg += text(
     25,
     'font-weight="700"',
 )
-svg += text(70, 56, 'Cumulative tokens · 20B shown through 0.30T / 0.40T', 16)
+svg += text(70, 56, 'Stage 1 and stage 2 · cumulative tokens', 16)
 svg += `<defs><clipPath id="main"><rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></clipPath></defs>`
 svg += `<rect x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" fill="none" stroke="#aaa"/>`
 for (let t = 0; t <= 8; t++) {
