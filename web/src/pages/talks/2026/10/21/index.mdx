@@ -525,15 +525,24 @@ The taxonomy is the mental model. The next two slides cover the two rows you hit
 
 ## Process, node, and allocation restarts
 
+<div class="recovery-summary">
+<div>
+
 | Layer | Scope | Trigger | Cost of being wrong |
 | --- | --- | --- | --- |
 | Process | 1 rank | Crash / OOM | Tokens since last ckpt |
 | Node | 6 GPUs / 12 tiles | Hang on one host | 1 node's work + re-shard |
 | Allocation | 10k nodes | Bad FS / scheduler | Whole-job walltime |
 
+</div>
+<div class="recovery-explanation">
+
 `ezpz` handles the outer two: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. DCP handles the inner save.
 
 Long jobs are not an ops concern bolted on — they **are** the product. Design them first.
+
+</div>
+</div>
 
 <div class="layered-visual">
 
@@ -873,7 +882,10 @@ The announced accelerator counts are plans, not a statement of current availabil
   .layered-visual .mermaid { margin-block: 0.3lh 0; }
   .layered-visual .mermaid svg { max-height: 28vh !important; }
   #layered-restarts .layered-visual { --mermaid-max-height: 36vh; }
-  #layered-restarts .slide-inner table { font-size: 0.85em !important; }
+  #layered-restarts .recovery-summary { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 3ch; align-items: center; width: 100%; }
+  #layered-restarts .recovery-summary table { font-size: 0.85em !important; min-width: 0 !important; max-width: 100% !important; width: 100% !important; }
+  #layered-restarts .recovery-explanation { font-size: 0.85em; }
+  @media screen and (max-width: 768px) { #layered-restarts .recovery-summary { grid-template-columns: 1fr; gap: 0.5lh; } }
   #layered-restarts .slide-inner > p { font-size: 0.85em; }
   .layered-visual-caption { display: block; width: 100%; text-align: center; font-size: 0.62em; color: var(--foreground2); margin-block-start: 0.2lh; line-height: 1.3; }
   /* Figcaption/caption code + links shouldn't get the body inline-chip
