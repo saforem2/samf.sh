@@ -378,7 +378,11 @@ function stabilizeMermaidSvgLayout() {
                 : heightRaw
 
         node.style.setProperty('height', `${resolvedHeight}px`, 'important')
-        node.style.setProperty('max-height', '50vh', 'important')
+        node.style.setProperty(
+            'max-height',
+            'var(--mermaid-max-height, 50vh)',
+            'important',
+        )
         node.style.setProperty(
             'aspect-ratio',
             `${widthRaw} / ${heightRaw}`,
@@ -400,6 +404,70 @@ function stabilizeMermaidSvgLayout() {
                 if (Number.isFinite(h) && h > 0)
                     marker.setAttribute('markerHeight', (h * 1.9).toFixed(1))
                 marker.setAttribute('data-scaled', '1')
+            })
+        }
+
+        // Timeline readability: match the blog version — keep all grid lines
+        // (they anchor every milestone to the time axis) and just hide
+        // duplicate year labels. Blog does this via CSS alone
+        // (.grid .tick line { stroke:…; opacity:0.6 }) — no index math.
+        const mermaidBlock = node.closest<HTMLElement>('.mermaid')
+        if (mermaidBlock?.closest('#timeline')) {
+            const seen = new Set<string>()
+            for (const g of node.querySelectorAll<SVGGElement>('g.tick')) {
+                const label = g.querySelector('text')?.textContent?.trim() ?? ''
+                if (!label) continue
+                if (seen.has(label)) {
+                    const t = g.querySelector('text')
+                    if (t) t.style.display = 'none'
+                } else seen.add(label)
+            }
+        }
+        if (mermaidBlock?.closest('#timeline')) {
+            for (const el of node.querySelectorAll<SVGTextElement>(
+                '.critText',
+            )) {
+                el.style.fill = '#fff'
+                el.setAttribute('fill', '#fff')
+            }
+            // Mermaid puts .task.crit text INSIDE the bar's <g> but
+            // with dark inherited fill — force all texts inside crit
+            // groups to white. Use display text query too.
+            for (const g of node.querySelectorAll('g.task.crit, g.crit')) {
+                g.querySelectorAll('text').forEach((t) => {
+                    ;(t as SVGTextElement).style.fill = '#fff'
+                    t.setAttribute('fill', '#fff')
+                })
+            }
+            // Broader: any text whose content is the problematic label
+            // and sits inside a red fill — covers label-outside-text too
+            node.querySelectorAll('text').forEach((t) => {
+                const txt = t.textContent?.trim() ?? ''
+                if (txt === 'torchtitan/ezpz') {
+                    const fill =
+                        (t as SVGTextElement).style.fill ||
+                        t.getAttribute('fill') ||
+                        ''
+                    // Only override if parent has red fill
+                    const parent = t.closest('g')
+                    if (
+                        parent?.querySelector(
+                            'rect[fill=\"#ee3b24\"], rect[style*=\"ee3b24\"]',
+                        ) ||
+                        parent?.classList.contains('crit')
+                    ) {
+                        ;(t as SVGTextElement).style.fill = '#fff'
+                        t.setAttribute('fill', '#fff')
+                    } else if (
+                        !fill ||
+                        fill === 'var(--foreground0)' ||
+                        fill === '#000'
+                    ) {
+                        // label-outside on a crit milestone — force white with shadow context
+                        ;(t as SVGTextElement).style.fill = '#fff'
+                        t.setAttribute('fill', '#fff')
+                    }
+                }
             })
         }
 
@@ -467,6 +535,36 @@ export function initMermaid() {
         const bg2 = resolveColor('--background2', '#e5e5e5')
         const bg3 = resolveColor('--background3', '#cccccc')
         const pink = resolveColor('--pink', '#ea76cb')
+        if (document.documentElement.dataset.webtuiTheme === 'pytorch') {
+            const accent = resolveColor('--pt-diagram-accent', '#ee4c2c')
+            const ink = resolveColor('--foreground0', '#181716')
+            return {
+                background: '#ffffff',
+                mainBkg: '#ffffff',
+                primaryColor: '#ffffff',
+                primaryBorderColor: accent,
+                primaryTextColor: ink,
+                secondaryColor: '#ffffff',
+                secondaryBorderColor: accent,
+                secondaryTextColor: ink,
+                tertiaryColor: '#fafafa',
+                tertiaryBorderColor: ink,
+                tertiaryTextColor: ink,
+                lineColor: accent,
+                textColor: ink,
+                clusterBkg: '#fafafa',
+                clusterBorder: ink,
+                nodeTextColor: ink,
+                nodeBorder: accent,
+                edgeLabelBackground: '#ffffff',
+                cScale0: accent,
+                cScale1: '#181716',
+                cScale2: '#ffffff',
+                noteBkgColor: '#ffffff',
+                noteBorderColor: accent,
+                noteTextColor: ink,
+            }
+        }
         return {
             background: bg1,
             mainBkg: bg2,
@@ -501,11 +599,18 @@ export function initMermaid() {
     }
 
     const render = async () => {
+        const fontFamily = resolveMermaidFontFamily()
+        await Promise.all(
+            ['16px', 'bold 16px', 'italic 16px'].map((size) =>
+                document.fonts.load(`${size} ${fontFamily}`),
+            ),
+        )
+        await document.fonts.ready
         mermaid.initialize({
             startOnLoad: false,
             theme: 'base',
             themeVariables: resolveThemeVariables(),
-            fontFamily: resolveMermaidFontFamily(),
+            fontFamily,
             fontSize: resolveMermaidFontSize(),
             flowchart: {
                 padding: 16,

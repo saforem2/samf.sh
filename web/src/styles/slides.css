@@ -74,16 +74,25 @@
     inset: 0;
     overflow: hidden;
     opacity: 0;
+    visibility: hidden;
+    contain: paint;
     pointer-events: none;
+    transform: translateX(2ch);
     transition:
         opacity 200ms ease-out,
-        transform 200ms ease-out;
-    transform: translateX(2ch);
+        transform 200ms ease-out,
+        visibility 0s 200ms;
 
     &[data-current] {
         opacity: 1;
+        visibility: visible;
+        contain: none;
         pointer-events: auto;
         transform: translateX(0);
+        transition:
+            opacity 200ms ease-out,
+            transform 200ms ease-out,
+            visibility 0s 0s;
     }
 
     /* The slide-inner is the actual content box. It fills the slide in
@@ -232,6 +241,17 @@
     .slide-inner > p + :is(ul, ol) {
         margin-block-start: 0.5lh;
     }
+    /* Prevent orphan punctuation after inline code chips: `PBS` + `)` must
+       not break apart. Mark each code span as non-breakable with its
+       trailing punct so `)`/`,` never leads a line. */
+    .nowrap {
+        white-space: nowrap;
+    }
+    p,
+    li {
+        orphans: 2;
+        widows: 2;
+    }
     table,
     th,
     td {
@@ -322,7 +342,7 @@
        computed size, which makes 1em inline-code chips visibly
        taller than the line they sit in. */
     code {
-        font-size: 0.92em;
+        font-size: 1em;
     }
     /* Inline-code differentiation on slides. The global chip
        (`--code-bg: surface1`, `--code-fg: text`) is nearly invisible on
@@ -343,7 +363,8 @@
        from the fill being a real step off the background rather than from
        hue. Scoped to inline code only — `pre.astro-code > code` (the shiki
        codeblock body) keeps its theme. */
-    :is(p, li, td, h1, h2, h3, h4, figcaption) code {
+    :is(p, li, td, h1, h2, h3, h4, figcaption)
+        code:not(pre code):not(pre code *) {
         /* Derive the chip from whatever it sits in rather than hardcoding
            a grey. --callout-color is already set per callout variant
            (red for warning, orange for important, green for tip, ...) and
@@ -1119,7 +1140,7 @@ body[data-speaker-window] [is-~='notes'] {
         /* Tighter minmax (24ch from 36ch) so 4-6 tiles fit per row at
            normal viewport, matching Reveal's overview density. */
         grid-template-columns: repeat(auto-fit, minmax(24ch, 1fr));
-        grid-auto-rows: calc((24ch * 9) / 16);
+        grid-auto-rows: auto;
         gap: 2ch;
         padding: 2lh 3ch calc(2lh + 1lh) 3ch;
         overflow-y: auto;
@@ -1130,7 +1151,10 @@ body[data-speaker-window] [is-~='notes'] {
         position: relative !important;
         inset: auto !important;
         width: 100%;
-        height: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        visibility: visible !important;
+        contain: none;
         opacity: 0.75 !important;
         pointer-events: auto !important;
         cursor: pointer;
@@ -1149,12 +1173,15 @@ body[data-speaker-window] [is-~='notes'] {
         position: absolute;
         top: 0;
         left: 0;
-        width: 1280px;
-        height: 720px;
+        width: 1280px !important;
+        min-width: 1280px !important;
+        max-width: none !important;
+        height: 720px !important;
+        box-sizing: border-box;
         transform-origin: top left;
         transform: scale(var(--ov-scale, 0.32));
         padding: 1lh 4ch;
-        font-size: 2em;
+        font-size: 22px !important;
         line-height: 1.4;
         display: flex;
         flex-direction: column;
@@ -1231,13 +1258,13 @@ body[data-speaker-window] [is-~='notes'] {
     /* default deck mode unchanged */
 }
 
-/* Paper: zero margins only. Do NOT set an @page `size` here -- Chrome's
-   print dialog keeps whatever paper the user picked, so a hardcoded size
-   is ignored while the slide keeps the height that size implied. A 540px
-   slide on a 1632px Tabloid sheet then breaks across THREE pages, which
-   is how 25 slides became 75. Let the sheet be whatever it is and make
-   the slide fill it (see the height rules below). */
+/* 16:9 for PDF export — the portable grid uses viewport-relative
+   sizing on screen (vw ch lh) but @page is a fixed sheet; 11in holds
+   the longest content slides without overflow. Chrome's print shim
+   still respects this from the main CSS even when triggered via
+   ?print-pdf / p key. */
 @page {
+    size: 11in 6.1875in;
     margin: 0;
 }
 
@@ -1264,6 +1291,8 @@ body[data-speaker-window] [is-~='notes'] {
         position: relative !important;
         inset: auto !important;
         opacity: 1 !important;
+        visibility: visible !important;
+        contain: none !important;
         pointer-events: auto !important;
         transform: none !important;
         width: 100%;
@@ -1301,14 +1330,22 @@ body[data-speaker-window] [is-~='notes'] {
         flex-direction: column !important;
         justify-content: safe center !important;
         padding: 1lh 4ch !important;
-        /* Scale type to the sheet, the way the screen deck scales it to
-           the viewport (clamp with a vw term, ~line 123). A flat em here
-           meant the same physical text size on Letter and on Tabloid, so
-           the bigger the paper the more of it sat empty. */
+        /* Print sheet is 11in wide — vw scales huge. Pull clamp down so
+           the 3-code-block slide and other dense pages fit without clip. */
         font-size: calc(
-            clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+            clamp(0.62rem, 0.9vw + 0.2rem, 1.15rem) * var(--print-fit, 1)
         ) !important;
         overflow: hidden !important;
+    }
+    /* Footer is position:fixed, which doesn't paginate — convert to
+       per-slide absolute so it appears on every page, not just once. */
+    @media print {
+        .pytorch-footer {
+            position: absolute !important;
+            left: 2ch !important;
+            right: 2ch !important;
+            bottom: 1lh !important;
+        }
     }
 }
 body.slides-print-mode [is-~='presentation'] {
@@ -1324,6 +1361,8 @@ body.slides-print-mode [is-~='slide'] {
     position: relative !important;
     inset: auto !important;
     opacity: 1 !important;
+    visibility: visible !important;
+    contain: none !important;
     pointer-events: auto !important;
     transform: none !important;
     width: 100%;
@@ -1359,24 +1398,66 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
        the footer stamp lands. */
     justify-content: safe center !important;
     padding: 1lh 4ch !important;
-    /* Scale type to the sheet rather than fixing it, so the deck reads
-       the same on Letter and Tabloid. The overflow:hidden clip below
-       still catches the rare dense slide. */
+    /* Same tightened clamp as @media print above. */
     font-size: calc(
-        clamp(0.8rem, 1.55vw + 0.3rem, 2.4rem) * var(--print-fit, 1)
+        clamp(0.62rem, 0.9vw + 0.2rem, 1.15rem) * var(--print-fit, 1)
     ) !important;
-    /* Clip anything that still overflows rather than letting it
-       bleed visibly past the paper edge — better to lose half a
-       trailing line than show it sliced in two. */
     overflow: hidden !important;
 }
 
-/* Print-mode per-slide footer: the position:fixed status bar doesn't
-   repeat across paginated pages, so each printed slide gets its own
-   URL stamp in the bottom-left corner via a ::after pseudo-element.
-   The URL is read from --slide-url, set on the presentation root by
-   the runtime (Presentation.astro). Falls back to an empty string if
-   unset so older sessions don't print a literal `var(...)`. */
+/* Title wave + shadows: Skia fills text-shadow / drop-shadow as
+   a solid rect (p1 rect 35,98,451,152 fill #000 + duplicate span at
+   0.75pt). Strip every shadow for print; wave is supplied by the
+   <img> (print bg alone disappears when "Background graphics" is
+   off). Placed OUTSIDE any @media print so it also fires for
+   slides-print-mode (triggered by p key, not media query). */
+body.slides-print-mode #title-slide .slide-inner {
+    text-shadow: none !important;
+}
+body.slides-print-mode #title-slide .title-slide-qr span {
+    text-shadow: none !important;
+}
+body.slides-print-mode #title-slide .title-slide-qr img {
+    filter: invert(1) !important;
+}
+body.slides-print-mode #title-slide .title-wave {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    pointer-events: none !important;
+}
+body.slides-print-mode #title-slide {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+@media print {
+    #title-slide .slide-inner {
+        text-shadow: none !important;
+    }
+    #title-slide .title-slide-qr span {
+        text-shadow: none !important;
+    }
+    #title-slide .title-slide-qr img {
+        filter: invert(1) !important;
+    }
+    #title-slide .title-wave {
+        display: block !important;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        pointer-events: none !important;
+    }
+    #title-slide {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}
+/* Per-slide URL stamp for print mode. */
 body.slides-print-mode [is-~='slide']::after {
     content: var(--slide-url, '');
     position: absolute;
@@ -1765,6 +1846,213 @@ html[data-webtui-theme='doe']
     img {
     filter: invert(1);
 }
+/* ── PyTorch deck chrome ───────────────────────────────────────────────
+   pytorchcon-na26-ppt.pptx: Simple Light wave (bg.webp 1600×900) is the
+   TITLE background only; content slides are plain white with a low footer
+   band (flame + "PyTorch CONFERENCE — NORTH AMERICA 2026 —"). */
+[data-deck-theme='pytorch'] .deck-corner-logo {
+    display: none !important;
+}
+[data-deck-theme='pytorch']
+    [is-~='presentation'][data-deck-theme='pytorch']
+    [is-~='slide'][data-current]
+    .slide-inner {
+    --deck-logo-gutter: 0;
+}
+/* Title slide: full-bleed wave behind white text. The CSS bg is the
+   screen path; print/PDF renderers skip CSS background-image when
+   "Background graphics" is off, so an <img class="title-wave"> inside
+   .slide-inner carries the same art as content so the PDF always has
+   a wave. Hidden on screen, surfaced only for print. */
+[data-deck-theme='pytorch'] #title-slide {
+    background: var(--background0) url('/pytorch-template/bg.webp') center
+        center / cover no-repeat;
+}
+[data-deck-theme='pytorch'] #title-slide .title-wave {
+    display: none;
+}
+[data-deck-theme='pytorch'] #title-slide .slide-inner {
+    background: transparent;
+    justify-content: center;
+    color: var(--background0);
+    text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
+    bottom: 0;
+    font-size: clamp(1.25rem, 1.8vw + 0.5rem, 1.95rem) !important;
+    line-height: 1.35;
+    /* Cap width so title doesn't run under QR */
+    max-width: calc(100% - 14ch);
+}
+[data-deck-theme='pytorch'] #title-slide h1 {
+    font-size: 1.45em !important;
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+}
+[data-deck-theme='pytorch'] #title-slide h3,
+[data-deck-theme='pytorch'] #title-slide .title-slide-thesis {
+    font-size: 0.72em;
+}
+[data-deck-theme='pytorch']:has(#title-slide[data-current])
+    [is-~='slide-status'] {
+    display: none;
+}
+@media screen and (min-width: 769px) {
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer {
+        display: flex;
+        left: auto;
+        right: 2ch;
+        bottom: 24px;
+    }
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer-lockup {
+        display: none !important;
+    }
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer-lockup-dark {
+        display: block !important;
+    }
+}
+/* Content slides: plain white (template's default), no wave. */
+[data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) {
+    background: var(--background0);
+}
+[data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
+    background: var(--background0);
+    bottom: 1lh;
+}
+
+[data-deck-theme='pytorch'] #title-slide h1,
+[data-deck-theme='pytorch'] #title-slide h2,
+[data-deck-theme='pytorch'] #title-slide h3 {
+    color: var(--background0);
+}
+[data-deck-theme='pytorch'] #title-slide :is(p, li, span, em, strong, a) {
+    color: var(--background0);
+}
+[data-deck-theme='pytorch'] #title-slide a {
+    text-decoration-color: oklch(from #fff l c h / 0.5);
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-thesis {
+    color: oklch(from #fff l c h / 0.92);
+    font-style: normal;
+}
+/* PyTorch footer: official CONFERENCE lockup (vector), bottom-right above the status bar. */
+.pytorch-footer {
+    position: fixed;
+    left: 2ch;
+    right: auto;
+    bottom: 2lh;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    pointer-events: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+.pytorch-footer-lockup,
+.pytorch-footer-lockup-dark {
+    width: 130px;
+    height: auto;
+}
+.pytorch-footer-lockup {
+    display: block;
+}
+.pytorch-footer-lockup-dark {
+    display: none !important;
+}
+:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
+:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
+:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
+    display: none !important;
+}
+:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup-dark,
+:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup-dark,
+:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
+    display: block !important;
+}
+@media (max-width: 768px) {
+    .pytorch-footer {
+        display: none !important;
+    }
+}
+@media print {
+    .pytorch-footer {
+        position: absolute !important;
+        right: 2ch !important;
+        left: auto !important;
+        bottom: 0.8lh !important;
+    }
+    .pytorch-footer-lockup {
+        display: block !important;
+    }
+    .pytorch-footer-lockup-dark {
+        display: none !important;
+    }
+}
+body.slides-print-mode .pytorch-footer {
+    position: absolute !important;
+    right: 2ch !important;
+    left: auto !important;
+    bottom: 0.8lh !important;
+}
+body.slides-print-mode .pytorch-footer-lockup {
+    display: block !important;
+}
+body.slides-print-mode .pytorch-footer-lockup-dark {
+    display: none !important;
+}
+
+/* Title slide authors: one name per line (MDX wraps consecutive lines
+   into separate <p> tags when blank-line separated). */
+[data-deck-theme='pytorch'] #title-slide .title-authors {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15lh;
+    margin-block: 0.3lh 0.6lh;
+}
+[data-deck-theme='pytorch'] #title-slide .title-authors span {
+    display: block;
+    line-height: 1.35;
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+    position: absolute;
+    top: 1.5lh;
+    right: 2ch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3lh;
+    padding: 0;
+    background: transparent;
+    text-decoration: none;
+    z-index: 2;
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr img {
+    width: 10ch;
+    height: 10ch;
+    display: block;
+    filter: invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+}
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+    font-size: 0.6em;
+    color: #fff;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 0.15ch 0.8ch;
+    border-radius: 2px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+[data-deck-theme='pytorch'] #title-slide .title-conf-line {
+    margin-top: 0.8lh;
+}
+
+/* Title slide has no footer — the wave is the whole slide. */
+/* Print: hide the fixed wave + footer, give each page a light border. */
 /* Print: the fixed footer repeats on every page but can only carry
    one lockup set for the whole document, so print replaces it with a
    per-slide footer (the ::before layers below) and hides the fixed
@@ -2115,4 +2403,57 @@ html:not([data-webtui-theme='doe']) .doe-footer {
 }
 html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
+}
+
+/* PyTorch PDF branding repeats on each slide, with space for captions. */
+@media print {
+    [data-deck-theme='pytorch'] .deck-corner-logo,
+    [data-deck-theme='pytorch'] .pytorch-footer {
+        display: none !important;
+    }
+    [data-deck-theme='pytorch'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        right: 18px;
+        bottom: 10px;
+        width: 96px;
+        height: 51px;
+        background: url('/pytorch-template/pytorchcon-na26-color.svg') center /
+            contain no-repeat;
+        z-index: 100;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    [data-deck-theme='pytorch'] #title-slide::before {
+        background-image: url('/pytorch-template/pytorchcon-na26-white.svg');
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-wave {
+        z-index: 0;
+    }
+    [data-deck-theme='pytorch'] #title-slide .slide-inner > :not(.title-wave) {
+        position: relative;
+        z-index: 1;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+        position: absolute !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        max-width: 100% !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide,
+    [data-deck-theme='pytorch'] #title-slide * {
+        text-shadow: none !important;
+        box-shadow: none !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+        background: transparent;
+    }
+}
+
+@media print {
+    [data-deck-theme='pytorch'] [is-~='slide'] {
+        box-sizing: border-box !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
 }

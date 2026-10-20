@@ -1,0 +1,160 @@
+/* PyTorch Conference 2026 — from pytorchcon-na26-ppt.pptx.
+   The template's theme XML is \"Simple Light\" (Google Slides export):
+     dk1 #000000 / lt1 #FFFFFF   ground
+     dk2 #E12353                 the magenta-red used for dark text on white
+     lt2 #181716                 near-black muted (captions, slide numbers)
+     accent1 #8D2E9B             purple (headings, links)
+     accent2 #EE3B24             PyTorch red (primary accent, flame gradient start)
+     accent3 #3532A8             deep indigo
+     accent4 #CC2FAA             magenta
+     accent5 #262626 / accent6 #666666  neutrals
+     hlink #DB4C41               link red
+     folHlink #0097A7            visited teal
+   Face: the master sets Avenir 28pt bold for title, Avenir for body; the
+   theme XML declares Arial but the slides override to Avenir everywhere.
+   We use Avenir as the body font with the same opt-in default pattern as
+   doe/alcf: [data-font-default] only, so a picker selection wins.
+
+   Ground: the deck is white (lt1) — the template paints the colorful wave
+   (bg.png, 1600×900, warm red→magenta→peach with two black arcs) as the
+   slide *background* and covers it with a white card on content layouts,
+   leaving a ~0.76in footer strip where the wave + PyTorch logo peek through.
+   We recreate that in CSS: the footer shows the wave strip and a compact
+   PyTorch lockup; content slides keep white; the title slide shows the wave
+   full-bleed behind white text.
+
+   Contrast on white: dk2 #E12353 4.6:1 (just shy of AA for small text, ok
+   for large/brand), accent2 #EE3B24 4.1:1, accent1 #8D2E9B 7.5:1, #DB4C41
+   ~4.9:1. Body text stays near-black (#1a1a1a / lt2) at >14:1; headings take
+   dk2 or #111111 so the accents remain decorative. */
+
+html[data-webtui-theme='pytorch'] {
+    --pt-red: oklch(from #ee3b24 l c h);
+    /* Framework logo accent; separate from the conference template red. */
+    --pt-diagram-accent: #ee4c2c;
+    --pt-red-dark: oklch(from #e12353 l c h);
+    --pt-purple: oklch(from #8d2e9b l c h);
+    --pt-indigo: oklch(from #3532a8 l c h);
+    --pt-magenta: oklch(from #cc2faa l c h);
+    --pt-pink: oklch(from #e12353 l c h);
+    --pt-teal: oklch(from #0097a7 l c h);
+    --pt-near-black: oklch(from #181716 l c h);
+    --pt-dark-grey: oklch(from #262626 l c h);
+    --pt-mid-grey: oklch(from #666666 l c h);
+    --pt-link: oklch(from #db4c41 l c h);
+    --pt-panel: oklch(from #fff0ee l c h);
+    --pt-panel-2: oklch(from #fde8e6 l c h);
+
+    --oklch-scale: 0.85;
+    --pre-line-height: 1.3;
+
+    --background0: oklch(from #ffffff l c h);
+    --background1: oklch(from #fff8f7 l c h);
+    --background2: var(--pt-panel);
+    --background3: var(--pt-panel-2);
+    --background-active: oklch(from var(--pt-red) l c h / 0.08);
+
+    --foreground0: oklch(from #111111 l c h);
+    --foreground1: var(--pt-near-black);
+    --foreground2: var(--pt-mid-grey);
+    --foreground3: oklch(from #9a9a9a l c h);
+
+    --text: var(--foreground1);
+    --base: var(--background0);
+    --mantle: var(--background1);
+    --crust: var(--background2);
+
+    --pre-background: transparent;
+    --pre-linenumber-fg: oklch(from #c9ccd3 l c h);
+    --code-bg: var(--background1);
+    --code-fg: var(--foreground2);
+    --bs-body-bg: var(--background1);
+    --bs-border-color: var(--background2);
+    --callout-color: var(--foreground2);
+
+    --accent: var(--pt-red-dark);
+    --url: var(--pt-link);
+
+    --h1: var(--pt-red-dark);
+    --h2: oklch(from #1a1a1a l c h);
+    --h3: oklch(from #2a2a2a l c h);
+    --h4: var(--pt-purple);
+    --h5: var(--pt-dark-grey);
+    --h6: var(--pt-mid-grey);
+
+    --blue: var(--pt-indigo);
+    --sky: var(--pt-purple);
+    --sapphire: var(--pt-indigo);
+    --aqua: var(--pt-teal);
+    --teal: var(--pt-teal);
+    --red: var(--pt-red);
+    --maroon: var(--pt-red-dark);
+    --orange: var(--pt-red);
+    --peach: oklch(from #ff9a8a l c h);
+    --yellow: oklch(from #fd971f l c h);
+    --green: oklch(from #05a551 l c h);
+    --purple: var(--pt-purple);
+    --mauve: var(--pt-magenta);
+    --lavender: oklch(from #c9a0ff l c h);
+    --pink: var(--pt-magenta);
+    --rosewater: var(--pt-panel);
+    --flamingo: var(--pt-panel-2);
+}
+
+/* Body face — same opt-in-default rule as doe/alcf. */
+html[data-webtui-theme='pytorch'][data-font-default] {
+    --font-stack:
+        'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* Crisp diagram chrome; retain the geometry and the selected body font. */
+html[data-webtui-theme='pytorch'] .mermaid {
+    .node :is(rect, circle, ellipse, polygon, path) {
+        fill: #ffffff !important;
+        stroke: var(--pt-diagram-accent) !important;
+        stroke-width: 1.8px !important;
+    }
+    .node .label-container {
+        fill: #ffffff !important;
+    }
+    .node :is(.nodeLabel, .nodeLabel *, text),
+    .edgeLabel :is(span, p, text),
+    .cluster-label :is(span, p, text) {
+        color: var(--foreground0) !important;
+        fill: var(--foreground0) !important;
+    }
+    :is(.flowchart-link, .edgePath .path, .transition) {
+        stroke: var(--pt-diagram-accent) !important;
+        stroke-width: 1.8px !important;
+    }
+    marker path {
+        fill: var(--pt-diagram-accent) !important;
+        stroke: var(--pt-diagram-accent) !important;
+    }
+    .cluster rect {
+        fill: #fafafa !important;
+        stroke: var(--foreground2) !important;
+        stroke-width: 1px !important;
+        stroke-dasharray: 4 4;
+    }
+    .edgeLabel,
+    .edgeLabel .labelBkg {
+        background: #ffffff !important;
+        fill: #ffffff !important;
+    }
+}
+
+html[data-webtui-theme='pytorch']
+    #portable-training
+    .mermaid
+    .node.hub
+    polygon {
+    fill: none !important;
+}
+
+/* Keep language colors, with enough contrast for projection. */
+html[data-webtui-theme='pytorch'] [is-~='presentation'] pre.astro-code::before {
+    border-color: oklch(
+        from var(--lang-badge, var(--material-pink)) l c h / 0.72
+    );
+}

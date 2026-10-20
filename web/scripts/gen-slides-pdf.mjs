@@ -44,16 +44,17 @@ const out =
 
 const shell = findHeadlessShell()
 const browser = await chromium.launch(shell ? { executablePath: shell } : {})
-const page = await browser.newPage()
+const page = await browser.newPage({
+    viewport: { width: 1056, height: 594 },
+    colorScheme: 'light',
+})
 
 // Print CSS keys off @media print (page.pdf emulates it) OR the
 // .slides-print-mode body class. We do NOT navigate with ?print-pdf, since
 // that calls window.print() (headless no-op) -- print media emulation alone
-// flattens the deck. Belt-and-suspenders: also add the class so the
-// duplicated .slides-print-mode ruleset applies regardless.
+// flattens the deck. Use the CSS page size for consistent print metrics.
 await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 })
 await page.emulateMedia({ media: 'print' })
-await page.evaluate(() => document.body.classList.add('slides-print-mode'))
 
 // Let mermaid/katex/webfonts settle before snapshotting.
 await page.evaluate(() => document.fonts.ready)
@@ -65,7 +66,8 @@ await page.pdf({
     height: '7.5in',
     printBackground: true,
     margin: { top: '0', right: '0', bottom: '0', left: '0' },
-    preferCSSPageSize: false,
+    preferCSSPageSize: true,
+    pageRanges: `1-${await page.locator('[is-~="slide"]').count()}`,
 })
 
 await browser.close()
