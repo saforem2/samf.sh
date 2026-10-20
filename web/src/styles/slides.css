@@ -1895,8 +1895,22 @@ html[data-webtui-theme='doe']
     [is-~='slide-status'] {
     display: none;
 }
-[data-deck-theme='pytorch']:has(#title-slide[data-current]) .pytorch-footer {
-    display: none;
+@media screen and (min-width: 769px) {
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer {
+        display: flex;
+        left: auto;
+        right: 2ch;
+        bottom: 24px;
+    }
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer-lockup {
+        display: none !important;
+    }
+    [data-deck-theme='pytorch']:has(#title-slide[data-current])
+        .pytorch-footer-lockup-dark {
+        display: block !important;
+    }
 }
 /* Content slides: plain white (template's default), no wave. */
 [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) {
