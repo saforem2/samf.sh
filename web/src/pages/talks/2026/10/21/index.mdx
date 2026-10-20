@@ -286,10 +286,8 @@ import ezpz
 rank = ezpz.setup_torch()
 world_size = ezpz.get_world_size()
 dev = ezpz.get_torch_device()      # {xpu, cuda, cpu, ...}
-
 # FSDP2 by default — accepts DeviceMesh
 model = ezpz.wrap_model(torch.nn.Linear(128, 10).to(dev))
-
 print(f"Hello from {rank}/{world_size}!")
 ```
 
@@ -305,7 +303,6 @@ Hello from rank 1/24!
 ```bash
 # your own script — no changes needed
 ezpz launch python3 your_training_script.py
-
 # full HF model + dataset via ezpz examples
 ezpz launch python3 -m ezpz.examples.fsdp_tp \
     --dataset=allenai/olmo-mix-1124
@@ -356,6 +353,10 @@ flowchart LR
 <style>{`
   #portable-training .portable-demo-col em { font-size: 0.75em; color: var(--foreground2); line-height: 1.3; display: block; margin-block-start: 0.15lh; }
   #portable-training .portable-demo { align-items: start; }
+  #portable-training .portable-demo-col:last-child { align-self: center; }
+  @media screen and (min-width: 769px) {
+    #portable-training .portable-demo-col pre.astro-code { font-size: 0.60em; }
+  }
   /* Title QR: on screen the pill sits inside the QR block's flow, but in
      print the 16:9 sheet is narrower and the pill's nowrap spills left over
      the author line. In print, center it under the QR code at half scale. */
@@ -449,7 +450,7 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
 <div class="project-figure">
     <img
         src="/talks/2026-10-21/figures/agpt-2b-progress.svg"
-        alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes, and the constant learning-rate branch"
+        alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes"
     />
 </div>
 
@@ -462,7 +463,7 @@ Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
 </div>
 
 <SpeakerNotes>
-The chart shows six production and reference trajectories from the selected dashboard view. The separate 200-step LR 3.22e-5 probe is omitted: it ends at loss 5.998, above the main plot range, and does not show stage-2 progress. Stage-2 token counts include their stage-1 checkpoints. Loss changes across stage boundaries include a data-mix change; this is training loss, not a held-out quality comparison. The dashboard upstream was unavailable; all 58 registered W&B runs were checked directly and remain terminal, with the newest logged samples on September 17, 2026.
+The chart shows five production and reference trajectories from the selected dashboard view. The separate 200-step LR 3.22e-5 probe is omitted: it ends at loss 5.998, above the main plot range, and does not show stage-2 progress. Stage-2 token counts include their stage-1 checkpoints. Loss changes across stage boundaries include a data-mix change; this is training loss, not a held-out quality comparison. The dashboard upstream was unavailable; all 58 registered W&B runs were checked directly and remain terminal, with the newest logged samples on September 17, 2026.
 
 For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_ — ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 </SpeakerNotes>
@@ -871,7 +872,9 @@ The announced accelerator counts are plans, not a statement of current availabil
   .layered-visual { width: 100%; margin-block-start: 0.4lh; }
   .layered-visual .mermaid { margin-block: 0.3lh 0; }
   .layered-visual .mermaid svg { max-height: 28vh !important; }
-  #layered-restarts .layered-visual { --mermaid-max-height: 24vh; }
+  #layered-restarts .layered-visual { --mermaid-max-height: 36vh; }
+  #layered-restarts .slide-inner table { font-size: 0.85em !important; }
+  #layered-restarts .slide-inner > p { font-size: 0.85em; }
   .layered-visual-caption { display: block; width: 100%; text-align: center; font-size: 0.62em; color: var(--foreground2); margin-block-start: 0.2lh; line-height: 1.3; }
   /* Figcaption/caption code + links shouldn't get the body inline-chip
      highlight — it sprays pink/red across every token in a caption. */
