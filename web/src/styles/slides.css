@@ -1140,7 +1140,7 @@ body[data-speaker-window] [is-~='notes'] {
         /* Tighter minmax (24ch from 36ch) so 4-6 tiles fit per row at
            normal viewport, matching Reveal's overview density. */
         grid-template-columns: repeat(auto-fit, minmax(24ch, 1fr));
-        grid-auto-rows: calc((24ch * 9) / 16);
+        grid-auto-rows: auto;
         gap: 2ch;
         padding: 2lh 3ch calc(2lh + 1lh) 3ch;
         overflow-y: auto;
@@ -1151,7 +1151,10 @@ body[data-speaker-window] [is-~='notes'] {
         position: relative !important;
         inset: auto !important;
         width: 100%;
-        height: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        visibility: visible !important;
+        contain: none;
         opacity: 0.75 !important;
         pointer-events: auto !important;
         cursor: pointer;
@@ -1170,12 +1173,15 @@ body[data-speaker-window] [is-~='notes'] {
         position: absolute;
         top: 0;
         left: 0;
-        width: 1280px;
-        height: 720px;
+        width: 1280px !important;
+        min-width: 1280px !important;
+        max-width: none !important;
+        height: 720px !important;
+        box-sizing: border-box;
         transform-origin: top left;
         transform: scale(var(--ov-scale, 0.32));
         padding: 1lh 4ch;
-        font-size: 2em;
+        font-size: 22px !important;
         line-height: 1.4;
         display: flex;
         flex-direction: column;
