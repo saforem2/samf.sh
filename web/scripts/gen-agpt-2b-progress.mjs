@@ -12,8 +12,8 @@ const series = [
     ['2b_v1_mds', '2B MDS reference', '#666666', '8 4'],
     ['2b_v2_256', '2B 256N stage 1', '#0072B2', ''],
     ['2b_v2_512', '2B 512N stage 1', '#0072B2', '10 4'],
-    ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#009E73', ''],
-    ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#009E73', '10 4'],
+    ['2b_v2_256_stage2_dolmino', '2B 256N stage 2', '#D33682', ''],
+    ['2b_v2_512_stage2_dolmino', '2B 512N stage 2', '#D33682', '10 4'],
 ].map(([key, label, color, dash]) => {
     const c = snapshot.chains[key]
     const tokens = (step) => (c.prior_tokens + step * c.gbs * c.seq_len) / 1e12
