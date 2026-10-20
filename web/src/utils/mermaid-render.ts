@@ -378,7 +378,11 @@ function stabilizeMermaidSvgLayout() {
                 : heightRaw
 
         node.style.setProperty('height', `${resolvedHeight}px`, 'important')
-        node.style.setProperty('max-height', '50vh', 'important')
+        node.style.setProperty(
+            'max-height',
+            'var(--mermaid-max-height, 50vh)',
+            'important',
+        )
         node.style.setProperty(
             'aspect-ratio',
             `${widthRaw} / ${heightRaw}`,
