@@ -62,7 +62,7 @@ for (const [t, label] of [
 ]) {
     svg +=
         `<path d="M${sx(t)} ${box.y}V${box.y + box.h}" stroke="#aaa" stroke-dasharray="3 4"/>` +
-        text(sx(t) - 5, box.y - 8, label, 13, 'text-anchor="end"')
+        text(sx(t), box.y - 8, label, 13, 'text-anchor="middle"')
 }
 const path = (s, fx, fy) =>
     s.data
