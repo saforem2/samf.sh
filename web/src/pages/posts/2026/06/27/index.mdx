@@ -57,7 +57,7 @@ through ALCF, and survives token rotation. The minimal version is two steps
 >   machine, attach to it from a laptop.
 > - [Model fallback](#model-fallback-argo-first-alcf-as-backstop) — prefer Argo
 >   Claude, fall back through GPT to an open ALCF model automatically.
-> - [iMessage](#imessage-via-photon) — talk to the agent from your phone.
+> - [iMessage](#imessage-via-photon) — talk to the agent from your phone (and [Heeler/Sill on iOS](#on-your-phone-heeler-and-sill) for terminal + desktop on the phone).
 >
 > **When it breaks**
 >
@@ -415,7 +415,7 @@ export a short-lived access token before starting/restarting the gateway:
 
 ```bash
 # First-time / monthly-ish auth; opens a Globus browser flow.
-uvx --from alcf-ai alcf-ai auth login
+uvx alcf-tokens login inference
 
 # Refresh/export the access token for this shell, then restart rosetta so
 # ${ALCF_INFERENCE_TOKEN} gets substituted into the config.
@@ -964,6 +964,82 @@ multi-step tool-calling turn on the host, not a thin chat relay.
 > recognize (polls, some attachments). Those are non-fatal and don't indicate a
 > broken connection. Look for an explicit disconnect instead.
 
+## On your phone: Heeler and Sill
+
+iMessage is one way to reach the agent from a phone, but two native iOS apps
+cover the other shapes of "phone work" more directly.
+
+### Heeler — the agent console
+
+[Heeler][heeler] is an iOS companion for [herdr][herdr]: every coding agent on
+your machines, sorted by who needs you. It pairs over SSH to herdr's
+newline-delimited JSON API (QR code, 120 s window, Ed25519 device key in the
+Secure Enclave), then shows a single status-sorted list — blocked agents rise
+to the top — with live updates from the herdr event stream.
+
+From a blocked agent you jump straight into its terminal (libghostty + Metal),
+edit a draft with the iOS keyboard, attach a photo over SFTP if needed, and
+send once. The Changes view shows the whole checkout's uncommitted diff so you
+can approve from the phone. Away from the app, blocked/done alerts arrive as
+sealed pushes — keys stay on device, the relay and APNs only see ciphertext.
+
+```
+phone (Heeler) ──SSH/Unix socket──▶ herdr ──▶ agent pane ──▶ llm-rosetta/argo-shim
+         still needs one SSH-able
+         path to the host (Direct or via jump), but no browser, no relay URL
+```
+
+If the stationary-host pattern above already has you SSH-able, Heeler is zero
+new infrastructure: it reuses the same host key and SSH path the post already
+sets up for the laptop.
+
+[heeler]: https://heeler.bybee.dev/
+[herdr]: https://github.com/herdrdev/herdr
+
+### Sill — the Mac on your phone
+
+[Sill][sill] is the counterpart for everything that is *not* an agent pane: the
+whole macOS desktop streamed to iPhone/iPad. One Mac window or the full desktop
+appears on the phone with touch + keyboard + Apple Pencil input — Sill's own
+on-screen keyboard row, window thumbnails, and a trackpad area included.
+
+[sill]: https://getsill.app/
+
+<div class="sill-shot">
+<img
+    src="/posts/2026/06/27/sill-iphone-desktop.png"
+    alt="Sill on iPhone showing the macOS desktop with a slide deck and code editor floating over a Tahoe wallpaper"
+    loading="lazy"
+    decoding="async"
+    width="1206"
+    height="2622"
+/>
+<p class="caption">Sill's iPhone view: the full macOS desktop streamed to the phone. Tahoe wallpaper, slide deck and editor as real windows, modifier-key bar and trackpad below — the same session that's running the agent stack.</p>
+</div>
+
+In the screenshot above the dock is live, the two floating windows are a slide
+deck (the `PyTorch on Intel XPU` talk) and a code/editor window with per-rank
+timelines — exactly the artefacts this post's stack is built to keep running on
+the stationary host. The Sill controls at the bottom are Sill's, not macOS:
+`1.5×` scale, `Keyboard`, `Desktop`, `Menus`, per-window app badges, and a
+`Drag to move the pointer. Tap to click.` trackpad.
+
+Sill pairs once (code scan or USB) and then streams device-to-device over your
+own network — no account, no middleman, end-to-end encrypted. On the same LAN
+it needs nothing else. Away from home, the same paths that make the rest of
+this post work — **Tailscale with Remote Access**, a forwarded port, or a
+Direct Wireless Connection — also carry Sill. So the three together close the
+loop:
+
+| Want | Open |
+| --- | --- |
+| Text the agent | Photon (iMessage → Hermes gateway) |
+| Unblock / review an agent | Heeler (SSH → herdr → pane) |
+| See / click the Mac | Sill (Mac window → iPhone) |
+
+All three ride the same network fabric the post already sets up. If Tailscale
+is on, they are on; if only SSH is, Heeler still is.
+
 ## Gotchas
 
 The non-obvious problems I hit. Two needed **additive** patches to `argo-shim`,
@@ -1160,11 +1236,11 @@ p.write_text(json.dumps(d, indent=2) + "\n")
 PY
 }
 
-# Export a fresh Globus access token for ALCF Inference Endpoints. First run may
+# Export a fresh access token for ALCF Inference Endpoints. First run may
 # require an interactive browser auth flow (see below).
 alcf-inference-token() {
   local token
-  token=$(uvx --from alcf-ai alcf-ai auth get-access-token) || return 1
+  token=$(uvx alcf-tokens get-token inference) || return 1
   export ALCF_INFERENCE_TOKEN="$token"
   print "ALCF_INFERENCE_TOKEN refreshed (${token:0:8}…)"
 }
@@ -1230,8 +1306,7 @@ ARGO_SHIM_TOKEN=$("$PY" -c \
   "import json;print(json.load(open('$HOME/.claude/settings.json'))['apiKeyHelper'].split()[-1])")
 export ARGO_SHIM_TOKEN
 
-ALCF_INFERENCE_TOKEN=$(timeout 120 uv run --with globus-sdk --with openai \
-  "$HELPER" get_access_token 2>/dev/null | tail -1)
+ALCF_INFERENCE_TOKEN=$(timeout 120 uvx alcf-tokens get-token inference 2>/dev/null | tail -1)
 export ALCF_INFERENCE_TOKEN
 
 exec "$HOME/.local/bin/llm-rosetta-gateway" --no-banner --config "$CFG"
@@ -1239,10 +1314,11 @@ exec "$HOME/.local/bin/llm-rosetta-gateway" --no-banner --config "$CFG"
 
 Two things in there are load-bearing. `exec` in the foreground, because
 launchd supervises the real process and `nohup`-ing it means `KeepAlive`
-watches a wrapper that already exited. And `cd "$HOME"` before the ALCF
-helper, because `uv run` resolves the enclosing project first — from a repo
-whose `uv.lock` your `uv` is too old to parse, you get a TOML error instead of
-a token.
+watches a wrapper that already exited. And `cd "$HOME"` before token
+resolution (if your helper uses `uv run`), because `uv run` resolves the
+enclosing project first — from a repo whose `uv.lock` your `uv` is too old to
+parse, you get a TOML error instead of a token. The current `uvx alcf-tokens`
+form avoids that by not depending on a project environment.
 
 The second job, `ai.llm-rosetta.gateway.refresh`, is the interesting one. It
 runs every six hours (`StartInterval 21600`) and *probes* both upstreams
