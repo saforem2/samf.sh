@@ -1333,29 +1333,6 @@ body[data-speaker-window] [is-~='notes'] {
     }
     /* Footer is position:fixed, which doesn't paginate — convert to
        per-slide absolute so it appears on every page, not just once. */
-    /* Title wave + QR shadow: text-shadow rasterizes via Skia as a
-       filled rect (p1 rect 35,98,451,152 fill 0,0,0) — strip shadow
-       for print; wave is supplied by the <img> (print bg alone
-       disappears when "Background graphics" is off). */
-    [data-deck-theme='pytorch'] #title-slide .slide-inner {
-        text-shadow: none !important;
-    }
-    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
-        text-shadow: none !important;
-    }
-    [data-deck-theme='pytorch'] #title-slide .title-wave {
-        display: block !important;
-        position: absolute !important;
-        inset: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        object-fit: cover !important;
-        pointer-events: none !important;
-    }
-    [data-deck-theme='pytorch'] #title-slide {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-    }
     @media print {
         .pytorch-footer {
             position: absolute !important;
@@ -1422,17 +1399,22 @@ body.slides-print-mode [is-~='slide'] .slide-inner {
     overflow: hidden !important;
 }
 
-/* Print-mode per-slide footer: the position:fixed status bar doesn't
-   repeat across paginated pages, so each printed slide gets its own
-   URL stamp in the bottom-left corner via a ::after pseudo-element.
-   The URL is read from --slide-url, set on the presentation root by
-body.slides-print-mode .pytorch-footer {
-    position: absolute !important;
-    left: 2ch !important;
-    right: 2ch !important;
-    bottom: 1lh !important;
+/* Title wave + shadows: Skia fills text-shadow / drop-shadow as
+   a solid rect (p1 rect 35,98,451,152 fill #000 + duplicate span at
+   0.75pt). Strip every shadow for print; wave is supplied by the
+   <img> (print bg alone disappears when "Background graphics" is
+   off). Placed OUTSIDE any @media print so it also fires for
+   slides-print-mode (triggered by p key, not media query). */
+body.slides-print-mode #title-slide .slide-inner {
+    text-shadow: none !important;
 }
-body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .title-wave {
+body.slides-print-mode #title-slide .title-slide-qr span {
+    text-shadow: none !important;
+}
+body.slides-print-mode #title-slide .title-slide-qr img {
+    filter: invert(1) !important;
+}
+body.slides-print-mode #title-slide .title-wave {
     display: block !important;
     position: absolute !important;
     inset: 0 !important;
@@ -1441,15 +1423,42 @@ body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .title-wave {
     object-fit: cover !important;
     pointer-events: none !important;
 }
-body.slides-print-mode [data-deck-theme='pytorch'] #title-slide {
+body.slides-print-mode #title-slide {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
 }
-body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .slide-inner {
-    text-shadow: none !important;
-}
-body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
-    text-shadow: none !important;
+@media print {
+    #title-slide .slide-inner {
+        text-shadow: none !important;
+    }
+    #title-slide .title-slide-qr span {
+        text-shadow: none !important;
+    }
+    #title-slide .title-slide-qr img {
+        filter: invert(1) !important;
+    }
+    #title-slide .title-wave {
+        display: block !important;
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        pointer-events: none !important;
+    }
+    #title-slide {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}/* Print-mode per-slide footer: the position:fixed status bar doesn't
+   repeat across paginated pages, so each printed slide gets its own
+   URL stamp in the bottom-left corner via a ::after pseudo-element.
+   The URL is read from --slide-url, set on the presentation root by
+body.slides-print-mode .pytorch-footer {
+    position: absolute !important;
+    left: 2ch !important;
+    right: 2ch !important;
+    bottom: 1lh !important;
 }
 
    the runtime (Presentation.astro). Falls back to an empty string if
