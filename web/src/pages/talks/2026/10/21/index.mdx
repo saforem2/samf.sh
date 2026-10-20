@@ -687,6 +687,33 @@ The pitch: INCITE/ALCC are the big annual calls, but DD is the on-ramp — a few
 
 </Slide>
 
+<Slide id="next-systems">
+
+## Next at ALCF: Solstice and Equinox
+
+Announced with NVIDIA and Oracle:
+
+| System | Planned accelerators |
+| --- | --- |
+| **Equinox** | **10,000** NVIDIA Blackwell GPUs |
+| **Solstice** | **100,000** NVIDIA Blackwell GPUs |
+
+More systems mean more combinations of **hardware, fabric layers, launchers, networking, and file systems**.
+
+**Keep the training program portable. Validate the full stack at scale.**
+
+<div class="alloc-links">
+
+[NVIDIA / Oracle / DOE announcement · October 2025](https://nvidianews.nvidia.com/news/nvidia-oracle-us-department-of-energy-ai-supercomputer-scientific-discovery)
+
+</div>
+
+<SpeakerNotes>
+The announced accelerator counts are plans, not a statement of current availability. These systems extend the facility's hardware mix. The portability work continues below the device API: collectives, fabric configuration, process launch, networking, data loading, and checkpoint I/O all have to work together. As facilities grow in scale and complexity, repeat the full-step tests, scaling ladder, and recovery tests on each system. The reusable unit is the training program and its validation, not a fork for every machine.
+</SpeakerNotes>
+
+</Slide>
+
 <style>{`
   #frame table { table-layout: fixed; width: 100%; font-size: 0.9em; }
   #frame th:first-child, #frame td:first-child { width: 18%; white-space: normal; }
