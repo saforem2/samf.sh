@@ -531,6 +531,36 @@ export function initMermaid() {
         const bg2 = resolveColor('--background2', '#e5e5e5')
         const bg3 = resolveColor('--background3', '#cccccc')
         const pink = resolveColor('--pink', '#ea76cb')
+        if (document.documentElement.dataset.webtuiTheme === 'pytorch') {
+            const accent = resolveColor('--pt-diagram-accent', '#ee4c2c')
+            const ink = resolveColor('--foreground0', '#181716')
+            return {
+                background: '#ffffff',
+                mainBkg: '#ffffff',
+                primaryColor: '#ffffff',
+                primaryBorderColor: accent,
+                primaryTextColor: ink,
+                secondaryColor: '#ffffff',
+                secondaryBorderColor: accent,
+                secondaryTextColor: ink,
+                tertiaryColor: '#fafafa',
+                tertiaryBorderColor: ink,
+                tertiaryTextColor: ink,
+                lineColor: accent,
+                textColor: ink,
+                clusterBkg: '#fafafa',
+                clusterBorder: ink,
+                nodeTextColor: ink,
+                nodeBorder: accent,
+                edgeLabelBackground: '#ffffff',
+                cScale0: accent,
+                cScale1: '#181716',
+                cScale2: '#ffffff',
+                noteBkgColor: '#ffffff',
+                noteBorderColor: accent,
+                noteTextColor: ink,
+            }
+        }
         return {
             background: bg1,
             mainBkg: bg2,
@@ -565,11 +595,18 @@ export function initMermaid() {
     }
 
     const render = async () => {
+        const fontFamily = resolveMermaidFontFamily()
+        await Promise.all(
+            ['16px', 'bold 16px', 'italic 16px'].map((size) =>
+                document.fonts.load(`${size} ${fontFamily}`),
+            ),
+        )
+        await document.fonts.ready
         mermaid.initialize({
             startOnLoad: false,
             theme: 'base',
             themeVariables: resolveThemeVariables(),
-            fontFamily: resolveMermaidFontFamily(),
+            fontFamily,
             fontSize: resolveMermaidFontSize(),
             flowchart: {
                 padding: 16,

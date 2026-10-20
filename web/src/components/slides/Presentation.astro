@@ -26,18 +26,24 @@ const canonical = `samf.sh${url}`
     <div is-="slides">
         <slot />
     </div>
-    <img
-        src="/anl-logos/anl-color-light.svg"
-        alt=""
-        aria-hidden="true"
-        class="deck-corner-logo deck-corner-logo-light"
-    />
-    <img
-        src="/anl-logos/anl-color-dark.svg"
-        alt=""
-        aria-hidden="true"
-        class="deck-corner-logo deck-corner-logo-dark"
-    />
+    {
+        !pytorch && (
+            <>
+                <img
+                    src="/anl-logos/anl-color-light.svg"
+                    alt=""
+                    aria-hidden="true"
+                    class="deck-corner-logo deck-corner-logo-light"
+                />
+                <img
+                    src="/anl-logos/anl-color-dark.svg"
+                    alt=""
+                    aria-hidden="true"
+                    class="deck-corner-logo deck-corner-logo-dark"
+                />
+            </>
+        )
+    }
     {
         branded && (
             <div class="doe-footer" aria-hidden="true">

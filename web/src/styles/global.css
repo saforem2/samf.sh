@@ -2962,8 +2962,9 @@ html[data-webtui-theme='catppuccin-latte'] {
         box-shadow: inset 3px 0 0 0 var(--accent, var(--blue));
     }
     /* Drop the webtui first-row top-padding (it makes room for the ascii box
-       border, which we don't render in the default style). */
-    table:not([data-table-style='terminal'])
+       border, which we don't render in the default style). Slide tables
+       retain their symmetric padding so header text stays centered. */
+    table:not([data-table-style='terminal']):not([is-~='presentation'] table)
         :first-child
         > tr:first-child
         > :is(td, th) {

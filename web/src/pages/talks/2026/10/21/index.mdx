@@ -13,12 +13,12 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 {/* ================================================================
     TALK ARC (18 slides, ~20 min + 5 Q&A)
-    Thesis: Aurora at ~120k XPUs made the backend visible — we trace
+    Thesis: Aurora jobs at ~120k GPU tiles made the backend visible — we trace
     a single XPU surface (torch.xpu → XCCL/oneCCL → DTensor/FSDP2),
     a fork-to-titan migration proved at 256→512 nodes, and the watchdog
     + failover machinery that keeps long jobs alive.
     Footer: official vector bottom-right (pytorchcon-na26-color.svg @ 2rem).
-    Aurora: 10,624 nodes · 63,744 tiles (≈120k XPUs incl. tile count per PVC).
+    Aurora: 10,624 nodes · 63,744 GPUs · 127,488 GPU tiles (12 per node).
     ================================================================ */}
 
 {/* ── Title ───────────────────────────────────────────────────── */}
@@ -58,18 +58,22 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 {/* ── Prologue: what ALCF does ─────────────────────────────────── */}
 <Slide id="context">
 
-## Why this matters at PyTorch Conference
+## Aurora at ALCF
+
+<div class="context-layout">
 
 | | |
 | --- | --- |
 | [**ALCF**](https://alcf.anl.gov) | DOE leadership computing — runs [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` for open science |
-| [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `63,744` tiles of Intel XPU — up before `torch.xpu` existed |
+| [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `63,744` GPUs · `127,488` GPU tiles |
 | **This talk** | Every team picked PyTorch anyway. How we closed the gap |
 
 <figure class="context-hero">
 <img src="/talks/2026-10-21/figures/aurora-hero.jpg" alt="Aurora's HPE Cray EX racks at the Argonne Leadership Computing Facility" />
-<figcaption>Aurora's HPE Cray EX rows at the ALCF — 10,624 nodes, 63,744 tiles. Photo: [Argonne / ALCF](https://www.alcf.anl.gov/sites/default/files/2025-08/34302D_110_LCF_Aurora_1600x900_0.jpg).</figcaption>
+<figcaption>Aurora's HPE Cray EX rows at the ALCF — 10,624 nodes, 63,744 GPUs. Photo: [Argonne / ALCF](https://www.alcf.anl.gov/sites/default/files/2025-08/34302D_110_LCF_Aurora_1600x900_0.jpg).</figcaption>
 </figure>
+
+</div>
 
 <SpeakerNotes>
 ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, not internal. Aurora is the exascale poster child: 10k nodes, Intel's first data-center GPU at DOE scale, and up before the XPU surface was ported in PyTorch. That collision — new hardware, same PyTorch — is the talk's reason to be. One minute, no deeper.
@@ -80,13 +84,13 @@ ALCF runs the machines so scientists don't have to — INCITE/ALCC allocations, 
 {/* ── Frame: the 3-act contract ───────────────────────────────── */}
 <Slide id="frame">
 
-## The arc
+## Talk outline
 
 | Act | Question | Reusable pattern |
 | --- | --- | --- |
 | **A · Needed** | What does a first-class XPU backend actually require? | The 3 breaks we fixed + the ladder that catches the next one |
-| **B · Accomplished** | How do you leave a Megatron-DeepSpeed fork for composable PyTorch? | The 50-step gate + the 768-rank proof |
-| **C · Remains** | What keeps a 14-day job alive at 60k XPUs (half Aurora) → 120k tiles? | Watchdog + bad-node quarantine + layered restarts |
+| **B · Accomplished** | How do you leave a functional (but unmaintained) Megatron-DeepSpeed fork for composable PyTorch? | The 50-step gate + the 768-rank proof |
+| **C · Remains** | What keeps a 14-day job alive at 60k → 120k GPU tiles? | Watchdog + bad-node quarantine + layered restarts |
 
 
 <div class="frame-footer-spacer"></div>
@@ -100,7 +104,7 @@ Set the contract: every act promises a reusable pattern, not a science result. T
 {/* ── Prologue: why scale matters (60s) ───────────────────────── */}
 <Slide id="prologue">
 
-## Why Aurora needed a real backend
+## Scientific AI workloads on Aurora
 
 | Workload | What it taught us |
 | --- | --- |
@@ -109,10 +113,10 @@ Set the contract: every act promises a reusable pattern, not a science result. T
 | [AERIS](https://arxiv.org/abs/2509.13523) — weather diffusion | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
 | [AuroraGPT](https://samf.sh/talks/2026/08/03/) — foundation LLM | 7.77T-token MDS reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
-Aurora is **10,624 nodes · 63,744 tiles** — ~120k XPUs at 2 tiles/GPU.[^aurora]
+Aurora has **10,624 nodes · 63,744 GPUs · 127,488 GPU tiles**. In `FLAT` mode, **1 tile = 1 `torch.xpu` device**: 6 GPUs × 2 tiles = 12 devices per node.[^aurora]
 [`ezpz`](https://github.com/saforem2/ezpz): same training program on `Intel`, `NVIDIA`, `AMD`.[^aurora]
 
-[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
+[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF PyTorch tile-as-device configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
 
 <SpeakerNotes>
 Prologue in 60s: the workloads are the *reason* we needed the backend, not the talk's subject. GenSLM predates Aurora's XPU path; AERIS uses its own stack. Credit: MProt, GenSLM, and AERIS teams + ALCF + Intel.
@@ -123,14 +127,15 @@ Prologue in 60s: the workloads are the *reason* we needed the backend, not the t
 {/* ── A0: when the backend landed ───────────────────────────── */}
 <Slide id="timeline">
 
-## When the backend landed
+## PyTorch XPU and Aurora timeline
 
 ```mermaid
-%%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:0.95rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.9rem!important}.sectionTitle{font-size:1rem!important;font-weight:700}.tick text{font-size:1.05rem!important}.grid .tick line{stroke:var(--background3)!important;opacity:0.6}.section0{fill:color-mix(in oklch,var(--background1) 72%,transparent)!important}.section1{fill:color-mix(in oklch,var(--blue) 38%,transparent)!important}.done,.active{fill:color-mix(in srgb,var(--blue) 72%,white 28%)!important;stroke:var(--blue)!important}.crit{fill:var(--red)!important;stroke:var(--red)!important}.task.crit text{fill:#fff!important}.task.crit + text,.task.critText{fill:#fff!important}.milestone{fill:var(--red)!important;stroke:var(--red)!important}'}}%%
+%%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:0.95rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:0.9rem!important}.sectionTitle{font-size:1rem!important;font-weight:700}.tick text{font-size:1.5rem!important;font-weight:600}.grid .tick line{stroke:var(--background3)!important;opacity:0.6}.section0{fill:color-mix(in oklch,var(--background1) 72%,transparent)!important}.section1{fill:color-mix(in oklch,var(--blue) 38%,transparent)!important}.done,.active{fill:color-mix(in srgb,var(--blue) 72%,white 28%)!important;stroke:var(--blue)!important}.crit{fill:var(--red)!important;stroke:var(--red)!important}.task.crit text{fill:#fff!important}.task.crit + text,.task.critText{fill:#fff!important}.milestone{fill:var(--red)!important;stroke:var(--red)!important}'}}%%
 gantt
     title Intel PyTorch and Aurora milestones
     dateFormat  YYYY-MM-DD
     axisFormat  %Y
+    todayMarker off
 
     section Intel and PyTorch
     IPEX — before native XPU           :i1, 2023-01-01, 2024-03-27
@@ -155,7 +160,7 @@ gantt
     AuroraGPT on torchtitan            :milestone, a10, 2026-01-10, 1d
 ```
 
-<span class="timeline-caption"><span class="timeline-lanes">**Intel and PyTorch** — IPEX → PT 2.4–2.10+XPU (4 releases)</span> · <span class="timeline-lanes">**Aurora and science** — 10k nodes → 120k-XPU workloads</span><br/>From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates — on desktop the two lanes are the chart background; on phones scroll →.</span>
+<span class="timeline-caption"><span class="timeline-lanes">**Intel and PyTorch** — IPEX → PT 2.4–2.10+XPU (4 releases)</span> · <span class="timeline-lanes">**Aurora and science** — 10k nodes → 120k-tile workloads</span><br/>From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates — on desktop the two lanes are the chart background; on phones scroll →.</span>
 
 <SpeakerNotes>
 60s. The punchline: Intel compressed 14 years of AMD-style work into 5 PT releases (2.4→2.8), and Aurora's science jobs landed right as that window opened — GenSLM before the XPU path, MProt/AERIS during it, AuroraGPT straddling the fork→titan cutover. Every PT milestone here has a oneCCL/env fix to tell if asked.
@@ -166,7 +171,7 @@ gantt
 {/* ── A1: what a first-class backend required ─────────────────── */}
 <Slide id="backend-path">
 
-## A first-class XPU backend — the actual surface
+## PyTorch XPU backend components
 
 <div class="backend-mermaid-desktop">
 
@@ -221,7 +226,7 @@ Co-authors: Panagiotis Kourdis and Tanima Dey, Intel — XCCL/`oneCCL` layer. Di
 {/* ── A2: where it broke (3 concrete bugs) ────────────────────── */}
 <Slide id="xpu-gaps" size="sm">
 
-## Three XPU breaks — same pattern every time
+## XPU integration issues
 
 | Symptom | Root cause | What we run now |
 | --- | --- | --- |
@@ -240,7 +245,7 @@ Not missing kernels — missing dispatch branches. Every row is a real commit an
 {/* ── A3: why we had to leave the fork ───────────────────────── */}
 <Slide id="why-fork-broke">
 
-## Why the fork broke
+## From Megatron-DeepSpeed to torchtitan
 
 | [Megatron-DeepSpeed fork](https://github.com/microsoft/Megatron-DeepSpeed)[^mds] | [`torchtitan`](https://github.com/pytorch/torchtitan) + `DTensor` + `FSDP2` |
 | --- | --- |
@@ -271,6 +276,7 @@ The 7.77T MDS run is the *baseline*, not a failure. The migration was about main
 
 ```python
 # example.py
+import torch
 import ezpz
 rank = ezpz.setup_torch()
 world_size = ezpz.get_world_size()
@@ -292,16 +298,16 @@ Hello from rank 1/24!
 **Other examples:**
 
 ```bash
-    # your own script — no changes needed
-    ezpz launch python3 your_training_script.py
+# your own script — no changes needed
+ezpz launch python3 your_training_script.py
 
-    # full HF model + dataset via ezpz examples
-    ezpz launch python3 -m ezpz.examples.fsdp_tp \
-        --dataset=allenai/olmo-mix-1124
-        --model=meta-models/Muse-Spark-Open-816B-A42B \
-        --local-batch-size=1
-        # ...etc
-    ```
+# full HF model + dataset via ezpz examples
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --dataset=allenai/olmo-mix-1124
+    --model=meta-models/Muse-Spark-Open-816B-A42B \
+    --local-batch-size=1
+    # ...etc
+```
 
 </div>
 
@@ -312,7 +318,7 @@ Same command on every machine — [`ezpz`](https://github.com/saforem2/ezpz) pic
 ```mermaid
 %%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
 flowchart LR
-    EZ(["<span style='font-weight:700'>ezpz launch</span>"])
+    EZ{"<span style='font-weight:700'>ezpz launch</span>"}
     EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
     EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
     EZ --> PM["<i>SLURM · NVIDIA</i><br/><span style='font-weight:700'>Perlmutter</span>"]
@@ -320,7 +326,8 @@ flowchart LR
     EZ --> MAC["<span style='font-weight:700'>Multi-CPU</span>"]
     EZ --> MPS["<i>MPS · Apple</i><br/><span style='font-weight:700'>Multi-MPS*</span>"]
 
-    classDef hub        fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef hub        fill:none,stroke:#ee4c2c,color:#181716,stroke-width:1.8px
+    linkStyle default stroke:#ee4c2c,stroke-width:1.8px
     classDef aurora     fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
     classDef polaris    fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
     classDef perlmutter fill:#06b6d408,stroke:#06b6d4,color:#06b6d4,stroke-width:1.5px
@@ -365,7 +372,7 @@ flowchart LR
 {/* ── A5: benchmark the real path ───────────────────────────── */}
 <Slide id="measure-backend">
 
-## Benchmark the path the job actually uses
+## Full-step benchmarking
 
 1. Freeze build + model + batch + precision + node count
 2. Run the **training step** (not a micro-kernel) on each backend
@@ -387,7 +394,7 @@ Real Aurora traces in the `Genesis` profiling deck if a visual is needed — no 
 {/* ── B1: what moved ─────────────────────────────────────────── */}
 <Slide id="what-moved" size="sm">
 
-## What moved: MDS → `torchtitan`
+## Changes in the `torchtitan` training stack
 
 | Layer | Before (MDS fork + [`ezpz`](https://github.com/saforem2/ezpz)) | After ([`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz)) |
 | --- | --- | --- |
@@ -432,21 +439,21 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
 {/* ── B3: does the new stack train? ──────────────────────────── */}
 <Slide id="migration-evidence">
 
-## Does the new stack train? Production says yes.
+## AuroraGPT 2B: production training progress
 
 <div class="project-figure">
     <img
-        src="/talks/2026-08-03/figures/all-production-loss.svg"
-        alt="AuroraGPT 2B and 20B training loss over tokens — MDS reference vs torchtitan production runs"
+        src="/talks/2026-10-21/figures/agpt-2b-progress.svg"
+        alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, 256- and 512-node stages 1 and 2, and learning-rate branches"
     />
 </div>
 
-`torchtitan` 2B at 256 and 512 nodes both hit **4.674T** tokens. Not a benchmark — a continuation of the 7.77T `MDS` reference with a new mix.
-
-For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_ — ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
+Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
 
 <SpeakerNotes>
-`torchtitan` trains real production models on the same science baseline — not a throughput claim.
+The chart shows six production and reference trajectories from the selected dashboard view. The separate 200-step LR 3.22e-5 probe is omitted: it ends at loss 5.998, above the main plot range, and does not show stage-2 progress. Stage-2 token counts include their stage-1 checkpoints. Loss changes across stage boundaries include a data-mix change; this is training loss, not a held-out quality comparison. The dashboard upstream was unavailable; all 58 registered W&B runs were checked directly and remain terminal, with the newest logged samples on September 17, 2026.
+
+For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_ — ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 </SpeakerNotes>
 
 </Slide>
@@ -454,7 +461,7 @@ For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Train
 {/* ── C1: a healthy process can still be a dead job ─────────── */}
 <Slide id="operations">
 
-## A healthy process can still be a dead job
+## Detecting and recovering from stalled jobs
 
 **Job `8505298`** — step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
 
@@ -482,7 +489,7 @@ Watchdog measures stdout progress, not the collective timeout. The `XPU` gaps sl
 {/* ── C2: failure taxonomy ───────────────────────────────────── */}
 <Slide id="failure-taxonomy">
 
-## Failure taxonomy at ~120k XPUs
+## Failure modes at ~120k GPU tiles
 
 | Mode | Signal | What helps | What doesn't |
 | --- | --- | --- | --- |
@@ -504,12 +511,12 @@ The taxonomy is the mental model. The next two slides cover the two rows you hit
 {/* ── C3: layered restarts ───────────────────────────────────── */}
 <Slide id="layered-restarts">
 
-## Layered restarts — the actual system
+## Process, node, and allocation restarts
 
 | Layer | Scope | Trigger | Cost of being wrong |
 | --- | --- | --- | --- |
 | Process | 1 rank | Crash / OOM | Tokens since last ckpt |
-| Node | 12 XPUs | Hang on one host | 1 node's work + re-shard |
+| Node | 6 GPUs / 12 tiles | Hang on one host | 1 node's work + re-shard |
 | Allocation | 10k nodes | Bad FS / scheduler | Whole-job walltime |
 
 `ezpz` handles the outer two: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. DCP handles the inner save.
@@ -556,7 +563,7 @@ Re-shard is not free — `DeviceMesh` rebuild is part of the cost model. The com
 {/* ── C4: what's still hard ──────────────────────────────────── */}
 <Slide id="remaining-work">
 
-## What remains
+## Remaining XPU gaps
 
 | Layer | Gap | What's needed |
 | --- | --- | --- |
@@ -578,7 +585,7 @@ Honest about upstream vs local shim. The last line is the most actionable takeaw
 {/* ── Takeaway ───────────────────────────────────────────────── */}
 <Slide id="takeaways">
 
-## What we would do again
+## Practices for accelerator bring-up
 
 1. **Backend + distributed together:** `torch.xpu` without `XCCL` is a demo, not a trainer.
 2. **One program, many launches:** [`ezpz`](https://github.com/saforem2/ezpz) owns the schedule, the model doesn't branch.
@@ -609,7 +616,7 @@ End on reusable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the
 | [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) | [Experiments](https://github.com/saforem2/torchtitan/tree/ezpz/torchtitan/experiments/ezpz) · [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 | PyTorch XPU | [`torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) · [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) · [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) · [DCP](https://pytorch.org/docs/stable/distributed.checkpoint.html) |
 | Distributed | [`torch-ccl` / XCCL](https://github.com/intel/torch-ccl) · [`oneCCL`](https://github.com/oneapi-src/oneCCL) · [torch.distributed](https://pytorch.org/docs/stable/distributed.html) |
-| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news — 120k-XPU scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
+| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news — 120k-tile scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
 | Science | [AuroraGPT companion](https://samf.sh/talks/2026/08/03/) · [AERIS](https://arxiv.org/abs/2509.13523) · [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) · [GenSLM](https://journals.sagepub.com/doi/10.1177/10943420231201154) |
 
 </div>
@@ -639,7 +646,7 @@ This work used resources of the **Argonne Leadership Computing Facility**, a DOE
 | --- | --- |
 | Facility | [ALCF](https://www.alcf.anl.gov) · [Aurora](https://www.alcf.anl.gov/aurora) · [Polaris](https://www.alcf.anl.gov/polaris) |
 | Partners | [HPE](https://www.hpe.com) · [Intel](https://www.intel.com) (Max 1550 / `oneAPI` / `oneCCL`) · [PyTorch Foundation](https://pytorch.org/foundation) |
-| Teams | `GenSLM` · `MProt-DPO` · `AERIS` · `AuroraGPT` — see [Links](#links) for papers |
+| Teams | `GenSLM` · `MProt-DPO` · `AERIS` · `AuroraGPT` <span class="ack-reference">— see <a href="#links">Links</a> for papers</span> |
 
 </div>
 
@@ -652,7 +659,7 @@ Read the DOE contract line — it's required on any ALCF-acknowledged talk. Keep
 {/* ── Get time on Aurora ───────────────────────────────────── */}
 <Slide id="allocations">
 
-## Want to run on Aurora?
+## Aurora allocation programs
 
 Aurora and Polaris are **open to any researcher** through DOE's allocation programs — not just Argonne staff.
 
@@ -833,5 +840,81 @@ The pitch: INCITE/ALCC are the big annual calls, but DD is the on-ramp — a few
     #prologue table, #frame table { font-size: 0.7em; }
     .links-grid table { font-size: 0.68em; }
     .application-split { grid-template-columns: 1fr; }
+  }
+  .mermaid .nodeLabel, .mermaid .nodeLabel * {
+    font-family: inherit !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: normal !important;
+  }
+  /* Natural columns without the old percentage allocations. */
+  [is-~='slide'] .slide-inner table {
+    display: table !important;
+    align-self: flex-start;
+    flex: none;
+    width: fit-content !important;
+    min-width: min(72%, 720px) !important;
+    max-width: 92% !important;
+    table-layout: auto !important;
+    font-size: 1.05em !important;
+  }
+  [is-~='slide'] .slide-inner table :is(th, td) {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 52ch !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+  #acks .acks-grid td:last-child { max-width: none !important; }
+  #acks .ack-reference { white-space: nowrap; }
+  [is-~='slide'] :is(pre, code),
+  [is-~='slide'] :is(pre, code) * {
+    font-family: var(--code-font-family, 'mIosevka-Term Web', monospace) !important;
+  }
+  #context .slide-inner > h2:first-child {
+    font-size: 1.8em;
+    margin-block-end: 0.65lh;
+  }
+  #context .context-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 3ch;
+    align-items: center;
+    flex: none;
+    min-height: 0;
+    width: 100%;
+  }
+  #context .context-layout table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    align-self: center;
+  }
+  #context .context-hero {
+    display: flex;
+    flex: none;
+    min-height: 0;
+    width: 100%;
+    max-height: none;
+    margin: 0;
+  }
+  #context .context-hero img {
+    flex: none;
+    width: 100%;
+    height: auto;
+    max-height: 54vh;
+    object-fit: contain;
+  }
+  @media screen and (max-width: 768px) {
+    #context .context-layout { grid-template-columns: 1fr; gap: 1lh; }
+    #context .context-hero img { max-height: 36vh; }
+  }
+  #migration-evidence .slide-inner { padding-bottom: 90px !important; }
+  @media print {
+    #timeline .mermaid svg {
+      height: 390px !important;
+      max-height: 390px !important;
+    }
+    #migration-evidence .slide-inner { padding-bottom: 78px !important; }
   }
 `}</style>

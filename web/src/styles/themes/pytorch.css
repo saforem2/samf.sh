@@ -30,6 +30,8 @@
 
 html[data-webtui-theme='pytorch'] {
     --pt-red: oklch(from #ee3b24 l c h);
+    /* Framework logo accent; separate from the conference template red. */
+    --pt-diagram-accent: #ee4c2c;
     --pt-red-dark: oklch(from #e12353 l c h);
     --pt-purple: oklch(from #8d2e9b l c h);
     --pt-indigo: oklch(from #3532a8 l c h);
@@ -103,4 +105,56 @@ html[data-webtui-theme='pytorch'] {
 html[data-webtui-theme='pytorch'][data-font-default] {
     --font-stack:
         'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* Crisp diagram chrome; retain the geometry and the selected body font. */
+html[data-webtui-theme='pytorch'] .mermaid {
+    .node :is(rect, circle, ellipse, polygon, path) {
+        fill: #ffffff !important;
+        stroke: var(--pt-diagram-accent) !important;
+        stroke-width: 1.8px !important;
+    }
+    .node .label-container {
+        fill: #ffffff !important;
+    }
+    .node :is(.nodeLabel, .nodeLabel *, text),
+    .edgeLabel :is(span, p, text),
+    .cluster-label :is(span, p, text) {
+        color: var(--foreground0) !important;
+        fill: var(--foreground0) !important;
+    }
+    :is(.flowchart-link, .edgePath .path, .transition) {
+        stroke: var(--pt-diagram-accent) !important;
+        stroke-width: 1.8px !important;
+    }
+    marker path {
+        fill: var(--pt-diagram-accent) !important;
+        stroke: var(--pt-diagram-accent) !important;
+    }
+    .cluster rect {
+        fill: #fafafa !important;
+        stroke: var(--foreground2) !important;
+        stroke-width: 1px !important;
+        stroke-dasharray: 4 4;
+    }
+    .edgeLabel,
+    .edgeLabel .labelBkg {
+        background: #ffffff !important;
+        fill: #ffffff !important;
+    }
+}
+
+html[data-webtui-theme='pytorch']
+    #portable-training
+    .mermaid
+    .node.hub
+    polygon {
+    fill: none !important;
+}
+
+/* Keep language colors, with enough contrast for projection. */
+html[data-webtui-theme='pytorch'] [is-~='presentation'] pre.astro-code::before {
+    border-color: oklch(
+        from var(--lang-badge, var(--material-pink)) l c h / 0.72
+    );
 }

@@ -1450,19 +1450,8 @@ body.slides-print-mode #title-slide {
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
-}/* Print-mode per-slide footer: the position:fixed status bar doesn't
-   repeat across paginated pages, so each printed slide gets its own
-   URL stamp in the bottom-left corner via a ::after pseudo-element.
-   The URL is read from --slide-url, set on the presentation root by
-body.slides-print-mode .pytorch-footer {
-    position: absolute !important;
-    left: 2ch !important;
-    right: 2ch !important;
-    bottom: 1lh !important;
 }
-
-   the runtime (Presentation.astro). Falls back to an empty string if
-   unset so older sessions don't print a literal `var(...)`. */
+/* Per-slide URL stamp for print mode. */
 body.slides-print-mode [is-~='slide']::after {
     content: var(--slide-url, '');
     position: absolute;
@@ -2394,4 +2383,57 @@ html:not([data-webtui-theme='doe']) .doe-footer {
 }
 html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
+}
+
+/* PyTorch PDF branding repeats on each slide, with space for captions. */
+@media print {
+    [data-deck-theme='pytorch'] .deck-corner-logo,
+    [data-deck-theme='pytorch'] .pytorch-footer {
+        display: none !important;
+    }
+    [data-deck-theme='pytorch'] [is-~='slide']::before {
+        content: '';
+        position: absolute;
+        right: 18px;
+        bottom: 10px;
+        width: 96px;
+        height: 51px;
+        background: url('/pytorch-template/pytorchcon-na26-color.svg') center /
+            contain no-repeat;
+        z-index: 100;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    [data-deck-theme='pytorch'] #title-slide::before {
+        background-image: url('/pytorch-template/pytorchcon-na26-white.svg');
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-wave {
+        z-index: 0;
+    }
+    [data-deck-theme='pytorch'] #title-slide .slide-inner > :not(.title-wave) {
+        position: relative;
+        z-index: 1;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+        position: absolute !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        max-width: 100% !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide,
+    [data-deck-theme='pytorch'] #title-slide * {
+        text-shadow: none !important;
+        box-shadow: none !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+        background: transparent;
+    }
+}
+
+@media print {
+    [data-deck-theme='pytorch'] [is-~='slide'] {
+        box-sizing: border-box !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
 }
