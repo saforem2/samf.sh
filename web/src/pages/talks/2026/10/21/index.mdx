@@ -593,18 +593,14 @@ Honest about upstream vs local shim. The last line is the most actionable takeaw
 
 ## Practices for accelerator bring-up
 
-1. **Backend + distributed together:** `torch.xpu` without `XCCL` is a demo, not a trainer.
-2. **One program, many launches:** [`ezpz`](https://github.com/saforem2/ezpz) owns the schedule, the model doesn't branch.
-3. **A science baseline that survives the migration:** 7.77T → 4.674T on the same tokens axis.
-4. **Measure the step, not the kernel:** the whole training step, at the job's real scale.
-5. **Recovery before throughput:** checkpoint + watchdog + quarantine before you tune.
-
-**GenSLM · MProt-DPO · AERIS · AuroraGPT** — not case studies, but the workloads that forced each layer.
-
-_Patterns for running PyTorch at scale on a new accelerator._
+1. **Bring up compute and collectives together.**
+2. **Keep one training program across machines.**
+3. **Validate against a known training baseline.**
+4. **Benchmark full steps at scale.**
+5. **Test recovery before tuning throughput.**
 
 <SpeakerNotes>
-End on reusable patterns. Credit ALCF, Intel, PyTorch contributors verbally; the next slide has the links. Closing line mirrors the abstract verbatim for reviewers scoring against the submission.
+Backend and distributed support must work together: torch.xpu plus XCCL. ezpz handles launch differences without branching the model. Compare against the 7.77T MDS reference on the same token axis, including the 4.674T stage-1 continuation. Measure the entire training step at the intended job scale. Test checkpoints, watchdogs, and bad-node quarantine before optimizing throughput. GenSLM, MProt-DPO, AERIS, and AuroraGPT are the workloads behind these practices.
 </SpeakerNotes>
 
 </Slide>
