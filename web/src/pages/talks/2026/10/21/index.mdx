@@ -97,9 +97,9 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 | Part | Question | Implementation |
 | --- | --- | --- |
-| **A · Needed** | What does it take to build a GPU that runs PyTorch?<br/><em>What about 100,000 of them, together?</em> | 3 backend fixes + collective scaling tests |
-| **B · Accomplished** | How do you leave a functional (but unmaintained) Megatron-DeepSpeed fork for composable PyTorch? | 50-step loss check + 768-rank collective test |
-| **C · Remains** | What keeps a 14-day job alive at 60k → 120k XPUs? | Watchdog + bad-node quarantine + layered restarts |
+| **A · Needed** | What does it take to build a GPU that runs PyTorch?<br/><em>What about 100,000 of them, together?</em> | [`IPEX`](https://github.com/intel/intel-extension-for-pytorch) (legacy) · [`torch-xpu-ops`](https://github.com/intel/torch-xpu-ops) · [`XCCL / torch-ccl`](https://github.com/intel/torch-ccl)<br/>[`oneAPI`](https://www.intel.com/content/www/us/en/developer/tools/oneapi/overview.html) · [`oneCCL`](https://github.com/oneapi-src/oneCCL) · [`SYCL`](https://www.khronos.org/sycl/) |
+| **B · Accomplished** | How do you leave a functional (but unmaintained) Megatron-DeepSpeed fork for composable PyTorch? | [`ezpz`](https://github.com/saforem2/ezpz) · [`Megatron-DeepSpeed`](https://github.com/microsoft/Megatron-DeepSpeed) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz)<br/>`DTensor` · `FSDP2` |
+| **C · Remains** | What keeps a 14-day job alive at 60k → 120k XPUs? | [`ezpz checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) · watchdog · node exclusion · scheduler resubmit |
 
 
 <div class="frame-footer-spacer"></div>
