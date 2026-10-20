@@ -12,7 +12,7 @@
      folHlink #0097A7            visited teal
    Face: the master sets Avenir 28pt bold for title, Avenir for body; the
    theme XML declares Arial but the slides override to Avenir everywhere.
-   We use Avenir as the body font with the same opt-in default pattern as
+   We use mIosevka-QP for body and mIosevka-Term for code, with the same opt-in default pattern as
    doe/alcf: [data-font-default] only, so a picker selection wins.
 
    Ground: the deck is white (lt1) — the template paints the colorful wave
@@ -103,8 +103,11 @@ html[data-webtui-theme='pytorch'] {
 
 /* Body face — same opt-in-default rule as doe/alcf. */
 html[data-webtui-theme='pytorch'][data-font-default] {
-    --font-stack:
-        'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-stack: var(--font-stack-miosevka-qp);
+}
+
+html[data-webtui-theme='pytorch']:not([data-code-font]) {
+    --code-font-family: var(--font-stack-miosevka-term), 'Symbols Nerd Font';
 }
 
 /* Crisp diagram chrome; retain the geometry and the selected body font. */
