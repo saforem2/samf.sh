@@ -68,7 +68,23 @@ const canonical = `samf.sh${url}`
         pytorch && (
             <div class="pytorch-footer" aria-hidden="true">
                 <img
-                    src="/pytorch-template/pytorchcon-na26-color.svg"
+                    src="/anl-logos/anl-alcf-lockup-light.svg"
+                    alt=""
+                    class="pytorch-footer-anl"
+                    width="196"
+                    height="30"
+                    loading="eager"
+                />
+                <img
+                    src="/anl-logos/anl-alcf-lockup-dark.svg"
+                    alt=""
+                    class="pytorch-footer-anl-dark"
+                    width="196"
+                    height="30"
+                    loading="eager"
+                />
+                <img
+                    src="/pytorch-template/pytorchcon-na26-black.svg"
                     alt=""
                     class="pytorch-footer-lockup"
                     width="414"
@@ -134,7 +150,17 @@ const canonical = `samf.sh${url}`
             class="ss-menu"
             aria-label="Show keybinds and navigation">&#xf0c9;</button
         >
-        <a class="ss-link" href={url}>{canonical}</a>
+        <div class="ss-center">
+            <a class="ss-link" href={url}>{canonical}</a>
+            <div class="ss-mobile-nav" aria-label="Slide navigation">
+                <button type="button" id="ss-prev" aria-label="Previous slide">
+                    <span aria-hidden="true">←</span>
+                </button>
+                <button type="button" id="ss-next" aria-label="Next slide">
+                    <span aria-hidden="true">→</span>
+                </button>
+            </div>
+        </div>
         <a id="ss-pos-link" class="ss-pos" href="#1">
             <span id="ss-current">1</span>
         </a>
@@ -159,8 +185,29 @@ const canonical = `samf.sh${url}`
             deck.querySelectorAll<HTMLElement>('[is-~="slide"]'),
         )
         const total = slides.length
+
+        // Print-only deep link on every slide, so a PDF export points each
+        // page back at the live deck. A real <a> (not ::after) stays
+        // clickable in Chromium's PDF output. The title slide carries its
+        // own QR + URL, so it is skipped.
+        const webPath = location.pathname.replace(/\/$/, '')
+        slides.forEach((slide, i) => {
+            if (slide.id === 'title-slide' || slide.id === 'cover') return
+            const link = document.createElement('a')
+            link.className = 'slide-web-link'
+            link.href = `https://samf.sh${webPath}/#${i + 1}`
+            link.textContent = `Web version ↗ samf.sh${webPath}#${i + 1}`
+            slide.append(link)
+        })
+
         const currentEl = document.getElementById('ss-current')
         const posLinkEl = document.getElementById('ss-pos-link')
+        const prevButtonEl = document.getElementById(
+            'ss-prev',
+        ) as HTMLButtonElement | null
+        const nextButtonEl = document.getElementById(
+            'ss-next',
+        ) as HTMLButtonElement | null
         const deckNumEl = document.getElementById('deck-slide-number')
         const deckNumTextEl = document.getElementById('deck-slide-number-text')
         // Tag each slide with its 1-based index for the overview-mode
@@ -169,6 +216,52 @@ const canonical = `samf.sh${url}`
             s.dataset.slideIndex = String(i + 1)
         })
 
+        // Dense tables remain semantic tables for assistive technology and
+        // desktop. Add header labels to their cells so mobile CSS can present
+        // each row as a readable card without losing column context.
+        if (deck.dataset.deckTheme === 'pytorch') {
+            slides.forEach((slide) => {
+                if (slide.id === 'frame') return // already has authored cards
+                slide
+                    .querySelectorAll<HTMLTableElement>('table')
+                    .forEach((table) => {
+                        const header = table.querySelector('thead tr')
+                        const headers = Array.from(
+                            header?.querySelectorAll<HTMLElement>('th, td') ??
+                                [],
+                        ).map((cell) => cell.innerText.trim())
+                        const rows = Array.from(
+                            table.querySelectorAll('tbody tr'),
+                        )
+                        const columnCount = Math.max(
+                            0,
+                            ...rows.map(
+                                (row) => row.querySelectorAll('th, td').length,
+                            ),
+                        )
+                        const dense =
+                            slide.id === 'why-fork-broke' ||
+                            columnCount >= 3 ||
+                            rows.length >= 4 ||
+                            table.innerText.length >= 320
+                        if (!dense) return
+                        table.dataset.mobileCards = ''
+                        rows.forEach((row) => {
+                            row.querySelectorAll<HTMLElement>('th, td').forEach(
+                                (cell, index) => {
+                                    if (index === 0) {
+                                        cell.dataset.mobileTitle = ''
+                                        return
+                                    }
+                                    cell.dataset.mobileLabel =
+                                        headers[index] || `Detail ${index + 1}`
+                                },
+                            )
+                        })
+                    })
+            })
+        }
+
         const channel = new BroadcastChannel('slides-sync')
         const isSpeaker =
             document.body.dataset.speakerWindow === 'true' ||
@@ -176,8 +269,10 @@ const canonical = `samf.sh${url}`
         if (isSpeaker) document.body.dataset.speakerWindow = 'true'
 
         const indexFromHash = () => {
-            const m = location.hash.match(/^#(\d+)$/)
-            const i = m ? Number(m[1]) - 1 : 0
+            const hash = location.hash.slice(1)
+            const i = /^\d+$/.test(hash)
+                ? Number(hash) - 1
+                : slides.findIndex((slide) => slide.id === hash)
             return Math.max(0, Math.min(total - 1, i))
         }
 
@@ -186,6 +281,74 @@ const canonical = `samf.sh${url}`
 
         const fragmentsFor = (i: number) =>
             Array.from(slides[i].querySelectorAll<HTMLElement>('.fragment'))
+
+        // Screen fit (PyTorch deck): on shorter landscape screens (e.g.
+        // 1440x900) dense slides ran under the footer logos or off the
+        // bottom. Zoom the current slide's top-level blocks down (min 0.6)
+        // until its content clears the logo band. Phones and portrait
+        // screens keep the scrolling reflow layout instead.
+        const screenFitDeck = deck.dataset.deckTheme === 'pytorch'
+        const fitScreenSlide = (slide: HTMLElement | undefined) => {
+            if (
+                !screenFitDeck ||
+                !slide ||
+                slide.id === 'title-slide' ||
+                slide.id === 'cover'
+            )
+                return
+            const inner = slide.querySelector<HTMLElement>('.slide-inner')
+            if (!inner) return
+            const blocks = Array.from(inner.children) as HTMLElement[]
+            const setZoom = (z: number) =>
+                blocks.forEach((b) => {
+                    if (z >= 1) b.style.removeProperty('zoom')
+                    else b.style.setProperty('zoom', z.toFixed(3))
+                })
+            setZoom(1)
+            const reflow =
+                window.matchMedia('print').matches ||
+                window.matchMedia('(max-width: 768px), (orientation: portrait)')
+                    .matches
+            if (reflow) return
+            const logos = Array.from(
+                document.querySelectorAll<HTMLElement>('.pytorch-footer img'),
+            )
+                .map((img) => img.getBoundingClientRect())
+                .filter((r) => r.height > 0)
+            // Content must stay inside the slide, and above a logo only
+            // where it sits horizontally over that logo (a centered QR code
+            // can drop below the corner logos).
+            const fits = () => {
+                const innerRect = inner.getBoundingClientRect()
+                return Array.from(inner.querySelectorAll('*'))
+                    .filter(
+                        (el) =>
+                            el.tagName === 'SUMMARY' ||
+                            !el.closest('details:not([open])'),
+                    )
+                    .map((el) => el.getBoundingClientRect())
+                    .filter((r) => r.height > 0)
+                    .every((r) => {
+                        if (r.bottom > innerRect.bottom + 1) return false
+                        return logos.every(
+                            (l) =>
+                                r.right <= l.left ||
+                                r.left >= l.right ||
+                                r.bottom <= l.top - 8,
+                        )
+                    })
+            }
+            if (fits()) return
+            let lo = 0.6
+            let hi = 1
+            for (let i = 0; i < 7; i++) {
+                const mid = (lo + hi) / 2
+                setZoom(mid)
+                if (fits()) lo = mid
+                else hi = mid
+            }
+            setZoom(lo)
+        }
 
         const render = (i: number, opts?: { broadcast?: boolean }) => {
             current = Math.max(0, Math.min(total - 1, i))
@@ -209,12 +372,27 @@ const canonical = `samf.sh${url}`
             if (currentEl) currentEl.textContent = String(current + 1)
             const expected = `#${current + 1}`
             if (posLinkEl) posLinkEl.setAttribute('href', expected)
+            if (prevButtonEl) {
+                prevButtonEl.disabled = current === 0
+                prevButtonEl.setAttribute(
+                    'aria-label',
+                    `Previous slide${current === 0 ? ' (first slide)' : `, ${current} of ${total}`}`,
+                )
+            }
+            if (nextButtonEl) {
+                nextButtonEl.disabled = current === total - 1
+                nextButtonEl.setAttribute(
+                    'aria-label',
+                    `Next slide${current === total - 1 ? ' (last slide)' : `, ${current + 2} of ${total}`}`,
+                )
+            }
             if (deckNumTextEl)
                 deckNumTextEl.textContent = `${current + 1} / ${slides.length}`
             if (deckNumEl) deckNumEl.setAttribute('href', expected)
             if (location.hash !== expected) {
                 history.replaceState(null, '', expected)
             }
+            fitScreenSlide(slides[current])
             if (opts?.broadcast !== false) {
                 channel.postMessage({ type: 'goto', index: current })
             }
@@ -265,7 +443,12 @@ const canonical = `samf.sh${url}`
         }
         window.addEventListener('resize', () => {
             if (deck.dataset.mode === 'overview') updateOverviewScale()
+            fitScreenSlide(slides[current])
         })
+        // Mermaid diagrams and webfonts change heights after first paint.
+        window.addEventListener('load', () =>
+            setTimeout(() => fitScreenSlide(slides[current]), 1500),
+        )
 
         const openSpeakerWindow = () => {
             const url = new URL(location.href)
@@ -355,6 +538,7 @@ const canonical = `samf.sh${url}`
                         slide.querySelector<HTMLElement>('.slide-inner')
                     if (!inner) return
                     inner.style.removeProperty('--print-fit')
+                    delete inner.dataset.printGrow
                     for (let pass = 0; pass < 3; pass++) {
                         const avail = inner.clientHeight
                         const needed = inner.scrollHeight
@@ -369,12 +553,64 @@ const canonical = `samf.sh${url}`
                         )
                         inner.style.setProperty('--print-fit', fit.toFixed(3))
                     }
+                    if (
+                        growPrint &&
+                        !['cover', 'title-slide'].includes(slide.id) &&
+                        !inner.style.getPropertyValue('--print-fit')
+                    )
+                        growPrintSlide(inner)
                 })
+        }
+        // Sparse slides print as a few small lines in the middle of the
+        // page. On the PyTorch deck, top-align the content (data-print-grow,
+        // slides.css) and scale text up (max 2.4x) until it would reach the
+        // footer logo band or overflow sideways.
+        const growPrint = deck.dataset.deckTheme === 'pytorch'
+        const PRINT_FOOTER_RESERVE = 72 // px: logo band at the page bottom
+        const contentBottom = (inner: HTMLElement) => {
+            const top = inner.getBoundingClientRect().top
+            // All descendants, not just children: a figure's <img> can
+            // overflow its own box. Skip collapsed <details> bodies, which
+            // can still report a box below the page.
+            const bottoms = Array.from(inner.querySelectorAll('*'))
+                .filter(
+                    (el) =>
+                        el.tagName === 'SUMMARY' ||
+                        !el.closest('details:not([open])'),
+                )
+                .map((el) => el.getBoundingClientRect())
+                .filter((r) => r.height > 0)
+                .map((r) => r.bottom - top)
+            return bottoms.length ? Math.max(...bottoms) : 0
+        }
+        const growPrintSlide = (inner: HTMLElement) => {
+            const fits = () =>
+                inner.scrollHeight <= inner.clientHeight + 1 &&
+                inner.scrollWidth <= inner.clientWidth + 1 &&
+                contentBottom(inner) <=
+                    inner.clientHeight - PRINT_FOOTER_RESERVE
+            inner.dataset.printGrow = ''
+            if (!fits()) {
+                delete inner.dataset.printGrow
+                return
+            }
+            let lo = 1
+            let hi = 2.4
+            for (let i = 0; i < 7; i++) {
+                const mid = (lo + hi) / 2
+                inner.style.setProperty('--print-fit', mid.toFixed(3))
+                if (fits()) lo = mid
+                else hi = mid
+            }
+            inner.style.setProperty('--print-fit', lo.toFixed(3))
         }
         const clearPrintFit = () => {
             document
                 .querySelectorAll<HTMLElement>('.slide-inner')
-                .forEach((inner) => inner.style.removeProperty('--print-fit'))
+                .forEach((inner) => {
+                    inner.style.removeProperty('--print-fit')
+                    delete inner.dataset.printGrow
+                })
         }
         window.addEventListener('beforeprint', fitPrintSlides)
         window.addEventListener('afterprint', clearPrintFit)
@@ -410,6 +646,8 @@ const canonical = `samf.sh${url}`
         document
             .getElementById('ss-help-btn')
             ?.addEventListener('click', openHelp)
+        prevButtonEl?.addEventListener('click', () => advance(-1))
+        nextButtonEl?.addEventListener('click', () => advance(1))
 
         // Click-to-zoom on any image inside a slide.
         const zoomDlg = document.createElement('dialog')
@@ -462,19 +700,26 @@ const canonical = `samf.sh${url}`
         })
 
         // Touch / swipe navigation: phones have no keyboard. Horizontal
-        // swipes advance/retreat slides; vertical swipes are ignored so
-        // pinch-zooming an image or scrolling a long slide's content
-        // still works. Threshold prevents jitter from being treated as
-        // a swipe.
-        //
-        // The handlers are intentionally `passive: true` — we never
-        // preventDefault on touchmove, because the slide-inner has
-        // `overflow: auto` and the user must be able to scroll long
-        // slides vertically while we observe their horizontal intent.
-        // CSS `touch-action: pan-y` on the deck (see slides.css) is
-        // what actually tells the browser to skip its 300ms gesture-
-        // disambiguation wait — without that, swipes feel laggy even
-        // with perfect JS handlers.
+        // swipes advance/retreat slides unless they start inside a native
+        // horizontal scroller, which must keep the gesture for its content.
+        // All touch listeners stay passive so browser scrolling and
+        // pinch-zoom remain native.
+        const startsInHorizontalScroller = (target: Element | null) => {
+            let node = target
+            while (node && node !== deck) {
+                if (node instanceof HTMLElement) {
+                    const overflowX = getComputedStyle(node).overflowX
+                    if (
+                        ['auto', 'scroll', 'overlay'].includes(overflowX) &&
+                        node.scrollWidth > node.clientWidth + 1
+                    ) {
+                        return true
+                    }
+                }
+                node = node.parentElement
+            }
+            return false
+        }
         let touchStartX = 0
         let touchStartY = 0
         let touchActive = false
@@ -502,7 +747,8 @@ const canonical = `samf.sh${url}`
                 if (
                     target?.closest(
                         'a, button, summary, input, textarea, img, .footnote-popover',
-                    )
+                    ) ||
+                    startsInHorizontalScroller(target)
                 ) {
                     touchActive = false
                     return
@@ -563,13 +809,12 @@ const canonical = `samf.sh${url}`
         )
 
         // Hash changes from external nav (e.g. clicking a deep link).
-        // Only react when the hash is a pure slide index (`#N`); other
-        // anchor targets (GFM footnote backrefs like
-        // `#user-content-fnref-N`, in-slide section ids, etc.) would
-        // otherwise fall through indexFromHash() → 0 and slam the deck
-        // back to the first slide.
+        // Named slide IDs (for example #links) work alongside #N. Ignore
+        // footnote backrefs and other anchors within the active slide.
         window.addEventListener('hashchange', () => {
-            if (/^#\d+$/.test(location.hash)) render(indexFromHash())
+            const hash = location.hash.slice(1)
+            if (/^\d+$/.test(hash) || slides.some((slide) => slide.id === hash))
+                render(indexFromHash())
         })
 
         // Speaker popup receives index changes from the main window
@@ -648,6 +893,41 @@ const canonical = `samf.sh${url}`
         const footnoteRefs = deck.querySelectorAll<HTMLAnchorElement>(
             'a[data-footnote-ref]',
         )
+
+        // Print-only footnotes: popovers do nothing on paper, so list each
+        // slide's footnotes at the foot of its content. Built before the
+        // popover pass below replaces the <sup> refs.
+        slides.forEach((slide) => {
+            const inner = slide.querySelector('.slide-inner')
+            const refs = slide.querySelectorAll<HTMLAnchorElement>(
+                'a[data-footnote-ref]',
+            )
+            if (!inner || refs.length === 0) return
+            const list = document.createElement('ol')
+            list.className = 'slide-print-footnotes'
+            const seen = new Set<string>()
+            refs.forEach((ref) => {
+                const id = ref.getAttribute('href')?.replace('#', '')
+                if (!id || seen.has(id)) return
+                seen.add(id)
+                const li = document.getElementById(id)
+                if (!li) return
+                const item = li.cloneNode(true) as HTMLElement
+                item.removeAttribute('id')
+                item.querySelectorAll('a[data-footnote-backref]').forEach((a) =>
+                    a.remove(),
+                )
+                item.querySelectorAll('p').forEach((p) => {
+                    while (p.firstChild)
+                        p.parentNode!.insertBefore(p.firstChild, p)
+                    p.remove()
+                })
+                item.setAttribute('value', ref.textContent?.trim() || '')
+                list.append(item)
+            })
+            if (list.childElementCount) inner.append(list)
+        })
+
         for (const ref of footnoteRefs) {
             const id = ref.getAttribute('href')?.replace('#', '')
             if (!id) continue

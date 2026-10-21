@@ -44,8 +44,14 @@ const out =
 
 const shell = findHeadlessShell()
 const browser = await chromium.launch(shell ? { executablePath: shell } : {})
+// Load at 1280x720: Mermaid only renders blocks visible at load, and decks
+// hide desktop diagrams behind `screen and (max-width: 1100px)`, so a
+// narrower viewport leaves them as raw source. The sheet itself comes from
+// slides.css `@page` (11in x 6.1875in = 1056x594 CSS px; preferCSSPageSize
+// wins over the width/height below); the viewport is shrunk to that before
+// fitting so measured layout matches the printed page.
 const page = await browser.newPage({
-    viewport: { width: 1056, height: 594 },
+    viewport: { width: 1280, height: 720 },
     colorScheme: 'light',
 })
 
@@ -55,10 +61,17 @@ const page = await browser.newPage({
 // flattens the deck. Use the CSS page size for consistent print metrics.
 await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 })
 await page.emulateMedia({ media: 'print' })
+await page.setViewportSize({ width: 1056, height: 594 })
 
 // Let mermaid/katex/webfonts settle before snapshotting.
 await page.evaluate(() => document.fonts.ready)
 await page.waitForTimeout(1500)
+
+// emulateMedia does not fire beforeprint, so the deck's fit-to-page pass
+// (Presentation.astro: fitPrintSlides) would never run. Fire it by hand,
+// after fonts and diagrams have settled so it measures final heights.
+await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')))
+await page.waitForTimeout(300)
 
 await page.pdf({
     path: out,

@@ -53,11 +53,10 @@
     background-color: var(--background0);
     color: var(--foreground1);
     z-index: 1;
-    /* Tell the browser: we own horizontal gestures (swipe nav), it owns
-       vertical (scroll inside .slide-inner) and pinch-zoom on images.
-       Without this, the browser waits ~300ms to disambiguate the gesture
-       before dispatching, which makes swipes feel laggy on mobile. */
-    touch-action: pan-y pinch-zoom;
+    /* Allow native horizontal pans for wide content and vertical scrolling
+       inside slides. JS advances the deck only when a gesture did not start
+       in a horizontally scrollable region. */
+    touch-action: pan-x pan-y pinch-zoom;
     /* Prevent iOS rubber-band / pull-to-refresh bouncing the whole deck
        when a swipe overshoots a slide-inner scroll boundary. */
     overscroll-behavior: contain;
@@ -113,10 +112,9 @@
         justify-content: safe center;
         padding: 1lh 4ch;
         overflow: auto;
-        /* Match the deck-level touch-action: vertical scroll is the
-           browser's job here, horizontal gestures bubble to the deck
-           handler. pinch-zoom remains for images. */
-        touch-action: pan-y pinch-zoom;
+        /* Preserve native horizontal scroll for code, tables, and diagrams;
+           vertical scrolling and pinch-zoom remain browser-managed too. */
+        touch-action: pan-x pan-y pinch-zoom;
         /* Stop momentum scroll at the slide-inner boundary so it
            doesn't propagate up to the (otherwise unscrollable) deck
            and trigger iOS rubber-band frames. */
@@ -1037,9 +1035,8 @@ body[data-speaker-window] [is-~='notes'] {
     display: block;
 }
 
-/* Bottom status bar — left: menu icon, center: deep link,
-   right: current/total. Responsive: at narrow widths the link
-   truncates so the bar stays at one line. */
+/* Bottom status bar — left: menu, center: URL or mobile slide controls,
+   right: the current slide number. */
 [is-~='slide-status'] {
     position: fixed;
     bottom: 0;
@@ -1055,7 +1052,7 @@ body[data-speaker-window] [is-~='notes'] {
        trick applied to the menu button below (1.1em → 1.07em). */
     font-size: 1.12em;
     display: grid;
-    /* menu (left, fixed) + link (center, ellipsis) + position (right) */
+    /* menu (left, fixed) + center content + slide position (right) */
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 1ch;
     align-items: center;
@@ -1063,6 +1060,16 @@ body[data-speaker-window] [is-~='notes'] {
     white-space: nowrap;
     overflow: hidden;
 
+    .ss-center {
+        min-width: 0;
+        width: 100%;
+        justify-self: center;
+        display: flex;
+        justify-content: center;
+    }
+    .ss-mobile-nav {
+        display: none;
+    }
     .ss-link {
         color: var(--foreground2);
         text-decoration: none;
@@ -1074,29 +1081,6 @@ body[data-speaker-window] [is-~='notes'] {
         &:hover,
         &:focus-visible {
             color: var(--accent, var(--blue));
-        }
-    }
-    .ss-pos {
-        color: var(--foreground2);
-        justify-self: end;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 3ch;
-        padding: 0 0.5ch;
-        height: calc(1lh - 0.2ch);
-        border: 1px solid var(--background3, var(--foreground3));
-        border-radius: 2px;
-        background: var(--background0);
-        font-variant-numeric: tabular-nums;
-        transition:
-            color 100ms linear,
-            border-color 100ms linear;
-        &:hover,
-        &:focus-visible {
-            color: var(--accent, var(--blue));
-            border-color: var(--accent, var(--blue));
         }
     }
     /* Menu / help button — bottom-left, Font Awesome 'bars' glyph
@@ -1126,6 +1110,110 @@ body[data-speaker-window] [is-~='notes'] {
                     calc(l * var(--oklch-scale, 0.85)) c h / 0.1
             );
         }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    [is-~='slide'] .slide-inner {
+        bottom: 44px;
+    }
+    [is-~='slide-status'] {
+        height: 44px;
+        line-height: normal;
+        font-size: 1rem;
+    }
+    .ss-center .ss-link {
+        display: none;
+    }
+    [is-~='slide-status'] .ss-mobile-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1ch;
+    }
+    .ss-mobile-nav button {
+        all: unset;
+        box-sizing: border-box;
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--background3, var(--foreground3));
+        border-radius: 3px;
+        background: var(--background0);
+        color: var(--foreground1);
+        font-size: 1.35rem;
+        line-height: 1;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .ss-mobile-nav button:hover,
+    .ss-mobile-nav button:focus-visible {
+        color: var(--accent, var(--blue));
+        border-color: var(--accent, var(--blue));
+    }
+    .ss-mobile-nav button:disabled {
+        color: var(--foreground3);
+        cursor: default;
+        opacity: 0.5;
+    }
+}
+
+/* Keep mobile reading context when dense comparison tables become cards. */
+@media screen and (max-width: 600px) {
+    [data-deck-theme='pytorch'] table[data-mobile-cards],
+    [data-deck-theme='pytorch'] table[data-mobile-cards] tbody,
+    [data-deck-theme='pytorch'] table[data-mobile-cards] tr,
+    [data-deck-theme='pytorch'] table[data-mobile-cards] th,
+    [data-deck-theme='pytorch'] table[data-mobile-cards] td {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box;
+    }
+    [data-deck-theme='pytorch'] table[data-mobile-cards] {
+        border: 0;
+    }
+    [data-deck-theme='pytorch'] table[data-mobile-cards] thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+    [data-deck-theme='pytorch'] table[data-mobile-cards] tbody tr {
+        border: 1px solid var(--pt-card-border);
+        margin-block: 0.7lh;
+        padding: 0.35lh 1ch;
+    }
+    [data-deck-theme='pytorch'] table[data-mobile-cards] tbody td {
+        border: 0;
+        padding: 0.3lh 0;
+    }
+    [data-deck-theme='pytorch'] table[data-mobile-cards] tbody td::before {
+        content: attr(data-mobile-label);
+        display: block;
+        margin-block-end: 0.1lh;
+        color: var(--foreground2);
+        font-size: 0.74em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    [data-deck-theme='pytorch']
+        table[data-mobile-cards]
+        tbody
+        td[data-mobile-title] {
+        padding-block-end: 0.45lh;
+        font-weight: 700;
+    }
+    [data-deck-theme='pytorch']
+        table[data-mobile-cards]
+        tbody
+        td[data-mobile-title]::before {
+        content: none;
     }
 }
 
@@ -1417,6 +1505,11 @@ body.slides-print-mode #title-slide .slide-inner {
 body.slides-print-mode #title-slide .title-slide-qr span {
     text-shadow: none !important;
 }
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .slide-inner {
+    text-shadow:
+        0 1px 2px rgb(0 0 0 / 0.35),
+        0 2px 8px rgb(0 0 0 / 0.25) !important;
+}
 body.slides-print-mode #title-slide .title-slide-qr img {
     filter: invert(1) !important;
 }
@@ -1457,17 +1550,34 @@ body.slides-print-mode #title-slide {
         -webkit-print-color-adjust: exact;
     }
 }
-/* Per-slide URL stamp for print mode. */
-body.slides-print-mode [is-~='slide']::after {
-    content: var(--slide-url, '');
+/* Per-slide link back to the web deck (injected by Presentation.astro).
+   Hidden on screen; printed bottom-left on every page of a PDF export. */
+.slide-web-link {
+    display: none;
+}
+@media print {
+    .slide-web-link {
+        display: block;
+        position: absolute;
+        bottom: 0.8lh;
+        left: 2ch;
+        font-size: 0.7em;
+        color: var(--foreground2, #555);
+        font-family: var(--font-family, monospace);
+        text-decoration: none;
+        z-index: 100;
+    }
+}
+body.slides-print-mode .slide-web-link {
+    display: block;
     position: absolute;
-    bottom: 0.5lh;
-    left: 1ch;
+    bottom: 0.8lh;
+    left: 2ch;
     font-size: 0.7em;
-    color: var(--foreground3, #888);
+    color: var(--foreground2, #555);
     font-family: var(--font-family, monospace);
+    text-decoration: none;
     z-index: 100;
-    pointer-events: none;
 }
 
 /* Theme-aware title slide logo. Two SVG variants ship; show the one
@@ -1640,6 +1750,85 @@ body.slides-print-mode [is-~='slide']::after {
     display: inline;
     position: relative;
     cursor: pointer;
+}
+/* PyTorch deck PDF: the on-screen 1.25em heading reads as body text on
+   a 13.33in page. */
+@media print {
+    [data-deck-theme='pytorch']
+        [is-~='slide']:not(#title-slide)
+        .slide-inner
+        > h2 {
+        font-size: 1.7em;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    [is-~='slide']:not(#title-slide)
+    .slide-inner
+    > h2 {
+    font-size: 1.7em;
+}
+/* Cover slide (PyTorch deck): the lockup is part of the slide, so hide
+   the footer logos on screen and the logo band in print. */
+[data-deck-theme='pytorch']:has(#cover[data-current]) .pytorch-footer {
+    display: none !important;
+}
+/* Phones keep the status bar: it carries the prev/next buttons. */
+@media (min-width: 769px) {
+    [data-deck-theme='pytorch']:has(#cover[data-current])
+        [is-~='slide-status'] {
+        display: none !important;
+    }
+}
+@media print {
+    [data-deck-theme='pytorch'] #cover::before {
+        content: none !important;
+    }
+}
+/* Slides grown to fill the page (Presentation.astro: growPrintSlide) sit
+   at the top so the logo band is the only reserved space. */
+@media print {
+    [data-deck-theme='pytorch'] .slide-inner[data-print-grow] {
+        justify-content: flex-start !important;
+    }
+    /* Flex items must not shrink below their content, or a figure's <img>
+       spills over the text below it and the fit check never sees it. */
+    [data-deck-theme='pytorch'] .slide-inner[data-print-grow] > * {
+        flex-shrink: 0 !important;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    .slide-inner[data-print-grow] {
+    justify-content: flex-start !important;
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    .slide-inner[data-print-grow]
+    > * {
+    flex-shrink: 0 !important;
+}
+/* Per-slide footnote list (Presentation.astro): print only. */
+.slide-print-footnotes {
+    display: none;
+}
+@media print {
+    .slide-print-footnotes {
+        display: block;
+        width: 100%;
+        margin: 0.6lh 0 0;
+        padding: 0.3lh 0 0 2.5ch;
+        border-top: 1px solid var(--background3, #ccc);
+        font-size: 0.62em;
+        line-height: 1.35;
+        color: var(--foreground1, #333);
+    }
+    .slide-print-footnotes li::marker {
+        color: var(--red, #c00);
+    }
+    .footnote-popover-content {
+        display: none !important;
+    }
 }
 .footnote-popover-trigger {
     display: inline;
@@ -1875,15 +2064,19 @@ html[data-webtui-theme='doe']
     background: transparent;
     justify-content: center;
     color: var(--background0);
-    text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
+    /* Tight + soft pair: separates white text from the light wave bands
+       without the muddy halo of one wide blur. Also used in print. */
+    --title-text-shadow:
+        0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px rgb(0 0 0 / 0.25);
+    text-shadow: var(--title-text-shadow);
     bottom: 0;
     font-size: clamp(1.25rem, 1.8vw + 0.5rem, 1.95rem) !important;
     line-height: 1.35;
     /* Cap width so title doesn't run under QR */
-    max-width: calc(100% - 14ch);
+    max-width: calc(100% - 19ch);
 }
 [data-deck-theme='pytorch'] #title-slide h1 {
-    font-size: 1.45em !important;
+    font-size: 1.68em !important;
     line-height: 1.06;
     letter-spacing: -0.015em;
 }
@@ -1905,11 +2098,15 @@ html[data-webtui-theme='doe']
     }
     [data-deck-theme='pytorch']:has(#title-slide[data-current])
         .pytorch-footer-lockup {
-        display: none !important;
+        display: block !important;
     }
     [data-deck-theme='pytorch']:has(#title-slide[data-current])
-        .pytorch-footer-lockup-dark {
-        display: block !important;
+        :is(
+            .pytorch-footer-lockup-dark,
+            .pytorch-footer-anl,
+            .pytorch-footer-anl-dark
+        ) {
+        display: none !important;
     }
 }
 /* Content slides: plain white (template's default), no wave. */
@@ -1919,6 +2116,17 @@ html[data-webtui-theme='doe']
 [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
     background: var(--background0);
     bottom: 1lh;
+}
+/* Keep projected body text readable as the screen gets wider. */
+@media screen and (min-width: 1025px) and (min-height: 850px) {
+    [data-deck-theme='pytorch']
+        [is-~='slide']:not(#title-slide):not([data-size='sm'])
+        .slide-inner {
+        font-size: clamp(1.6rem, 1.6vw + 0.45rem, 2rem);
+    }
+    [data-deck-theme='pytorch'] [is-~='slide'][data-size='sm'] .slide-inner {
+        font-size: clamp(1.45rem, 1.35vw + 0.4rem, 1.75rem);
+    }
 }
 
 [data-deck-theme='pytorch'] #title-slide h1,
@@ -1955,20 +2163,38 @@ html[data-webtui-theme='doe']
     width: 130px;
     height: auto;
 }
-.pytorch-footer-lockup {
+.pytorch-footer-lockup,
+.pytorch-footer-anl {
     display: block;
 }
-.pytorch-footer-lockup-dark {
+.pytorch-footer-lockup-dark,
+.pytorch-footer-anl-dark {
     display: none !important;
 }
-:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
-:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
-:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
+/* Argonne | ALCF lockup: bottom-right on screen, opposite the PyTorch
+   lockup. Print draws both via [is-~='slide']::before. */
+.pytorch-footer-anl,
+.pytorch-footer-anl-dark {
+    position: fixed;
+    right: 2ch;
+    bottom: 2lh;
+    width: clamp(168px, 13.1vw, 252px);
+    height: auto;
+}
+:root[data-webtui-theme='custom-dark']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl),
+:root[data-webtui-theme='catppuccin']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl),
+:root[data-webtui-theme='nvim-dark']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl) {
     display: none !important;
 }
-:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup-dark,
-:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup-dark,
-:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
+:root[data-webtui-theme='custom-dark']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark),
+:root[data-webtui-theme='catppuccin']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark),
+:root[data-webtui-theme='nvim-dark']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark) {
     display: block !important;
 }
 @media (max-width: 768px) {
@@ -1983,10 +2209,12 @@ html[data-webtui-theme='doe']
         left: auto !important;
         bottom: 0.8lh !important;
     }
-    .pytorch-footer-lockup {
+    .pytorch-footer-lockup,
+    .pytorch-footer-anl {
         display: block !important;
     }
-    .pytorch-footer-lockup-dark {
+    .pytorch-footer-lockup-dark,
+    .pytorch-footer-anl-dark {
         display: none !important;
     }
 }
@@ -1996,10 +2224,11 @@ body.slides-print-mode .pytorch-footer {
     left: auto !important;
     bottom: 0.8lh !important;
 }
-body.slides-print-mode .pytorch-footer-lockup {
+body.slides-print-mode :is(.pytorch-footer-lockup, .pytorch-footer-anl) {
     display: block !important;
 }
-body.slides-print-mode .pytorch-footer-lockup-dark {
+body.slides-print-mode
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark) {
     display: none !important;
 }
 
@@ -2029,13 +2258,13 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     z-index: 2;
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr img {
-    width: 10ch;
-    height: 10ch;
+    width: 18ch;
+    height: 18ch;
     display: block;
     filter: invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
-    font-size: 0.6em;
+    font-size: 0.76em;
     color: #fff;
     white-space: nowrap;
     letter-spacing: 0.02em;
@@ -2047,8 +2276,45 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* "Interactive version" caption over the QR: only in a PDF, where the
+   reader is not already looking at the web deck. */
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr .title-qr-print-note {
+    display: none;
+    max-width: 22ch;
+    white-space: normal;
+    text-align: center;
+    overflow: visible;
+}
+@media print {
+    [data-deck-theme='pytorch']
+        #title-slide
+        .title-slide-qr
+        .title-qr-print-note {
+        display: block;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    #title-slide
+    .title-slide-qr
+    .title-qr-print-note {
+    display: block;
+}
 [data-deck-theme='pytorch'] #title-slide .title-conf-line {
     margin-top: 0.8lh;
+}
+
+/* On narrow screens the QR sits over the title because the title card is
+   vertically centered while the QR is pinned to its top edge. The slide URL
+   is already available in the browser chrome, so give the title the full
+   width and remove the duplicate QR from the phone layout. */
+@media screen and (max-width: 768px) {
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        max-width: 100% !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+        display: none !important;
+    }
 }
 
 /* Title slide has no footer — the wave is the whole slide. */
@@ -2405,6 +2671,33 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
 }
 
+/* Every deck uses the same touch navigation. Keep theme chrome above its
+   taller mobile bar while preserving each theme's existing footer gap. */
+@media screen and (max-width: 768px) {
+    [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
+        bottom: 44px;
+    }
+    .deck-corner-logo {
+        bottom: calc(44px + 0.5lh) !important;
+    }
+    .doe-footer,
+    .alcf-footer {
+        bottom: 44px;
+    }
+    html[data-webtui-theme='doe']
+        [is-~='presentation']
+        [is-~='slide']
+        .slide-inner {
+        bottom: calc(44px + 3rlh);
+    }
+    html[data-webtui-theme='alcf']
+        [is-~='presentation']
+        [is-~='slide']
+        .slide-inner {
+        bottom: calc(44px + 2rlh);
+    }
+}
+
 /* PyTorch PDF branding repeats on each slide, with space for captions. */
 @media print {
     [data-deck-theme='pytorch'] .deck-corner-logo,
@@ -2416,16 +2709,22 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         position: absolute;
         right: 18px;
         bottom: 10px;
-        width: 96px;
+        /* Argonne | ALCF lockup (185px) + 16px gap + PyTorch lockup (96px). */
+        width: 297px;
         height: 51px;
-        background: url('/pytorch-template/pytorchcon-na26-color.svg') center /
-            contain no-repeat;
+        background:
+            url('/anl-logos/anl-alcf-lockup-light.svg') left center / 185px auto
+                no-repeat,
+            url('/pytorch-template/pytorchcon-na26-black.svg') right center /
+                96px 51px no-repeat;
         z-index: 100;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
+    /* Title slide already carries the Argonne logo bottom-left. */
     [data-deck-theme='pytorch'] #title-slide::before {
-        background-image: url('/pytorch-template/pytorchcon-na26-white.svg');
+        background: url('/pytorch-template/pytorchcon-na26-black.svg') right
+            center / 96px 51px no-repeat;
     }
     [data-deck-theme='pytorch'] #title-slide .title-wave {
         z-index: 0;
@@ -2442,8 +2741,18 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
     }
     [data-deck-theme='pytorch'] #title-slide,
     [data-deck-theme='pytorch'] #title-slide * {
-        text-shadow: none !important;
         box-shadow: none !important;
+    }
+    /* Chrome now exports blurred text-shadow as a 300 dpi grayscale mask
+       (no solid rect), so the title keeps its shadow in the PDF. The
+       generic #title-slide rules above still strip it for other decks. */
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        text-shadow:
+            0 1px 2px rgb(0 0 0 / 0.35),
+            0 2px 8px rgb(0 0 0 / 0.25) !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+        text-shadow: none !important;
     }
     [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
         background: transparent;
