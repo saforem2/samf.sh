@@ -2557,7 +2557,7 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         bottom: 10px;
         width: 96px;
         height: 51px;
-        background: url('/pytorch-template/pytorchcon-na26-color.svg') center /
+        background: url('/pytorch-template/pytorchcon-na26-black.svg') center /
             contain no-repeat;
         z-index: 100;
         print-color-adjust: exact;
