@@ -44,8 +44,12 @@ const out =
 
 const shell = findHeadlessShell()
 const browser = await chromium.launch(shell ? { executablePath: shell } : {})
+// Match the PDF page (13.333in x 7.5in = 1280x720 CSS px). Mermaid only
+// renders blocks visible at load, and decks hide desktop diagrams behind
+// `screen and (max-width: 1100px)` -- a narrower viewport leaves those
+// blocks as raw source in the PDF.
 const page = await browser.newPage({
-    viewport: { width: 1056, height: 594 },
+    viewport: { width: 1280, height: 720 },
     colorScheme: 'light',
 })
 

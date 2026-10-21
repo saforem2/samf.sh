@@ -169,6 +169,21 @@ const canonical = `samf.sh${url}`
             deck.querySelectorAll<HTMLElement>('[is-~="slide"]'),
         )
         const total = slides.length
+
+        // Print-only deep link on every slide, so a PDF export points each
+        // page back at the live deck. A real <a> (not ::after) stays
+        // clickable in Chromium's PDF output. The title slide carries its
+        // own QR + URL, so it is skipped.
+        const webPath = location.pathname.replace(/\/$/, '')
+        slides.forEach((slide, i) => {
+            if (slide.id === 'title-slide') return
+            const link = document.createElement('a')
+            link.className = 'slide-web-link'
+            link.href = `https://samf.sh${webPath}/#${i + 1}`
+            link.textContent = `Web version ↗ samf.sh${webPath}#${i + 1}`
+            slide.append(link)
+        })
+
         const currentEl = document.getElementById('ss-current')
         const posLinkEl = document.getElementById('ss-pos-link')
         const prevButtonEl = document.getElementById(

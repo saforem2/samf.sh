@@ -1545,17 +1545,34 @@ body.slides-print-mode #title-slide {
         -webkit-print-color-adjust: exact;
     }
 }
-/* Per-slide URL stamp for print mode. */
-body.slides-print-mode [is-~='slide']::after {
-    content: var(--slide-url, '');
+/* Per-slide link back to the web deck (injected by Presentation.astro).
+   Hidden on screen; printed bottom-left on every page of a PDF export. */
+.slide-web-link {
+    display: none;
+}
+@media print {
+    .slide-web-link {
+        display: block;
+        position: absolute;
+        bottom: 0.8lh;
+        left: 2ch;
+        font-size: 0.7em;
+        color: var(--foreground2, #555);
+        font-family: var(--font-family, monospace);
+        text-decoration: none;
+        z-index: 100;
+    }
+}
+body.slides-print-mode .slide-web-link {
+    display: block;
     position: absolute;
-    bottom: 0.5lh;
-    left: 1ch;
+    bottom: 0.8lh;
+    left: 2ch;
     font-size: 0.7em;
-    color: var(--foreground3, #888);
+    color: var(--foreground2, #555);
     font-family: var(--font-family, monospace);
+    text-decoration: none;
     z-index: 100;
-    pointer-events: none;
 }
 
 /* Theme-aware title slide logo. Two SVG variants ship; show the one
@@ -2145,6 +2162,30 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+/* "Interactive version" caption over the QR: only in a PDF, where the
+   reader is not already looking at the web deck. */
+[data-deck-theme='pytorch'] #title-slide .title-slide-qr .title-qr-print-note {
+    display: none;
+    max-width: 22ch;
+    white-space: normal;
+    text-align: center;
+    overflow: visible;
+}
+@media print {
+    [data-deck-theme='pytorch']
+        #title-slide
+        .title-slide-qr
+        .title-qr-print-note {
+        display: block;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    #title-slide
+    .title-slide-qr
+    .title-qr-print-note {
+    display: block;
 }
 [data-deck-theme='pytorch'] #title-slide .title-conf-line {
     margin-top: 0.8lh;
