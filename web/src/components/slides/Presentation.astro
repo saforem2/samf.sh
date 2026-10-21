@@ -192,7 +192,7 @@ const canonical = `samf.sh${url}`
         // own QR + URL, so it is skipped.
         const webPath = location.pathname.replace(/\/$/, '')
         slides.forEach((slide, i) => {
-            if (slide.id === 'title-slide') return
+            if (slide.id === 'title-slide' || slide.id === 'cover') return
             const link = document.createElement('a')
             link.className = 'slide-web-link'
             link.href = `https://samf.sh${webPath}/#${i + 1}`
@@ -289,7 +289,13 @@ const canonical = `samf.sh${url}`
         // screens keep the scrolling reflow layout instead.
         const screenFitDeck = deck.dataset.deckTheme === 'pytorch'
         const fitScreenSlide = (slide: HTMLElement | undefined) => {
-            if (!screenFitDeck || !slide || slide.id === 'title-slide') return
+            if (
+                !screenFitDeck ||
+                !slide ||
+                slide.id === 'title-slide' ||
+                slide.id === 'cover'
+            )
+                return
             const inner = slide.querySelector<HTMLElement>('.slide-inner')
             if (!inner) return
             const blocks = Array.from(inner.children) as HTMLElement[]
@@ -549,6 +555,7 @@ const canonical = `samf.sh${url}`
                     }
                     if (
                         growPrint &&
+                        !['cover', 'title-slide'].includes(slide.id) &&
                         !inner.style.getPropertyValue('--print-fit')
                     )
                         growPrintSlide(inner)

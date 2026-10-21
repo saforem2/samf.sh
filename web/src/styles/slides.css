@@ -1505,6 +1505,11 @@ body.slides-print-mode #title-slide .slide-inner {
 body.slides-print-mode #title-slide .title-slide-qr span {
     text-shadow: none !important;
 }
+body.slides-print-mode [data-deck-theme='pytorch'] #title-slide .slide-inner {
+    text-shadow:
+        0 1px 2px rgb(0 0 0 / 0.35),
+        0 2px 8px rgb(0 0 0 / 0.25) !important;
+}
 body.slides-print-mode #title-slide .title-slide-qr img {
     filter: invert(1) !important;
 }
@@ -1762,6 +1767,23 @@ body.slides-print-mode
     .slide-inner
     > h2 {
     font-size: 1.7em;
+}
+/* Cover slide (PyTorch deck): the lockup is part of the slide, so hide
+   the footer logos on screen and the logo band in print. */
+[data-deck-theme='pytorch']:has(#cover[data-current]) .pytorch-footer {
+    display: none !important;
+}
+/* Phones keep the status bar: it carries the prev/next buttons. */
+@media (min-width: 769px) {
+    [data-deck-theme='pytorch']:has(#cover[data-current])
+        [is-~='slide-status'] {
+        display: none !important;
+    }
+}
+@media print {
+    [data-deck-theme='pytorch'] #cover::before {
+        content: none !important;
+    }
 }
 /* Slides grown to fill the page (Presentation.astro: growPrintSlide) sit
    at the top so the logo band is the only reserved space. */
@@ -2042,7 +2064,11 @@ html[data-webtui-theme='doe']
     background: transparent;
     justify-content: center;
     color: var(--background0);
-    text-shadow: 0 1px 12px oklch(from #000 l c h / 0.55);
+    /* Tight + soft pair: separates white text from the light wave bands
+       without the muddy halo of one wide blur. Also used in print. */
+    --title-text-shadow:
+        0 1px 2px rgb(0 0 0 / 0.35), 0 2px 8px rgb(0 0 0 / 0.25);
+    text-shadow: var(--title-text-shadow);
     bottom: 0;
     font-size: clamp(1.25rem, 1.8vw + 0.5rem, 1.95rem) !important;
     line-height: 1.35;
@@ -2715,8 +2741,18 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
     }
     [data-deck-theme='pytorch'] #title-slide,
     [data-deck-theme='pytorch'] #title-slide * {
-        text-shadow: none !important;
         box-shadow: none !important;
+    }
+    /* Chrome now exports blurred text-shadow as a 300 dpi grayscale mask
+       (no solid rect), so the title keeps its shadow in the PDF. The
+       generic #title-slide rules above still strip it for other decks. */
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        text-shadow:
+            0 1px 2px rgb(0 0 0 / 0.35),
+            0 2px 8px rgb(0 0 0 / 0.25) !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
+        text-shadow: none !important;
     }
     [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
         background: transparent;

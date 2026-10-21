@@ -21,6 +21,19 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
     Aurora: 10,624 nodes · 63,744 GPUs · 127,488 GPU tiles (12 per node).
     ================================================================ */}
 
+{/* ── Cover (conference template) ───────────────────────────────── */}
+<link rel="stylesheet" href="/fonts/figtree/figtree.css" />
+
+<Slide id="cover">
+<img class="cover-wave" src="/pytorch-template/bg.webp" alt="" aria-hidden="true" width="3840" height="2160" loading="eager" decoding="async" />
+<div class="cover-content">
+<img class="cover-lockup" src="/pytorch-template/pytorchcon-na26-white.svg" alt="PyTorch Conference North America 2026" width="414" height="218" />
+<h1 class="cover-title">Scaling PyTorch on Intel XPU</h1>
+<p class="cover-subtitle">Field Notes from AI for Science on Aurora</p>
+<p class="cover-authors">Sam Foreman · Panagiotis Kourdis · Tanima Dey</p>
+</div>
+</Slide>
+
 {/* ── Title ───────────────────────────────────────────────────── */}
 <Slide id="title-slide">
 
@@ -593,6 +606,23 @@ Test each restart path before committing a full allocation.
 
 <div class="layered-visual">
 
+<div class="layered-lr">
+
+```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 22, 'rankSpacing': 70, 'padding': 14}}}%%
+flowchart LR
+    LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
+    CLASSIFY -->|rc = 0| DONE["Done"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
+    SWAP -.-> LAUNCH
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
+    class DONE retry-done
+    class STOP retry-stop
+```
+
+</div>
+<div class="layered-tb">
+
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 42, 'padding': 14}}}%%
 flowchart TB
@@ -604,6 +634,8 @@ flowchart TB
     class DONE retry-done
     class STOP retry-stop
 ```
+
+</div>
 
 <span class="layered-visual-caption">Exit trailer + crash patterns + idle watchdog (`exit 124`) determine the next action.</span>
 
@@ -841,6 +873,26 @@ Scan to share feedback with us and the organizers.
 </Slide>
 
 <style>{`
+  /* Cover: the conference template's opening slide, measured off the
+     exported PDF (title centered at 51% height, subtitle 61%, authors 79%;
+     lockup 29% wide at 7% from the top). Container units of the slide
+     keep screen and the 11in PDF sheet identical. */
+  #cover { container-type: size; background: #e8174e; }
+  #cover .slide-inner { padding: 0 !important; max-width: none !important; }
+  #cover .cover-wave { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; pointer-events: none; }
+  #cover .cover-content { position: absolute; inset: 0; z-index: 1; color: #fff; text-align: center; }
+  #cover .cover-content :is(h1, p) { position: absolute; left: 0; right: 0; margin: 0; transform: translateY(-50%); color: #fff !important; font-family: Avenir, 'Avenir Next', 'Figtree Web', system-ui, sans-serif !important; line-height: 1.15; letter-spacing: 0; text-shadow: none !important; text-wrap: balance; }
+  #cover .cover-lockup { position: absolute; top: 7.1cqh; left: 50%; width: 29cqw; height: auto; transform: translateX(-50%); filter: none; }
+  #cover .cover-title { top: 51.2cqh; font-size: 4.3cqw !important; font-weight: 500 !important; }
+  #cover .cover-subtitle { top: 61.4cqh; font-size: 3.05cqw !important; font-weight: 400; }
+  #cover .cover-authors { top: 79.3cqh; font-size: 2.25cqw !important; font-weight: 400; }
+  @container (aspect-ratio < 1) {
+    #cover .cover-lockup { top: 12cqh; width: 62cqw; }
+    #cover .cover-content :is(h1, p) { padding-inline: 6cqw; }
+    #cover .cover-title { top: 50cqh; font-size: 9cqw !important; }
+    #cover .cover-subtitle { top: 61cqh; font-size: 5.6cqw !important; }
+    #cover .cover-authors { top: 78cqh; font-size: 4.4cqw !important; }
+  }
   #aurora-node { --mermaid-max-height: 57vh; }
   .node-mobile, .timeline-mobile { display: none; }
   #aurora-node .mermaid { margin-block: 0.2lh; }
@@ -990,6 +1042,16 @@ Scan to share feedback with us and the organizers.
   .layered-visual .mermaid { margin-block: 0.3lh 0; }
   .layered-visual .mermaid svg { max-height: 28vh !important; }
   #layered-restarts .layered-visual { --mermaid-max-height: 36vh; }
+  /* Landscape and print: LR flow uses the slide width (TB capped at 28vh
+     drew ~8px labels). Phones keep the TB flow. */
+  #layered-restarts .layered-tb { display: none; }
+  /* Iosevka ligates the double hyphen into a dash; keep the CLI flag literal. */
+  #layered-restarts .mermaid :is(.nodeLabel, .edgeLabel, text, span) { font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; }
+  #layered-restarts .layered-lr .mermaid svg { max-height: 38vh !important; width: 100% !important; }
+  @media screen and (max-width: 768px) {
+    #layered-restarts .layered-lr { display: none; }
+    #layered-restarts .layered-tb { display: block; }
+  }
   html[data-webtui-theme='pytorch'] #layered-restarts .mermaid .node.retry-done rect { fill: #e8faf3 !important; stroke: #16a678 !important; }
   html[data-webtui-theme='pytorch'] #layered-restarts .mermaid .node.retry-stop rect { fill: #fff0ee !important; stroke: #ee4c2c !important; }
   #layered-restarts .recovery-summary { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 3ch; align-items: center; width: 100%; }
