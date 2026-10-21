@@ -1971,7 +1971,7 @@ html[data-webtui-theme='doe']
     max-width: calc(100% - 19ch);
 }
 [data-deck-theme='pytorch'] #title-slide h1 {
-    font-size: 1.45em !important;
+    font-size: 1.68em !important;
     line-height: 1.06;
     letter-spacing: -0.015em;
 }
@@ -2128,13 +2128,13 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     z-index: 2;
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr img {
-    width: 15ch;
-    height: 15ch;
+    width: 18ch;
+    height: 18ch;
     display: block;
     filter: invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr span {
-    font-size: 0.6em;
+    font-size: 0.76em;
     color: #fff;
     white-space: nowrap;
     letter-spacing: 0.02em;
