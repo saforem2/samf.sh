@@ -471,6 +471,15 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
             alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes"
         />
     </picture>
+    <div class="plot-legend-mobile" aria-label="Chart series: shown tokens and raw training loss">
+        <span class="plot-legend-heading">Shown tokens / raw loss</span>
+        <span class="plot-legend-row"><span class="plot-swatch plot-reference">2B MDS reference</span><span>7.771T / 2.033</span></span>
+        <span class="plot-legend-row"><span class="plot-swatch plot-stage-one">2B 256N stage 1</span><span>4.674T / 2.652</span></span>
+        <span class="plot-legend-row"><span class="plot-swatch plot-stage-one plot-dashed">2B 512N stage 1</span><span>4.674T / 2.687</span></span>
+        <span class="plot-legend-row"><span class="plot-swatch plot-stage-two">2B 256N stage 2</span><span>6.085T / 2.469</span></span>
+        <span class="plot-legend-row"><span class="plot-swatch plot-stage-two plot-dashed">2B 512N stage 2</span><span>6.927T / 2.481</span></span>
+        <span class="plot-legend-note">Solid: 256 nodes · dashed: 512 nodes. Training mixes differ.</span>
+    </div>
 </div>
 
 Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
@@ -506,6 +515,14 @@ flowchart TB
     SWAP --> RETRY
     RETRY -->|"step 296"| DONE["recovered"]
 ```
+
+<div class="operations-mobile" aria-label="Stalled job recovery flow">
+    <div><strong>Step 37</strong><span>Training output stops for 30 minutes.</span></div>
+    <div><strong>Watchdog</strong><span>Exits with code <code>124</code>.</span></div>
+    <div><strong>Check the log</strong><span>Bad host found → exclude it. No bad host → swap in one spare.</span></div>
+    <div><strong>Retry</strong><span>Resume from the checkpoint.</span></div>
+    <div><strong>Recovered</strong><span>Attempt 2 reaches step 296.</span></div>
+</div>
 
 `_set_pg_timeout` has no `xpu` branch — timeout is stored, never enforced.[^hang]
 
@@ -918,6 +935,7 @@ Scan to share feedback with us and the organizers.
     #backend-path .backend-mermaid-mobile .mermaid { font-size: 0.92em; margin-block: 0.5lh; }
   }
   #operations .mermaid { font-size: 1.05em; margin-block: 0.7lh; }
+  .operations-mobile, .plot-legend-mobile { display: none; }
   .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
   #portable-training > .slide-inner > ul { margin-bottom: 0.5lh; }
@@ -1095,6 +1113,28 @@ Scan to share feedback with us and the organizers.
   @media screen and (max-width: 768px) {
     #context .context-layout { grid-template-columns: 1fr; gap: 1lh; }
     #context .context-hero img { max-height: 36vh; }
+    #migration-evidence .project-figure picture {
+      display: block;
+      width: 100%;
+      aspect-ratio: 720 / 640;
+      overflow: hidden;
+    }
+    #migration-evidence .project-figure img { display: block; width: 100%; height: auto; max-height: none; }
+    #migration-evidence .plot-legend-mobile { display: grid; width: 100%; gap: 0.25lh; font-size: 0.95em; line-height: 1.2; }
+    #migration-evidence .plot-legend-heading { font-weight: 700; margin-block-end: 0.1lh; }
+    #migration-evidence .plot-legend-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.4ch; align-items: baseline; }
+    #migration-evidence .plot-legend-row > :last-child { font-variant-numeric: tabular-nums; }
+    #migration-evidence .plot-swatch { display: inline-flex; align-items: center; gap: 0.5ch; min-width: 0; }
+    #migration-evidence .plot-swatch::before { content: ''; display: inline-block; flex: none; width: 1.4ch; border-top: 2px solid currentColor; }
+    #migration-evidence .plot-reference { color: #555; }
+    #migration-evidence .plot-reference::before, #migration-evidence .plot-dashed::before { border-top-style: dashed; }
+    #migration-evidence .plot-stage-one { color: #1674b4; }
+    #migration-evidence .plot-stage-two { color: #ce347b; }
+    #migration-evidence .plot-legend-note { color: var(--foreground2); font-size: 0.84em; margin-block-start: 0.15lh; }
+    #operations .mermaid { display: none; }
+    #operations .operations-mobile { display: grid; gap: 0.38lh; margin-block: 0.45lh; width: 100%; }
+    #operations .operations-mobile > div { display: grid; grid-template-columns: 7ch minmax(0, 1fr); gap: 0.8ch; align-items: baseline; padding: 0.35lh 0.6ch; border-left: 3px solid var(--red); background: var(--background1); line-height: 1.25; }
+    #operations .operations-mobile strong { color: var(--foreground0); }
   }
   #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
   #migration-evidence .slide-inner { padding-bottom: 90px !important; }
