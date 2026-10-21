@@ -285,8 +285,8 @@ const canonical = `samf.sh${url}`
         // Screen fit (PyTorch deck): on shorter landscape screens (e.g.
         // 1440x900) dense slides ran under the footer logos or off the
         // bottom. Scale the current slide's font size down (min 0.6) until
-        // its content clears the logo band. Phones and portrait
-        // screens keep the scrolling reflow layout instead.
+        // its content clears the logo band. Phones, portrait screens,
+        // and short phone-width landscape screens scroll instead.
         const screenFitDeck = deck.dataset.deckTheme === 'pytorch'
         const clearScreenFit = (inner: HTMLElement) => {
             inner.style.removeProperty('font-size')
@@ -323,8 +323,9 @@ const canonical = `samf.sh${url}`
             if (pendingDiagram) return
             const reflow =
                 window.matchMedia('print').matches ||
-                window.matchMedia('(max-width: 768px), (orientation: portrait)')
-                    .matches
+                window.matchMedia(
+                    '(max-width: 768px), (orientation: portrait), (max-width: 1100px) and (max-height: 500px)',
+                ).matches
             if (reflow) return
             const logos = Array.from(
                 document.querySelectorAll<HTMLElement>('.pytorch-footer img'),
