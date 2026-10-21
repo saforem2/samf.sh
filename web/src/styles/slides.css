@@ -2015,9 +2015,7 @@ html[data-webtui-theme='doe']
         .slide-inner {
         font-size: clamp(1.6rem, 1.6vw + 0.45rem, 2rem);
     }
-    [data-deck-theme='pytorch']
-        [is-~='slide'][data-size='sm']
-        .slide-inner {
+    [data-deck-theme='pytorch'] [is-~='slide'][data-size='sm'] .slide-inner {
         font-size: clamp(1.45rem, 1.35vw + 0.4rem, 1.75rem);
     }
 }
