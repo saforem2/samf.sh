@@ -1993,11 +1993,11 @@ html[data-webtui-theme='doe']
     }
     [data-deck-theme='pytorch']:has(#title-slide[data-current])
         .pytorch-footer-lockup {
-        display: none !important;
+        display: block !important;
     }
     [data-deck-theme='pytorch']:has(#title-slide[data-current])
         .pytorch-footer-lockup-dark {
-        display: block !important;
+        display: none !important;
     }
 }
 /* Content slides: plain white (template's default), no wave. */
@@ -2564,7 +2564,7 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         -webkit-print-color-adjust: exact;
     }
     [data-deck-theme='pytorch'] #title-slide::before {
-        background-image: url('/pytorch-template/pytorchcon-na26-white.svg');
+        background-image: url('/pytorch-template/pytorchcon-na26-black.svg');
     }
     [data-deck-theme='pytorch'] #title-slide .title-wave {
         z-index: 0;
