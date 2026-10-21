@@ -173,7 +173,13 @@ gantt
     AuroraGPT on torchtitan            :milestone, a10, 2026-01-10, 1d
 ```
 
-<span class="timeline-caption"><span class="timeline-lanes">**Intel and PyTorch** — IPEX → PT 2.4–2.10+XPU (4 releases)</span> · <span class="timeline-lanes">**Aurora and science** — 10k nodes → 120k-XPU workloads</span><br/>From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates.</span>
+<div class="timeline-caption">
+  <ul>
+    <li><strong>Intel and PyTorch:</strong> IPEX → PT 2.4–2.10+XPU (4 releases)</li>
+    <li><strong>Aurora and science:</strong> 10k nodes → 120k-XPU workloads</li>
+  </ul>
+  <p>From <a href="https://samf.sh/posts/2026/01/10/">ezpz: distributed PyTorch across any hardware</a> plus verified Aurora dates.</p>
+</div>
 
 <SpeakerNotes>
 The upper lane tracks `Intel` and `PyTorch`; the lower lane tracks `Aurora` and the science workloads. The linked write-up contains the release chronology.
@@ -965,6 +971,9 @@ Scan to share feedback with us and the organizers.
   #context table { font-size: 0.96em; }
   #context .slide-inner { gap: 0.25lh; }
   #timeline .timeline-caption { font-size: 0.95em; line-height: 1.35; color: var(--foreground2); }
+  #timeline .timeline-caption ul { margin: 0; padding-inline-start: 1.4em; }
+  #timeline .timeline-caption li { margin: 0; }
+  #timeline .timeline-caption p { margin: 0.2lh 0 0; }
   #timeline .mermaid { margin-block-end: 0.5lh; }
   #timeline .mermaid svg { max-height: 44vh !important; }
   /* (migrated: #operations .mermaid sizing now unified under #backend-path rule above) */
