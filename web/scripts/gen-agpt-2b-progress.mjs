@@ -120,7 +120,13 @@ const MW = 720,
 const msx = (t) => mobileBox.x + (t / 8) * mobileBox.w,
     msy = (l) => mobileBox.y + mobileBox.h - ((l - 2) / 2.5) * mobileBox.h
 let mobileSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${MW} ${MH}" width="${MW}" height="${MH}" font-family="${FONT_STACK}" fill="#666">${fontDefs()}`
-mobileSvg += text(78, 34, 'AuroraGPT 2B: training progress', 24, 'font-weight="700"')
+mobileSvg += text(
+    78,
+    34,
+    'AuroraGPT 2B: training progress',
+    24,
+    'font-weight="700"',
+)
 mobileSvg += text(78, 62, 'Stage 1 and stage 2 · cumulative tokens', 16)
 mobileSvg += `<defs><clipPath id="mobile-main"><rect x="${mobileBox.x}" y="${mobileBox.y}" width="${mobileBox.w}" height="${mobileBox.h}"/></clipPath></defs>`
 mobileSvg += `<rect x="${mobileBox.x}" y="${mobileBox.y}" width="${mobileBox.w}" height="${mobileBox.h}" fill="none" stroke="#aaa"/>`
@@ -150,17 +156,34 @@ for (const s of series) {
 }
 mobileSvg += '</g>'
 mobileSvg += text(383, 620, 'tokens consumed (T)', 17, 'text-anchor="middle"')
-mobileSvg += text(20, 335, 'training loss', 16, 'transform="rotate(-90 20 335)" text-anchor="middle"')
+mobileSvg += text(
+    20,
+    335,
+    'training loss',
+    16,
+    'transform="rotate(-90 20 335)" text-anchor="middle"',
+)
 mobileSvg += text(78, 666, 'Shown tokens / raw loss', 15, 'font-weight="700"')
 let mobileY = 704
 for (const s of series) {
     mobileSvg +=
         `<path d="M80 ${mobileY - 5}h28" stroke="${s.color}" stroke-width="3" stroke-dasharray="${s.dash}"/>` +
         text(120, mobileY, s.label, 15, `fill="${s.color}" font-weight="700"`) +
-        text(680, mobileY, `${s.end.toFixed(3)}T / ${s.loss.toFixed(3)}`, 14, 'text-anchor="end"')
+        text(
+            680,
+            mobileY,
+            `${s.end.toFixed(3)}T / ${s.loss.toFixed(3)}`,
+            14,
+            'text-anchor="end"',
+        )
     mobileY += 31
 }
-mobileSvg += text(78, 883, 'Solid: 256 nodes · dashed: 512 nodes. Training mixes differ.', 13)
+mobileSvg += text(
+    78,
+    883,
+    'Solid: 256 nodes · dashed: 512 nodes. Training mixes differ.',
+    13,
+)
 mobileSvg += '</svg>\n'
 writeFileSync(resolve(dir, 'agpt-2b-progress-mobile.svg'), mobileSvg)
 console.log('wrote agpt-2b-progress-mobile.svg')
