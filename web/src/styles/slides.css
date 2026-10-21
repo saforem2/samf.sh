@@ -53,11 +53,10 @@
     background-color: var(--background0);
     color: var(--foreground1);
     z-index: 1;
-    /* Tell the browser: we own horizontal gestures (swipe nav), it owns
-       vertical (scroll inside .slide-inner) and pinch-zoom on images.
-       Without this, the browser waits ~300ms to disambiguate the gesture
-       before dispatching, which makes swipes feel laggy on mobile. */
-    touch-action: pan-y pinch-zoom;
+    /* Allow native horizontal pans for wide content and vertical scrolling
+       inside slides. JS advances the deck only when a gesture did not start
+       in a horizontally scrollable region. */
+    touch-action: pan-x pan-y pinch-zoom;
     /* Prevent iOS rubber-band / pull-to-refresh bouncing the whole deck
        when a swipe overshoots a slide-inner scroll boundary. */
     overscroll-behavior: contain;
@@ -113,10 +112,9 @@
         justify-content: safe center;
         padding: 1lh 4ch;
         overflow: auto;
-        /* Match the deck-level touch-action: vertical scroll is the
-           browser's job here, horizontal gestures bubble to the deck
-           handler. pinch-zoom remains for images. */
-        touch-action: pan-y pinch-zoom;
+        /* Preserve native horizontal scroll for code, tables, and diagrams;
+           vertical scrolling and pinch-zoom remain browser-managed too. */
+        touch-action: pan-x pan-y pinch-zoom;
         /* Stop momentum scroll at the slide-inner boundary so it
            doesn't propagate up to the (otherwise unscrollable) deck
            and trigger iOS rubber-band frames. */
@@ -2049,6 +2047,19 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
 }
 [data-deck-theme='pytorch'] #title-slide .title-conf-line {
     margin-top: 0.8lh;
+}
+
+/* On narrow screens the QR sits over the title because the title card is
+   vertically centered while the QR is pinned to its top edge. The slide URL
+   is already available in the browser chrome, so give the title the full
+   width and remove the duplicate QR from the phone layout. */
+@media screen and (max-width: 768px) {
+    [data-deck-theme='pytorch'] #title-slide .slide-inner {
+        max-width: 100% !important;
+    }
+    [data-deck-theme='pytorch'] #title-slide .title-slide-qr {
+        display: none !important;
+    }
 }
 
 /* Title slide has no footer — the wave is the whole slide. */

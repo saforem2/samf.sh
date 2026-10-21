@@ -462,19 +462,26 @@ const canonical = `samf.sh${url}`
         })
 
         // Touch / swipe navigation: phones have no keyboard. Horizontal
-        // swipes advance/retreat slides; vertical swipes are ignored so
-        // pinch-zooming an image or scrolling a long slide's content
-        // still works. Threshold prevents jitter from being treated as
-        // a swipe.
-        //
-        // The handlers are intentionally `passive: true` — we never
-        // preventDefault on touchmove, because the slide-inner has
-        // `overflow: auto` and the user must be able to scroll long
-        // slides vertically while we observe their horizontal intent.
-        // CSS `touch-action: pan-y` on the deck (see slides.css) is
-        // what actually tells the browser to skip its 300ms gesture-
-        // disambiguation wait — without that, swipes feel laggy even
-        // with perfect JS handlers.
+        // swipes advance/retreat slides unless they start inside a native
+        // horizontal scroller, which must keep the gesture for its content.
+        // All touch listeners stay passive so browser scrolling and
+        // pinch-zoom remain native.
+        const startsInHorizontalScroller = (target: Element | null) => {
+            let node = target
+            while (node && node !== deck) {
+                if (node instanceof HTMLElement) {
+                    const overflowX = getComputedStyle(node).overflowX
+                    if (
+                        ['auto', 'scroll', 'overlay'].includes(overflowX) &&
+                        node.scrollWidth > node.clientWidth + 1
+                    ) {
+                        return true
+                    }
+                }
+                node = node.parentElement
+            }
+            return false
+        }
         let touchStartX = 0
         let touchStartY = 0
         let touchActive = false
@@ -502,7 +509,7 @@ const canonical = `samf.sh${url}`
                 if (
                     target?.closest(
                         'a, button, summary, input, textarea, img, .footnote-popover',
-                    )
+                    ) || startsInHorizontalScroller(target)
                 ) {
                     touchActive = false
                     return

@@ -986,6 +986,37 @@ Scan to share feedback with us and the organizers.
     .links-grid table { font-size: 0.68em; }
     .application-split { grid-template-columns: 1fr; }
   }
+  /* The 3-column outline cannot stay a readable table at phone width.
+     Turn each act into a compact card and keep the column meaning visible. */
+  @media screen and (max-width: 600px) {
+    #frame table,
+    #frame table tbody,
+    #frame table tr,
+    #frame table th,
+    #frame table td {
+      display: block !important;
+      width: 100% !important;
+      max-width: none !important;
+      box-sizing: border-box;
+    }
+    #frame table { border: 0; font-size: 0.95em !important; }
+    #frame thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    #frame tbody tr { border: 1px solid var(--background3); margin-block: 0.7lh; padding: 0.35lh 1ch; }
+    #frame tbody td { border: 0; padding: 0.25lh 0; }
+    #frame tbody td:first-child { font-weight: 700; }
+    #frame tbody td:nth-child(2)::before,
+    #frame tbody td:nth-child(3)::before {
+      display: block;
+      margin-block-end: 0.15lh;
+      color: var(--foreground2);
+      font-size: 0.78em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    #frame tbody td:nth-child(2)::before { content: 'Question'; }
+    #frame tbody td:nth-child(3)::before { content: 'Implementation'; }
+  }
   .mermaid .nodeLabel, .mermaid .nodeLabel * {
     font-family: inherit !important;
     font-size: inherit !important;
