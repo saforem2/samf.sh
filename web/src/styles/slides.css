@@ -1763,6 +1763,29 @@ body.slides-print-mode
     > h2 {
     font-size: 1.7em;
 }
+/* Slides grown to fill the page (Presentation.astro: growPrintSlide) sit
+   at the top so the logo band is the only reserved space. */
+@media print {
+    [data-deck-theme='pytorch'] .slide-inner[data-print-grow] {
+        justify-content: flex-start !important;
+    }
+    /* Flex items must not shrink below their content, or a figure's <img>
+       spills over the text below it and the fit check never sees it. */
+    [data-deck-theme='pytorch'] .slide-inner[data-print-grow] > * {
+        flex-shrink: 0 !important;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    .slide-inner[data-print-grow] {
+    justify-content: flex-start !important;
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    .slide-inner[data-print-grow]
+    > * {
+    flex-shrink: 0 !important;
+}
 /* Per-slide footnote list (Presentation.astro): print only. */
 .slide-print-footnotes {
     display: none;
