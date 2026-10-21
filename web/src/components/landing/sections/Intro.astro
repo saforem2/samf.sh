@@ -324,16 +324,27 @@ const total = variants.length
                 grid,
                 '[tabindex="0"], a[href], button:not([disabled])',
             )
-            // Highlight the intro widget on load as the default selection.
-            // Use the SOFT data-vim-focused marker, not a hard focus() —
-            // real DOM focus would pin :focus-within on the intro widget so it
-            // stays lit even after you scroll away (markActiveWidget clears the
-            // attribute on scroll but can't blur a focused element). The
-            // attribute is styled identically to focus and is the same signal
-            // markActiveWidget manages, so highlighting stays single-source.
+            // Start with About highlighted without moving keyboard focus.
+            // Retire this initial marker when another widget is used; vim
+            // navigation only tracks markers it sets itself.
             const intro = document.getElementById('intro-widget')
             if (intro) {
                 intro.setAttribute('data-vim-focused', 'true')
+                const clearInitialHighlight = (event: Event) => {
+                    if (!(event.target instanceof Element)) return
+                    const widget = event.target.closest(
+                        '#widgets-grid > [tabindex="0"]',
+                    )
+                    if (!widget || widget === intro) return
+                    intro.removeAttribute('data-vim-focused')
+                    grid.removeEventListener(
+                        'pointerover',
+                        clearInitialHighlight,
+                    )
+                    grid.removeEventListener('focusin', clearInitialHighlight)
+                }
+                grid.addEventListener('pointerover', clearInitialHighlight)
+                grid.addEventListener('focusin', clearInitialHighlight)
             }
 
             const shortcuts: Record<string, string> = {
