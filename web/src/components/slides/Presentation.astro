@@ -284,10 +284,14 @@ const canonical = `samf.sh${url}`
 
         // Screen fit (PyTorch deck): on shorter landscape screens (e.g.
         // 1440x900) dense slides ran under the footer logos or off the
-        // bottom. Zoom the current slide's top-level blocks down (min 0.6)
-        // until its content clears the logo band. Phones and portrait
+        // bottom. Scale the current slide's font size down (min 0.6) until
+        // its content clears the logo band. Phones and portrait
         // screens keep the scrolling reflow layout instead.
         const screenFitDeck = deck.dataset.deckTheme === 'pytorch'
+        const clearScreenFit = (inner: HTMLElement) => {
+            inner.style.removeProperty('font-size')
+            delete inner.dataset.screenFit
+        }
         const fitScreenSlide = (slide: HTMLElement | undefined) => {
             if (
                 !screenFitDeck ||
@@ -298,13 +302,25 @@ const canonical = `samf.sh${url}`
                 return
             const inner = slide.querySelector<HTMLElement>('.slide-inner')
             if (!inner) return
-            const blocks = Array.from(inner.children) as HTMLElement[]
-            const setZoom = (z: number) =>
-                blocks.forEach((b) => {
-                    if (z >= 1) b.style.removeProperty('zoom')
-                    else b.style.setProperty('zoom', z.toFixed(3))
-                })
-            setZoom(1)
+            // Scale the slide's font size, not CSS zoom: text and tables
+            // shrink, diagrams keep their own size, and mermaid labels
+            // (foreignObject) are never measured or drawn under a zoom.
+            clearScreenFit(inner)
+            const base = parseFloat(getComputedStyle(inner).fontSize)
+            const setFit = (f: number) => {
+                if (f >= 1) return clearScreenFit(inner)
+                inner.style.setProperty(
+                    'font-size',
+                    `${(base * f).toFixed(2)}px`,
+                    'important',
+                )
+                inner.dataset.screenFit = f.toFixed(3)
+            }
+            // Wait for diagrams to draw (mermaid:rendered refits later).
+            const pendingDiagram = Array.from(
+                inner.querySelectorAll<HTMLElement>('.mermaid'),
+            ).some((m) => m.offsetParent !== null && !m.querySelector('svg'))
+            if (pendingDiagram) return
             const reflow =
                 window.matchMedia('print').matches ||
                 window.matchMedia('(max-width: 768px), (orientation: portrait)')
@@ -343,11 +359,11 @@ const canonical = `samf.sh${url}`
             let hi = 1
             for (let i = 0; i < 7; i++) {
                 const mid = (lo + hi) / 2
-                setZoom(mid)
+                setFit(mid)
                 if (fits()) lo = mid
                 else hi = mid
             }
-            setZoom(lo)
+            setFit(lo)
         }
 
         const render = (i: number, opts?: { broadcast?: boolean }) => {
@@ -448,6 +464,17 @@ const canonical = `samf.sh${url}`
         // Mermaid diagrams and webfonts change heights after first paint.
         window.addEventListener('load', () =>
             setTimeout(() => fitScreenSlide(slides[current]), 1500),
+        )
+        // mermaid-render.ts: drop every screen fit before it measures, then
+        // refit the current slide once the diagrams are drawn.
+        window.addEventListener('mermaid:render-start', () =>
+            slides.forEach((s) => {
+                const inner = s.querySelector<HTMLElement>('.slide-inner')
+                if (inner) clearScreenFit(inner)
+            }),
+        )
+        window.addEventListener('mermaid:rendered', () =>
+            fitScreenSlide(slides[current]),
         )
 
         const openSpeakerWindow = () => {
