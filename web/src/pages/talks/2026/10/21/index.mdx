@@ -964,22 +964,9 @@ Scan to share feedback with us and the organizers.
   #context .context-xpu-definition { font-size: 0.7em; margin-block-start: 0.4lh; }
   #context table { font-size: 0.96em; }
   #context .slide-inner { gap: 0.25lh; }
-  #timeline .timeline-mobile-hint { display: none; }
-  @media screen and (max-width: 768px) {
-    #timeline .timeline-mobile-hint { display: inline; }
-  }
   #timeline .timeline-caption { font-size: 0.95em; line-height: 1.35; color: var(--foreground2); }
   #timeline .mermaid { margin-block-end: 0.5lh; }
   #timeline .mermaid svg { max-height: 44vh !important; }
-  @media (max-width: 768px) {
-      #timeline .mermaid { overflow-x: auto !important; overflow-y: hidden !important; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding-block-end: 0.5lh; }
-      #timeline .mermaid svg { min-width: 680px !important; max-height: none !important; height: auto !important; width: auto !important; max-width: none !important; }
-      #timeline .sectionTitle { display: none !important; }
-      #timeline .mermaid .grid .tick line { opacity: 0.28 !important; }
-      #timeline .mermaid .taskText, #timeline .mermaid .taskTextOutsideRight, #timeline .mermaid .taskTextOutsideLeft { font-size: 0.72rem !important; }
-      #timeline .mermaid .tick text { font-size: 0.72rem !important; }
-      #timeline .mermaid .titleText { font-size: 0.9rem !important; }
-  }
   /* (migrated: #operations .mermaid sizing now unified under #backend-path rule above) */
   .links-grid { width: 100%; }
   .links-grid table { width: 100%; font-size: 0.82em; }
@@ -1138,7 +1125,7 @@ Scan to share feedback with us and the organizers.
   }
   #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
   #migration-evidence .slide-inner { padding-bottom: 90px !important; }
-  @media screen and (max-width: 600px) {
+  @media screen and (max-width: 1100px), screen and (max-width: 1400px) and (max-height: 650px) {
     #timeline .mermaid, #aurora-node .mermaid { display: none; }
     #timeline .timeline-mobile, #aurora-node .node-mobile { display: grid; width: 100%; gap: 0.55lh; }
     #timeline .timeline-mobile > div, #aurora-node .node-mobile > div {
@@ -1148,7 +1135,14 @@ Scan to share feedback with us and the organizers.
     }
     #aurora-node .node-mobile > div { grid-template-columns: 1fr; gap: 0.1lh; }
     #aurora-node .node-mobile > p { margin: 0.2lh 0; line-height: 1.35; }
-    #timeline .timeline-caption { font-size: 0.78em; margin-block-start: 0.3lh; }
+    #timeline .timeline-caption { font-size: 0.88em; margin-block-start: 0.3lh; }
+  }
+  @media screen and (min-width: 700px) and (max-width: 1400px) {
+    #timeline .timeline-mobile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #aurora-node .node-mobile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #aurora-node .node-mobile > p { grid-column: 1 / -1; }
+  }
+  @media screen and (max-width: 600px) {
     #migration-evidence .slide-inner { padding-bottom: 3.5lh !important; }
     #migration-evidence .project-figure { display: block; flex: none; width: 100%; height: auto; max-height: none; margin: 0.2lh 0 0.6lh; }
     #migration-evidence .project-figure picture { display: block; width: 100%; }
