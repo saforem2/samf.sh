@@ -687,6 +687,9 @@ export function initMermaid() {
         // grab the same counter value and emit colliding SVG ids, which
         // breaks downstream querySelector('svg[id^="mermaid-"]') lookups
         // (only the first match wins, the rest never get viewport/controls).
+        // Let the deck clear any screen fit first, so labels are measured
+        // at their final size (Presentation.astro: fitScreenSlide).
+        window.dispatchEvent(new CustomEvent('mermaid:render-start'))
         for (const node of nodes) {
             try {
                 await mermaid.run({ nodes: [node] })
@@ -697,6 +700,7 @@ export function initMermaid() {
         // Always run the post-render pass — partial successes still need
         // their inline-style overrides and interactive viewport wiring.
         stabilizeMermaidSvgLayout()
+        window.dispatchEvent(new CustomEvent('mermaid:rendered'))
     }
 
     render()
