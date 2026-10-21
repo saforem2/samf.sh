@@ -248,8 +248,10 @@ const canonical = `samf.sh${url}`
         if (isSpeaker) document.body.dataset.speakerWindow = 'true'
 
         const indexFromHash = () => {
-            const m = location.hash.match(/^#(\d+)$/)
-            const i = m ? Number(m[1]) - 1 : 0
+            const hash = location.hash.slice(1)
+            const i = /^\d+$/.test(hash)
+                ? Number(hash) - 1
+                : slides.findIndex((slide) => slide.id === hash)
             return Math.max(0, Math.min(total - 1, i))
         }
 
@@ -659,13 +661,12 @@ const canonical = `samf.sh${url}`
         )
 
         // Hash changes from external nav (e.g. clicking a deep link).
-        // Only react when the hash is a pure slide index (`#N`); other
-        // anchor targets (GFM footnote backrefs like
-        // `#user-content-fnref-N`, in-slide section ids, etc.) would
-        // otherwise fall through indexFromHash() → 0 and slam the deck
-        // back to the first slide.
+        // Named slide IDs (for example #links) work alongside #N. Ignore
+        // footnote backrefs and other anchors within the active slide.
         window.addEventListener('hashchange', () => {
-            if (/^#\d+$/.test(location.hash)) render(indexFromHash())
+            const hash = location.hash.slice(1)
+            if (/^\d+$/.test(hash) || slides.some((slide) => slide.id === hash))
+                render(indexFromHash())
         })
 
         // Speaker popup receives index changes from the main window
