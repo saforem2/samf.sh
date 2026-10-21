@@ -1184,7 +1184,7 @@ body[data-speaker-window] [is-~='notes'] {
         white-space: nowrap;
     }
     [data-deck-theme='pytorch'] table[data-mobile-cards] tbody tr {
-        border: 1px solid var(--background3);
+        border: 1px solid var(--pt-card-border);
         margin-block: 0.7lh;
         padding: 0.35lh 1ch;
     }

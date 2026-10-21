@@ -44,6 +44,7 @@ html[data-webtui-theme='pytorch'] {
     --pt-link: oklch(from #db4c41 l c h);
     --pt-panel: oklch(from #fff0ee l c h);
     --pt-panel-2: oklch(from #fde8e6 l c h);
+    --pt-card-border: #e3aaa4;
 
     --oklch-scale: 0.85;
     --pre-line-height: 1.3;
