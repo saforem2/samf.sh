@@ -2008,6 +2008,19 @@ html[data-webtui-theme='doe']
     background: var(--background0);
     bottom: 1lh;
 }
+/* Keep projected body text readable as the screen gets wider. */
+@media screen and (min-width: 1025px) and (min-height: 850px) {
+    [data-deck-theme='pytorch']
+        [is-~='slide']:not(#title-slide):not([data-size='sm'])
+        .slide-inner {
+        font-size: clamp(1.6rem, 1.6vw + 0.45rem, 2rem);
+    }
+    [data-deck-theme='pytorch']
+        [is-~='slide'][data-size='sm']
+        .slide-inner {
+        font-size: clamp(1.45rem, 1.35vw + 0.4rem, 1.75rem);
+    }
+}
 
 [data-deck-theme='pytorch'] #title-slide h1,
 [data-deck-theme='pytorch'] #title-slide h2,
