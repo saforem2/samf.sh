@@ -1968,7 +1968,7 @@ html[data-webtui-theme='doe']
     font-size: clamp(1.25rem, 1.8vw + 0.5rem, 1.95rem) !important;
     line-height: 1.35;
     /* Cap width so title doesn't run under QR */
-    max-width: calc(100% - 14ch);
+    max-width: calc(100% - 19ch);
 }
 [data-deck-theme='pytorch'] #title-slide h1 {
     font-size: 1.45em !important;
@@ -2117,8 +2117,8 @@ body.slides-print-mode .pytorch-footer-lockup-dark {
     z-index: 2;
 }
 [data-deck-theme='pytorch'] #title-slide .title-slide-qr img {
-    width: 10ch;
-    height: 10ch;
+    width: 15ch;
+    height: 15ch;
     display: block;
     filter: invert(1) drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
 }
