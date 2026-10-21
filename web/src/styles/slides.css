@@ -2090,7 +2090,7 @@ html[data-webtui-theme='doe']
     position: fixed;
     right: 2ch;
     bottom: 2lh;
-    width: clamp(200px, 15.6vw, 300px);
+    width: clamp(168px, 13.1vw, 252px);
     height: auto;
 }
 :root[data-webtui-theme='custom-dark']
@@ -2621,11 +2621,11 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         position: absolute;
         right: 18px;
         bottom: 10px;
-        /* Argonne | ALCF lockup (220px) + 16px gap + PyTorch lockup (96px). */
-        width: 332px;
+        /* Argonne | ALCF lockup (185px) + 16px gap + PyTorch lockup (96px). */
+        width: 297px;
         height: 51px;
         background:
-            url('/anl-logos/anl-alcf-lockup-light.svg') left center / 220px auto
+            url('/anl-logos/anl-alcf-lockup-light.svg') left center / 185px auto
                 no-repeat,
             url('/pytorch-template/pytorchcon-na26-black.svg') right center /
                 96px 51px no-repeat;
