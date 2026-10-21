@@ -139,6 +139,13 @@ The three sections cover backend fixes, the migration from `Megatron-DeepSpeed`,
 
 ## PyTorch XPU and Aurora timeline
 
+<div class="timeline-mobile" aria-label="Key milestones from 2023 to 2026">
+  <div><strong>2023</strong><span>IPEX before native XPU · Aurora installation complete · GenSLM Gordon Bell</span></div>
+  <div><strong>2024</strong><span>PyTorch 2.4 XPU prototype → 2.5 native Intel GPU · Aurora reaches exascale</span></div>
+  <div><strong>2025</strong><span>PyTorch eager/compile parity and XCCL ProcessGroup · Aurora enters production · AERIS at 10k nodes</span></div>
+  <div><strong>2026</strong><span>PyTorch 2.10 + XPU · AuroraGPT on torchtitan/ezpz</span></div>
+</div>
+
 ```mermaid
 %%{init: {'themeCSS': '.titleText{font-size:1.1rem!important;font-weight:700}.taskText{font-size:1.2rem!important;font-weight:600}.taskTextOutsideRight,.taskTextOutsideLeft{font-size:1.2rem!important}.sectionTitle{font-size:1.2rem!important;font-weight:700}.tick text{font-size:1.5rem!important;font-weight:600}.grid .tick line{stroke:var(--background3)!important;opacity:0.6}.section0{fill:color-mix(in oklch,var(--background1) 72%,transparent)!important}.section1{fill:color-mix(in oklch,var(--blue) 38%,transparent)!important}.done,.active{fill:color-mix(in srgb,var(--blue) 72%,white 28%)!important;stroke:var(--blue)!important}.crit{fill:var(--red)!important;stroke:var(--red)!important}.task.crit text{fill:#fff!important}.task.crit + text,.task.critText{fill:#fff!important}.milestone{fill:var(--red)!important;stroke:var(--red)!important}'}}%%
 gantt
@@ -170,7 +177,7 @@ gantt
     AuroraGPT on torchtitan            :milestone, a10, 2026-01-10, 1d
 ```
 
-<span class="timeline-caption"><span class="timeline-lanes">**Intel and PyTorch** — IPEX → PT 2.4–2.10+XPU (4 releases)</span> · <span class="timeline-lanes">**Aurora and science** — 10k nodes → 120k-XPU workloads</span><br/>From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates.<span class="timeline-mobile-hint"> Scroll → to see the full timeline.</span></span>
+<span class="timeline-caption"><span class="timeline-lanes">**Intel and PyTorch** — IPEX → PT 2.4–2.10+XPU (4 releases)</span> · <span class="timeline-lanes">**Aurora and science** — 10k nodes → 120k-XPU workloads</span><br/>From [ezpz: distributed PyTorch across any hardware](https://samf.sh/posts/2026/01/10/) plus verified Aurora dates.</span>
 
 <SpeakerNotes>
 The upper lane tracks `Intel` and `PyTorch`; the lower lane tracks `Aurora` and the science workloads. The linked write-up contains the release chronology.
@@ -738,6 +745,12 @@ The GPU counts are announced plans. Check device support, collectives, launch, d
 
 ## Backup: inside an Aurora node
 
+<div class="node-mobile" aria-label="Aurora node topology summary">
+  <div><strong>CPU socket 0</strong><span>Xeon CPU Max · 3 GPUs · 4 Slingshot NICs</span></div>
+  <div><strong>CPU socket 1</strong><span>Xeon CPU Max · 3 GPUs · 4 Slingshot NICs</span></div>
+  <p>Each GPU has <strong>2 tiles</strong> and 128 GiB HBM. The six GPUs connect through Xe Link; the CPUs connect through UPI.</p>
+</div>
+
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 28, 'padding': 12}}}%%
 flowchart TB
@@ -807,6 +820,7 @@ Scan to share feedback with us and the organizers.
 
 <style>{`
   #aurora-node { --mermaid-max-height: 57vh; }
+  .node-mobile, .timeline-mobile { display: none; }
   #aurora-node .mermaid { margin-block: 0.2lh; }
   #aurora-node .slide-inner > p { font-size: 0.85em; margin-block: 0.3lh; }
   #aurora-node .node-source { font-size: 0.6em; line-height: 1.3; }
@@ -1090,6 +1104,22 @@ Scan to share feedback with us and the organizers.
   }
   #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
   #migration-evidence .slide-inner { padding-bottom: 90px !important; }
+  @media screen and (max-width: 600px) {
+    #timeline .mermaid, #aurora-node .mermaid { display: none; }
+    #timeline .timeline-mobile, #aurora-node .node-mobile { display: grid; width: 100%; gap: 0.55lh; }
+    #timeline .timeline-mobile > div, #aurora-node .node-mobile > div {
+      display: grid; grid-template-columns: 4.5ch minmax(0, 1fr); gap: 1ch;
+      padding: 0.55lh 0.8ch; border-left: 3px solid var(--red);
+      background: var(--background1); line-height: 1.35;
+    }
+    #aurora-node .node-mobile > div { grid-template-columns: 1fr; gap: 0.1lh; }
+    #aurora-node .node-mobile > p { margin: 0.2lh 0; line-height: 1.35; }
+    #timeline .timeline-caption { font-size: 0.78em; margin-block-start: 0.3lh; }
+    #migration-evidence .slide-inner { padding-bottom: 3.5lh !important; }
+    #migration-evidence .project-figure { display: block; flex: none; width: 100%; height: auto; max-height: none; margin: 0.2lh 0 0.6lh; }
+    #migration-evidence .project-figure picture { display: block; width: 100%; }
+    #migration-evidence .project-figure img { display: block; width: 100%; height: auto; max-height: none; }
+  }
   @media print {
     #timeline .mermaid svg {
       height: 390px !important;
