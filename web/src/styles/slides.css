@@ -1746,6 +1746,23 @@ body.slides-print-mode .slide-web-link {
     position: relative;
     cursor: pointer;
 }
+/* PyTorch deck PDF: the on-screen 1.25em heading reads as body text on
+   a 13.33in page. */
+@media print {
+    [data-deck-theme='pytorch']
+        [is-~='slide']:not(#title-slide)
+        .slide-inner
+        > h2 {
+        font-size: 1.7em;
+    }
+}
+body.slides-print-mode
+    [data-deck-theme='pytorch']
+    [is-~='slide']:not(#title-slide)
+    .slide-inner
+    > h2 {
+    font-size: 1.7em;
+}
 /* Per-slide footnote list (Presentation.astro): print only. */
 .slide-print-footnotes {
     display: none;

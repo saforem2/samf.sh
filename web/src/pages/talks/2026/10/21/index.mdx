@@ -70,8 +70,8 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 | | |
 | --- | --- |
-| [**ALCF**](https://alcf.anl.gov) | DOE leadership computing: runs [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` for open science |
-| [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `127,488` XPUs |
+| [**ALCF**](https://alcf.anl.gov) | Argonne Leadership Computing Facility at [Argonne National Lab](https://www.anl.gov): DOE open science on [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` |
+| [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `127,488` XPUs · [system paper](https://arxiv.org/abs/2509.08207) |
 | **This talk** | Running `PyTorch` on `Aurora`: backend fixes, training, and recovery |
 
 <figure class="context-hero">
@@ -114,14 +114,14 @@ The three sections cover backend fixes, the migration from `Megatron-DeepSpeed`,
 
 ## Scientific AI on Aurora
 
-| Workload (†: I helped lead) | When | Scale / result |
+| Workload | When | Scale / result |
 | --- | --- | --- |
 | [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2): viral genomes | SC22 · Gordon Bell Prize[^gb] | Polaris + Cerebras |
-| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design)†: protein design | SC24 · Gordon Bell finalist | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
-| [AERIS](https://arxiv.org/abs/2509.13523)†: weather diffusion | SC25 · Gordon Bell finalist | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
+| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design): protein design | SC24 · Gordon Bell finalist | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
+| [AERIS](https://arxiv.org/abs/2509.13523): weather diffusion | SC25 · Gordon Bell finalist | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
 | [AuroraGPT](https://samf.sh/talks/2026/08/03/): foundation LLM | ongoing | 7.77T-token `MDS` reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
-<p class="lead-key-mobile">†: I helped lead.</p>
+I co-led `MProt-DPO` and `AERIS`, and co-lead `AuroraGPT`.
 
 [`ezpz`](https://github.com/saforem2/ezpz): same training program on `Intel`, `NVIDIA`, `AMD`.[^aurora]
 
@@ -667,7 +667,7 @@ Run the same training code on each machine. Check loss against the reference. Me
 | [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) | [Experiments](https://github.com/saforem2/torchtitan/tree/ezpz/torchtitan/experiments/ezpz) · [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 | PyTorch XPU | [`torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) · [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) · [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) · [DCP](https://pytorch.org/docs/stable/distributed.checkpoint.html) |
 | Distributed | [`torch-ccl` / XCCL](https://github.com/intel/torch-ccl) · [`oneCCL`](https://github.com/oneapi-src/oneCCL) · [torch.distributed](https://pytorch.org/docs/stable/distributed.html) |
-| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support: Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news: 120k-tile scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
+| System | [Aurora](https://www.alcf.anl.gov/aurora) · [Aurora system paper](https://arxiv.org/abs/2509.08207) · [Scaling MPI on Aurora](https://arxiv.org/abs/2512.04291) · [ALCF support: Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news: 120k-tile scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
 | Science | [AuroraGPT companion](https://samf.sh/talks/2026/08/03/) · [AERIS](https://arxiv.org/abs/2509.13523) · [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) · [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2) |
 
 </div>
@@ -818,7 +818,7 @@ flowchart TB
 
 <div class="node-source">
 
-Logical schematic, not a wiring diagram. Xe Link connections grouped. [ALCF node topology](https://docs.alcf.anl.gov/aurora/images/aurora_node_dataflow.png) · [Machine overview](https://docs.alcf.anl.gov/aurora/) · [PyTorch tile configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/)
+Logical schematic, not a wiring diagram. Xe Link connections grouped. [ALCF node topology](https://docs.alcf.anl.gov/aurora/images/aurora_node_dataflow.png) · [Aurora system paper](https://arxiv.org/abs/2509.08207) · [Machine overview](https://docs.alcf.anl.gov/aurora/) · [PyTorch tile configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/)
 
 </div>
 
@@ -947,9 +947,6 @@ Scan to share feedback with us and the organizers.
   }
   #operations .mermaid { font-size: 1.05em; margin-block: 0.7lh; }
   #prologue table { margin-block: 0.5lh 0.8lh; }
-  /* Phone cards drop the header row, which carries the † key. */
-  #prologue .lead-key-mobile { display: none; }
-  @media screen and (max-width: 768px) { #prologue .lead-key-mobile { display: block; font-size: 0.85em; color: var(--foreground2); margin-block: 0 0.4lh; } }
   .operations-mobile, .plot-legend-mobile { display: none; }
   .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
@@ -1081,6 +1078,8 @@ Scan to share feedback with us and the organizers.
   [is-~='slide'] :is(pre, code) * {
     font-family: var(--code-font-family, 'mIosevka-Term Web', monospace) !important;
   }
+  /* The label/value table has an empty header row; hide it. */
+  #context .context-layout thead { display: none; }
   #context .slide-inner > h2:first-child {
     font-size: 1.8em;
     margin-block-end: 0.65lh;
@@ -1145,6 +1144,8 @@ Scan to share feedback with us and the organizers.
     #operations .operations-mobile > div { display: grid; grid-template-columns: 10ch minmax(0, 1fr); gap: 0.8ch; align-items: baseline; padding: 0.35lh 0.6ch; border-left: 3px solid var(--red); background: var(--background1); line-height: 1.25; }
     #operations .operations-mobile strong { color: var(--foreground0); }
   }
+  /* Print: cap the chart so the caption and pointer clear the footer logos. */
+  @media print { #migration-evidence .project-figure img { max-height: 400px !important; width: auto !important; margin-inline: auto; } }
   #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
   #migration-evidence .slide-inner { padding-bottom: 90px !important; }
   @media screen and (max-width: 1100px), screen and (max-width: 1400px) and (max-height: 650px) {

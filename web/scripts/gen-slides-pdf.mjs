@@ -64,6 +64,12 @@ await page.emulateMedia({ media: 'print' })
 await page.evaluate(() => document.fonts.ready)
 await page.waitForTimeout(1500)
 
+// emulateMedia does not fire beforeprint, so the deck's fit-to-page pass
+// (Presentation.astro: fitPrintSlides) would never run. Fire it by hand,
+// after fonts and diagrams have settled so it measures final heights.
+await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')))
+await page.waitForTimeout(300)
+
 await page.pdf({
     path: out,
     width: '13.333in',
