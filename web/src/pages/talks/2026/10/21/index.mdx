@@ -70,7 +70,7 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 | | |
 | --- | --- |
-| [**ALCF**](https://alcf.anl.gov) | DOE leadership computing — runs [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` for open science |
+| [**ALCF**](https://alcf.anl.gov) | DOE leadership computing: runs [`Aurora`](https://docs.alcf.anl.gov/aurora) + `Polaris` for open science |
 | [**Aurora**](https://docs.alcf.anl.gov/aurora) | `10,624` nodes · `127,488` XPUs |
 | **This talk** | Running `PyTorch` on `Aurora`: backend fixes, training, and recovery |
 
@@ -110,22 +110,24 @@ The three sections cover backend fixes, the migration from `Megatron-DeepSpeed`,
 </Slide>
 
 {/* ── Prologue: why scale matters (60s) ───────────────────────── */}
-<Slide id="prologue">
+<Slide id="prologue" size="sm">
 
 ## Scientific AI on Aurora
 
-| Workload | Scale / result |
-| --- | --- |
-| [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2) — viral genomes | Polaris + Cerebras · Gordon Bell[^gb] |
-| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) — protein design | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
-| [AERIS](https://arxiv.org/abs/2509.13523) — weather diffusion | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
-| [AuroraGPT](https://samf.sh/talks/2026/08/03/) — foundation LLM | 7.77T-token `MDS` reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
+| Workload (†: I helped lead) | When | Scale / result |
+| --- | --- | --- |
+| [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2): viral genomes | SC22 · Gordon Bell Prize[^gb] | Polaris + Cerebras |
+| [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design)†: protein design | SC24 · Gordon Bell finalist | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
+| [AERIS](https://arxiv.org/abs/2509.13523)†: weather diffusion | SC25 · Gordon Bell finalist | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
+| [AuroraGPT](https://samf.sh/talks/2026/08/03/): foundation LLM | ongoing | 7.77T-token `MDS` reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
+
+<p class="lead-key-mobile">†: I helped lead.</p>
 
 [`ezpz`](https://github.com/saforem2/ezpz): same training program on `Intel`, `NVIDIA`, `AMD`.[^aurora]
 
-[^gb]: The [ACM Gordon Bell Prize](https://awards.acm.org/bell) is awarded each year at SC for outstanding achievement in high-performance computing. `GenSLM` won the 2022 [Special Prize for HPC-Based COVID-19 Research](https://www.alcf.anl.gov/news/argonne-led-team-wins-gordon-bell-special-prize-hpc-based-covid-19-research).
+[^gb]: The [ACM Gordon Bell Prize](https://awards.acm.org/bell) is awarded each year at SC for outstanding achievement in high-performance computing. `GenSLM` won the 2022 [Special Prize for HPC-Based COVID-19 Research](https://www.alcf.anl.gov/news/argonne-led-team-wins-gordon-bell-special-prize-hpc-based-covid-19-research). `MProt-DPO` was a [2024 finalist](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design); `AERIS` was a [2025 finalist for the Special Prize for Climate Modeling](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights).
 
-[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF PyTorch tile-as-device configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
+[^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF PyTorch tile-as-device configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/) · [ALCF support: Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
 
 <SpeakerNotes>
 `GenSLM` predates the native `XPU` backend. `AERIS` uses its own training stack. Credit the individual science teams, `ALCF`, and `Intel`.
@@ -240,7 +242,7 @@ Test the device API, kernels, and collectives together.
 [^xpu]: [PyTorch XPU docs](https://pytorch.org/docs/stable/notes/xpu.html) · [Intel torch-ccl (XCCL)](https://github.com/intel/torch-ccl) · [oneAPI oneCCL](https://github.com/oneapi-src/oneCCL) · [PyTorch distributed overview](https://pytorch.org/docs/stable/distributed.html) · [The two timelines](https://samf.sh/posts/2026/01/10/#the-two-timelines)
 
 <SpeakerNotes>
-Co-authors: Panagiotis Kourdis and Tanima Dey, Intel — XCCL/`oneCCL` layer. Distinguish "API exists" from "collective scales and timeout fires."
+Co-authors: Panagiotis Kourdis and Tanima Dey, Intel (XCCL/`oneCCL` layer). Distinguish "API exists" from "collective scales and timeout fires."
 </SpeakerNotes>
 
 </Slide>
@@ -254,7 +256,7 @@ Co-authors: Panagiotis Kourdis and Tanima Dey, Intel — XCCL/`oneCCL` layer. Di
 | --- | --- | --- |
 | `torch 2.13`: `expected DTensor, got plain tensor` on FSDP wrap | Missing [pytorch#181519](https://github.com/pytorch/pytorch/pull/181519) | Fixed in `2.14.0+xpu` |
 | `DeviceMesh` → `does not support splitting` | `ProcessGroupXCCL` inherits `supportsSplitting() == false` (see [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548)) | Local shim · [pytorch#186548](https://github.com/pytorch/pytorch/issues/186548) |
-| `train_timeout_seconds` is a no-op | `_set_pg_timeout` has no `xpu` branch — `XCCL` stores the timeout, never arms it | Watchdog heartbeat (Act C) + two-PR upstream |
+| `train_timeout_seconds` is a no-op | `_set_pg_timeout` has no `xpu` branch: `XCCL` stores the timeout, never arms it | Watchdog heartbeat (Act C) + two-PR upstream |
 
 The `CUDA` path worked. The `XPU` path inherited defaults that needed fixing.
 
@@ -271,13 +273,13 @@ Not missing kernels — missing dispatch branches. Every row is a real commit an
 
 | [Megatron-DeepSpeed fork](https://github.com/microsoft/Megatron-DeepSpeed)[^mds] | [`torchtitan`](https://github.com/pytorch/torchtitan) + `DTensor` + `FSDP2` |
 | --- | --- |
-| `2B` trained to `7.77T` tokens ([Aug talk](https://samf.sh/talks/2026/08/03/)) | Same run continues on `torchtitan` — `4.67T` at `256`→`512` nodes |
+| `2B` trained to `7.77T` tokens ([Aug talk](https://samf.sh/talks/2026/08/03/)) | Same run continues on `torchtitan`: `4.67T` at `256`→`512` nodes |
 | Parallelism baked into the fork | [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) + [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) as composable primitives |
 | Every PT release → rebase + patch audit | XPU integration in separate layers · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
 The fork trained the `2B` model to **7.77T tokens**. Each `PyTorch` upgrade required another rebase and patch audit.
 
-[^mds]: [Megatron-DeepSpeed](https://github.com/microsoft/Megatron-DeepSpeed) · [torchtitan upstream](https://github.com/pytorch/torchtitan) · [AuroraGPT companion — `MDS` training](https://samf.sh/talks/2026/08/03/).
+[^mds]: [Megatron-DeepSpeed](https://github.com/microsoft/Megatron-DeepSpeed) · [torchtitan upstream](https://github.com/pytorch/torchtitan) · [AuroraGPT companion: `MDS` training](https://samf.sh/talks/2026/08/03/).
 
 <SpeakerNotes>
 The `Megatron-DeepSpeed` fork trained the `2B` reference to 7.77T tokens. The move to `torchtitan` reduced the framework-specific maintenance. The table separates the completed run from the later continuations.
@@ -334,7 +336,7 @@ ezpz launch python3 -m ezpz.examples.fsdp_tp \
 
 <div class="portable-demo-col">
 
-Same command on every machine — [`ezpz`](https://github.com/saforem2/ezpz) picks the backend.
+Same command on every machine: [`ezpz`](https://github.com/saforem2/ezpz) picks the backend.
 
 ```mermaid
 %%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
@@ -363,7 +365,7 @@ flowchart LR
     class MAC mac
     class MPS mps
 ```
-*\*`mccl` — [mps-ddp/mccl](https://github.com/mps-ddp/mccl): `MPS` on Apple silicon — `ezpz launch` even on a laptop.*
+*\*`mccl` ([mps-ddp/mccl](https://github.com/mps-ddp/mccl)): `MPS` on Apple silicon, so `ezpz launch` works even on a laptop.*
 
 </div>
 
@@ -431,8 +433,8 @@ Record the build, model, batch size, precision, and node count with each measure
 | --- | --- | --- |
 | Parallelism | Custom tensor-parallel + pipeline in fork | [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) + [`DTensor`](https://pytorch.org/docs/stable/distributed.tensor.html) sharding |
 | Collectives | DeepSpeed's `NCCL` assumptions | `XCCL` ([`torch-ccl`](https://github.com/intel/torch-ccl)) → [`oneCCL`](https://github.com/oneapi-src/oneCCL) |
-| Kernels | Fork-local fused kernels | `XPU` kernels via `torch.xpu` — `layernorm+residual` moved; `attn`/`MLP`/`optimizer` remain[^kernels] |
-| Launch | Already [`ezpz`](https://github.com/saforem2/ezpz) — scheduler → nodes → `MPI` | Same [`ezpz`](https://github.com/saforem2/ezpz)[^ezpz] — [`launch`](https://ezpz.cool/cli/launch/) + [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
+| Kernels | Fork-local fused kernels | `XPU` kernels via `torch.xpu`: `layernorm+residual` moved; `attn`/`MLP`/`optimizer` remain[^kernels] |
+| Launch | Already [`ezpz`](https://github.com/saforem2/ezpz): scheduler → nodes → `MPI` | Same [`ezpz`](https://github.com/saforem2/ezpz)[^ezpz]: [`launch`](https://ezpz.cool/cli/launch/) + [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
 | Checkpoint | `DeepSpeed` engine save | `DCP` ([`torch.distributed.checkpoint`](https://pytorch.org/docs/stable/distributed.checkpoint.html)) |
 
 `ezpz` stayed in place. Parallelism, collectives, and checkpoints moved out of the fork.
@@ -453,11 +455,11 @@ Record the build, model, batch size, precision, and node count with each measure
 
 | Layer | Gate | Link |
 | --- | --- | --- |
-| Numerics | 50-step loss — `±0.10` on final + last-10 mean | [Production loss figure](https://samf.sh/talks/2026/08/03/) |
+| Numerics | 50-step loss: `±0.10` on final + last-10 mean | [Production loss figure](https://samf.sh/talks/2026/08/03/) |
 | Collectives | XCCL ladder `48 → 768` ranks, value-checked | [`ezpz/test_dist.py`](https://github.com/saforem2/ezpz/blob/main/ezpz/test_dist.py) |
 | Parallelism | TP1 / TP2 / MoE on Aurora; parity on Sunspot | [`experiments/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) |
 | Portability | One gate on Aurora + Sunspot + Polaris + Perlmutter | [`ezpz`](https://github.com/saforem2/ezpz) |
-| Orchestration | Failover harness — 9 fixtures | [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
+| Orchestration | Failover harness: 9 fixtures | [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 
 The streaming loader contributes `~0.05` loss variation from shuffle order. The 50-step check uses a `±0.10` tolerance.
 
@@ -502,7 +504,7 @@ Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
 <SpeakerNotes>
 The chart shows five production and reference trajectories from the selected dashboard view. The separate 200-step LR 3.22e-5 probe is omitted: it ends at loss 5.998, above the main plot range, and does not show stage-2 progress. Stage-2 token counts include their stage-1 checkpoints. Loss changes across stage boundaries include a data-mix change; this is training loss, not a held-out quality comparison. The dashboard upstream was unavailable; all 58 registered W&B runs were checked directly and remain terminal, with the newest logged samples on September 17, 2026.
 
-For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_ — ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
+For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Training LLMs on a Supercomputer_: ATPESC August 2026](https://samf.sh/talks/2026/08/03/) · [`torchtitan/ezpz` experiments](https://github.com/saforem2/torchtitan/tree/ezpz) · [`ezpz`](https://github.com/saforem2/ezpz)
 </SpeakerNotes>
 
 </Slide>
@@ -512,7 +514,7 @@ For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Train
 
 ## Detecting and recovering from stalled jobs
 
-**Job `8505298`** — step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
+**Job `8505298`**: step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
 
 ```mermaid
 flowchart LR
@@ -533,9 +535,9 @@ flowchart LR
     <div><strong>Recovered</strong><span>Attempt 2 reaches step 296.</span></div>
 </div>
 
-`_set_pg_timeout` has no `xpu` branch — timeout is stored, never enforced.[^hang]
+`_set_pg_timeout` has no `xpu` branch: timeout is stored, never enforced.[^hang]
 
-[^hang]: [Failover incident — 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md)
+[^hang]: [Failover incident: 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md)
 
 <SpeakerNotes>
 Watchdog measures stdout progress, not the collective timeout. The `XPU` gaps slide names the missing branch.
@@ -557,7 +559,7 @@ Watchdog measures stdout progress, not the collective timeout. The `XPU` gaps sl
 
 Test node exclusion, checkpoint reload, and scheduler resubmission before a long run.[^tax]
 
-[^tax]: [Failover incident — 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) · [ezpz docs](https://ezpz.cool)
+[^tax]: [Failover incident: 8505298](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) · [ezpz docs](https://ezpz.cool)
 
 <SpeakerNotes>
 The taxonomy is the mental model. The next two slides cover the two rows you hit weekly.
@@ -665,7 +667,7 @@ Run the same training code on each machine. Check loss against the reference. Me
 | [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) | [Experiments](https://github.com/saforem2/torchtitan/tree/ezpz/torchtitan/experiments/ezpz) · [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md) |
 | PyTorch XPU | [`torch.xpu`](https://pytorch.org/docs/stable/notes/xpu.html) · [`DTensor`](https://pytorch.org/tutorials/intermediate/DTensor_tutorial.html) · [`FSDP2`](https://pytorch.org/blog/pytorch2-feature-class-of-2024/) · [DCP](https://pytorch.org/docs/stable/distributed.checkpoint.html) |
 | Distributed | [`torch-ccl` / XCCL](https://github.com/intel/torch-ccl) · [`oneCCL`](https://github.com/oneapi-src/oneCCL) · [torch.distributed](https://pytorch.org/docs/stable/distributed.html) |
-| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news — 120k-tile scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
+| System | [Aurora](https://www.alcf.anl.gov/aurora) · [ALCF support: Aurora](https://www.alcf.anl.gov/support-center/aurora) · [ALCF news: 120k-tile scale](https://www.alcf.anl.gov/news/aeris-earth-systems-model-pushes-ai-science-new-heights) |
 | Science | [AuroraGPT companion](https://samf.sh/talks/2026/08/03/) · [AERIS](https://arxiv.org/abs/2509.13523) · [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) · [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2) |
 
 </div>
@@ -685,7 +687,7 @@ The table links the stack, systems, and science references. The three write-ups 
 
 This work used resources of the **Argonne Leadership Computing Facility**, a DOE Office of Science user facility at Argonne National Laboratory, supported under contract **DE-AC02-06CH11357**.
 
-**Aurora** was built in partnership with **HPE** and **Intel** — Intel Max 1550 XPU (`PVC`), `oneAPI` / `oneCCL` / `XCCL`, and the upstream `torch.xpu` work tracked in Act A. Thanks to the ALCF operations and support teams, the `PyTorch` and `torchtitan` maintainers, and the science teams behind `GenSLM`, `MProt-DPO`, `AERIS`, and `AuroraGPT`.
+**Aurora** was built in partnership with **HPE** and **Intel**: Intel Max 1550 XPU (`PVC`), `oneAPI` / `oneCCL` / `XCCL`, and the upstream `torch.xpu` work tracked in Act A. Thanks to the ALCF operations and support teams, the `PyTorch` and `torchtitan` maintainers, and the science teams behind `GenSLM`, `MProt-DPO`, `AERIS`, and `AuroraGPT`.
 
 <div class="acks-grid">
 
@@ -944,6 +946,10 @@ Scan to share feedback with us and the organizers.
     #backend-path .backend-mermaid-mobile .mermaid { font-size: 0.92em; margin-block: 0.5lh; }
   }
   #operations .mermaid { font-size: 1.05em; margin-block: 0.7lh; }
+  #prologue table { margin-block: 0.5lh 0.8lh; }
+  /* Phone cards drop the header row, which carries the † key. */
+  #prologue .lead-key-mobile { display: none; }
+  @media screen and (max-width: 768px) { #prologue .lead-key-mobile { display: block; font-size: 0.85em; color: var(--foreground2); margin-block: 0 0.4lh; } }
   .operations-mobile, .plot-legend-mobile { display: none; }
   .backend-caption { margin-block-start: 0.8lh; line-height: 1.4; }
   @media (max-width: 768px) { .portable-split { grid-template-columns: 1fr; } }
