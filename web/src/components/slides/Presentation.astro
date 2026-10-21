@@ -136,24 +136,14 @@ const canonical = `samf.sh${url}`
         >
         <div class="ss-center">
             <a class="ss-link" href={url}>{canonical}</a>
-            {
-                pytorch && (
-                    <div class="ss-mobile-nav" aria-label="Slide navigation">
-                        <button
-                            type="button"
-                            id="ss-prev"
-                            aria-label="Previous slide">
-                            <span aria-hidden="true">←</span>
-                        </button>
-                        <button
-                            type="button"
-                            id="ss-next"
-                            aria-label="Next slide">
-                            <span aria-hidden="true">→</span>
-                        </button>
-                    </div>
-                )
-            }
+            <div class="ss-mobile-nav" aria-label="Slide navigation">
+                <button type="button" id="ss-prev" aria-label="Previous slide">
+                    <span aria-hidden="true">←</span>
+                </button>
+                <button type="button" id="ss-next" aria-label="Next slide">
+                    <span aria-hidden="true">→</span>
+                </button>
+            </div>
         </div>
         <a id="ss-pos-link" class="ss-pos" href="#1">
             <span id="ss-current">1</span>

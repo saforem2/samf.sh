@@ -1114,24 +1114,24 @@ body[data-speaker-window] [is-~='notes'] {
 }
 
 @media screen and (max-width: 768px) {
-    [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
-        bottom: 44px !important;
+    [is-~='slide'] .slide-inner {
+        bottom: 44px;
     }
-    [data-deck-theme='pytorch'] [is-~='slide-status'] {
+    [is-~='slide-status'] {
         height: 44px;
         line-height: normal;
         font-size: 1rem;
     }
-    [data-deck-theme='pytorch'] .ss-center .ss-link {
+    .ss-center .ss-link {
         display: none;
     }
-    [data-deck-theme='pytorch'] .ss-mobile-nav {
+    [is-~='slide-status'] .ss-mobile-nav {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 1ch;
     }
-    [data-deck-theme='pytorch'] .ss-mobile-nav button {
+    .ss-mobile-nav button {
         all: unset;
         box-sizing: border-box;
         display: inline-flex;
@@ -1148,12 +1148,12 @@ body[data-speaker-window] [is-~='notes'] {
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
     }
-    [data-deck-theme='pytorch'] .ss-mobile-nav button:hover,
-    [data-deck-theme='pytorch'] .ss-mobile-nav button:focus-visible {
+    .ss-mobile-nav button:hover,
+    .ss-mobile-nav button:focus-visible {
         color: var(--accent, var(--blue));
         border-color: var(--accent, var(--blue));
     }
-    [data-deck-theme='pytorch'] .ss-mobile-nav button:disabled {
+    .ss-mobile-nav button:disabled {
         color: var(--foreground3);
         cursor: default;
         opacity: 0.5;
@@ -2515,6 +2515,33 @@ html:not([data-webtui-theme='doe']) .doe-footer {
 }
 html:not([data-webtui-theme='alcf']) .alcf-footer {
     display: none !important;
+}
+
+/* Every deck uses the same touch navigation. Keep theme chrome above its
+   taller mobile bar while preserving each theme's existing footer gap. */
+@media screen and (max-width: 768px) {
+    [data-deck-theme='pytorch'] [is-~='slide']:not(#title-slide) .slide-inner {
+        bottom: 44px;
+    }
+    .deck-corner-logo {
+        bottom: calc(44px + 0.5lh) !important;
+    }
+    .doe-footer,
+    .alcf-footer {
+        bottom: 44px;
+    }
+    html[data-webtui-theme='doe']
+        [is-~='presentation']
+        [is-~='slide']
+        .slide-inner {
+        bottom: calc(44px + 3rlh);
+    }
+    html[data-webtui-theme='alcf']
+        [is-~='presentation']
+        [is-~='slide']
+        .slide-inner {
+        bottom: calc(44px + 2rlh);
+    }
 }
 
 /* PyTorch PDF branding repeats on each slide, with space for captions. */
