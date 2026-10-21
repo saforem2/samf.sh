@@ -981,7 +981,9 @@ Scan to share feedback with us and the organizers.
   .portable-demo-col pre.astro-code code { background: transparent !important; }
   .portable-demo-col pre { margin-block: 0.15lh 0; }
   #portable-training { --portable-bottom-pad: 3lh; }
-  #portable-training .slide-inner { padding-block-end: var(--portable-bottom-pad); overflow: auto; justify-content: flex-start; }
+  /* safe center: centered like the other slides, and still top-anchored
+     if the Other examples drawer opens past the bottom. */
+  #portable-training .slide-inner { padding-block-end: var(--portable-bottom-pad); overflow: auto; justify-content: safe center; }
   @media print { #portable-training { --portable-bottom-pad: 0; } }
   #portable-training .portable-demo-col > p { margin-block: 0.35lh 0; }
   #portable-training .portable-demo-col > p:has(> strong) { font-size: 0.92em; margin-block: 0.25lh 0.15lh; }
@@ -1005,8 +1007,11 @@ Scan to share feedback with us and the organizers.
   #portable-training > .slide-inner > ul { margin-bottom: 0.5lh; }
   .project-figure { display: flex; flex-direction: column; align-items: center; width: 100%; max-height: 13lh; margin: 0; }
   .project-figure img { width: 100%; max-height: 13lh; object-fit: contain; }
-  #migration-evidence .project-figure { max-height: none; flex: 1; min-height: 0; margin-block: 0.2lh; }
-  #migration-evidence .project-figure img { max-height: none; flex: 1; min-height: 0; width: 100%; height: 100%; object-fit: contain; }
+  /* Size the chart from the image (capped at 58vh) instead of stretching
+     the figure into all free space, so heading + chart + stats center as
+     one block. */
+  #migration-evidence .project-figure { max-height: none; flex: 0 1 auto; min-height: 0; margin-block: 0.2lh; }
+  #migration-evidence .project-figure img { flex: none; width: auto; max-width: 100%; height: auto; max-height: 58vh; min-height: 0; object-fit: contain; }
   .project-figure figcaption, .application-hero figcaption, .application-split figcaption { margin-top: 0.3lh; font-size: 0.66em; color: var(--foreground2); }
   .application-hero { width: 100%; margin: 0 0 0.4lh; }
   .application-hero img { display: block; width: 100%; max-height: 14lh; object-fit: contain; margin-inline: auto; }
