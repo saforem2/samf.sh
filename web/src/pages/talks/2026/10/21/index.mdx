@@ -324,7 +324,7 @@ Same command on every machine — [`ezpz`](https://github.com/saforem2/ezpz) pic
 
 ```mermaid
 %%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
-flowchart LR
+flowchart TB
     EZ{"<span style='font-weight:700'>ezpz launch</span>"}
     EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
     EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
@@ -459,10 +459,13 @@ The loss gate caught silent gradient bugs that loaded, sharded, and timed correc
 ## AuroraGPT: production training progress
 
 <div class="project-figure">
-    <img
-        src="/talks/2026-10-21/figures/agpt-2b-progress.svg"
-        alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes"
-    />
+    <picture>
+        <source media="(max-width: 768px)" srcset="/talks/2026-10-21/figures/agpt-2b-progress-mobile.svg" />
+        <img
+            src="/talks/2026-10-21/figures/agpt-2b-progress.svg"
+            alt="AuroraGPT 2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes"
+        />
+    </picture>
 </div>
 
 Stage 2: **6.927T** cumulative tokens on 512 nodes · **6.085T** on 256 nodes.
@@ -489,7 +492,7 @@ For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Train
 **Job `8505298`** — step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
 
 ```mermaid
-flowchart LR
+flowchart TB
     TRAIN["step 37"] -->|"stdout idle 30 min"| WATCH["watchdog<br/>exit 124"]
     WATCH --> TRACE{"bad host in log?"}
     TRACE -->|yes| EXCLUDE["exclude host"]
@@ -559,7 +562,7 @@ Test each restart path before committing a full allocation.
 
 ```mermaid
 %%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 42, 'padding': 14}}}%%
-flowchart LR
+flowchart TB
     LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
     CLASSIFY -->|rc = 0| DONE["Done"]
     CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
