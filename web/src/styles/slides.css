@@ -2013,7 +2013,11 @@ html[data-webtui-theme='doe']
         display: block !important;
     }
     [data-deck-theme='pytorch']:has(#title-slide[data-current])
-        .pytorch-footer-lockup-dark {
+        :is(
+            .pytorch-footer-lockup-dark,
+            .pytorch-footer-anl,
+            .pytorch-footer-anl-dark
+        ) {
         display: none !important;
     }
 }
@@ -2071,20 +2075,38 @@ html[data-webtui-theme='doe']
     width: 130px;
     height: auto;
 }
-.pytorch-footer-lockup {
+.pytorch-footer-lockup,
+.pytorch-footer-anl {
     display: block;
 }
-.pytorch-footer-lockup-dark {
+.pytorch-footer-lockup-dark,
+.pytorch-footer-anl-dark {
     display: none !important;
 }
-:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup,
-:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup,
-:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup {
+/* Argonne wireframe (transparent): bottom-right on screen, opposite
+   the PyTorch lockup. Print draws both via [is-~='slide']::before. */
+.pytorch-footer-anl,
+.pytorch-footer-anl-dark {
+    position: fixed;
+    right: 2ch;
+    bottom: 2lh;
+    width: 140px;
+    height: auto;
+}
+:root[data-webtui-theme='custom-dark']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl),
+:root[data-webtui-theme='catppuccin']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl),
+:root[data-webtui-theme='nvim-dark']
+    :is(.pytorch-footer-lockup, .pytorch-footer-anl) {
     display: none !important;
 }
-:root[data-webtui-theme='custom-dark'] .pytorch-footer-lockup-dark,
-:root[data-webtui-theme='catppuccin'] .pytorch-footer-lockup-dark,
-:root[data-webtui-theme='nvim-dark'] .pytorch-footer-lockup-dark {
+:root[data-webtui-theme='custom-dark']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark),
+:root[data-webtui-theme='catppuccin']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark),
+:root[data-webtui-theme='nvim-dark']
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark) {
     display: block !important;
 }
 @media (max-width: 768px) {
@@ -2099,10 +2121,12 @@ html[data-webtui-theme='doe']
         left: auto !important;
         bottom: 0.8lh !important;
     }
-    .pytorch-footer-lockup {
+    .pytorch-footer-lockup,
+    .pytorch-footer-anl {
         display: block !important;
     }
-    .pytorch-footer-lockup-dark {
+    .pytorch-footer-lockup-dark,
+    .pytorch-footer-anl-dark {
         display: none !important;
     }
 }
@@ -2112,10 +2136,11 @@ body.slides-print-mode .pytorch-footer {
     left: auto !important;
     bottom: 0.8lh !important;
 }
-body.slides-print-mode .pytorch-footer-lockup {
+body.slides-print-mode :is(.pytorch-footer-lockup, .pytorch-footer-anl) {
     display: block !important;
 }
-body.slides-print-mode .pytorch-footer-lockup-dark {
+body.slides-print-mode
+    :is(.pytorch-footer-lockup-dark, .pytorch-footer-anl-dark) {
     display: none !important;
 }
 
@@ -2596,16 +2621,22 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         position: absolute;
         right: 18px;
         bottom: 10px;
-        width: 96px;
+        /* Argonne wireframe (88px) + 16px gap + PyTorch lockup (96px). */
+        width: 200px;
         height: 51px;
-        background: url('/pytorch-template/pytorchcon-na26-black.svg') center /
-            contain no-repeat;
+        background:
+            url('/anl-logos/anl-wireframe-light.svg') left center / 88px auto
+                no-repeat,
+            url('/pytorch-template/pytorchcon-na26-black.svg') right center /
+                96px 51px no-repeat;
         z-index: 100;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
+    /* Title slide already carries the Argonne logo bottom-left. */
     [data-deck-theme='pytorch'] #title-slide::before {
-        background-image: url('/pytorch-template/pytorchcon-na26-black.svg');
+        background: url('/pytorch-template/pytorchcon-na26-black.svg') right
+            center / 96px 51px no-repeat;
     }
     [data-deck-theme='pytorch'] #title-slide .title-wave {
         z-index: 0;
