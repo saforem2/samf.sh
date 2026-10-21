@@ -116,12 +116,14 @@ The three sections cover backend fixes, the migration from `Megatron-DeepSpeed`,
 
 | Workload | Scale / result |
 | --- | --- |
-| [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2) — viral genomes | Polaris + Cerebras · Gordon Bell |
+| [GenSLM](https://www.biorxiv.org/content/10.1101/2022.10.10.511571v2) — viral genomes | Polaris + Cerebras · Gordon Bell[^gb] |
 | [MProt-DPO](https://www.alcf.anl.gov/news/argonne-team-breaks-new-ground-ai-driven-protein-design) — protein design | 38,400 ranks · 4.11 EFLOP/s at 3,200 nodes |
 | [AERIS](https://arxiv.org/abs/2509.13523) — weather diffusion | 10,080 nodes · 10.21 EFLOP/s · 90-day stable rollouts |
 | [AuroraGPT](https://samf.sh/talks/2026/08/03/) — foundation LLM | 7.77T-token `MDS` reference → [torchtitan](https://github.com/saforem2/torchtitan/tree/ezpz) |
 
 [`ezpz`](https://github.com/saforem2/ezpz): same training program on `Intel`, `NVIDIA`, `AMD`.[^aurora]
+
+[^gb]: The [ACM Gordon Bell Prize](https://awards.acm.org/bell) is awarded each year at SC for outstanding achievement in high-performance computing. `GenSLM` won the 2022 [Special Prize for HPC-Based COVID-19 Research](https://www.alcf.anl.gov/news/argonne-led-team-wins-gordon-bell-special-prize-hpc-based-covid-19-research).
 
 [^aurora]: [ALCF Aurora](https://www.alcf.anl.gov/aurora) · [ALCF PyTorch tile-as-device configuration](https://docs.alcf.anl.gov/aurora/data-science/frameworks/pytorch/) · [ALCF support — Aurora](https://www.alcf.anl.gov/support-center/aurora) · [`torchtitan/ezpz`](https://github.com/saforem2/torchtitan/tree/ezpz) · [AuroraGPT companion](https://samf.sh/talks/2026/08/03/).
 

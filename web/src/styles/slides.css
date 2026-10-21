@@ -1746,6 +1746,28 @@ body.slides-print-mode .slide-web-link {
     position: relative;
     cursor: pointer;
 }
+/* Per-slide footnote list (Presentation.astro): print only. */
+.slide-print-footnotes {
+    display: none;
+}
+@media print {
+    .slide-print-footnotes {
+        display: block;
+        width: 100%;
+        margin: 0.6lh 0 0;
+        padding: 0.3lh 0 0 2.5ch;
+        border-top: 1px solid var(--background3, #ccc);
+        font-size: 0.62em;
+        line-height: 1.35;
+        color: var(--foreground1, #333);
+    }
+    .slide-print-footnotes li::marker {
+        color: var(--red, #c00);
+    }
+    .footnote-popover-content {
+        display: none !important;
+    }
+}
 .footnote-popover-trigger {
     display: inline;
 }

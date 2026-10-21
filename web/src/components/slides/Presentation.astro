@@ -766,6 +766,41 @@ const canonical = `samf.sh${url}`
         const footnoteRefs = deck.querySelectorAll<HTMLAnchorElement>(
             'a[data-footnote-ref]',
         )
+
+        // Print-only footnotes: popovers do nothing on paper, so list each
+        // slide's footnotes at the foot of its content. Built before the
+        // popover pass below replaces the <sup> refs.
+        slides.forEach((slide) => {
+            const inner = slide.querySelector('.slide-inner')
+            const refs = slide.querySelectorAll<HTMLAnchorElement>(
+                'a[data-footnote-ref]',
+            )
+            if (!inner || refs.length === 0) return
+            const list = document.createElement('ol')
+            list.className = 'slide-print-footnotes'
+            const seen = new Set<string>()
+            refs.forEach((ref) => {
+                const id = ref.getAttribute('href')?.replace('#', '')
+                if (!id || seen.has(id)) return
+                seen.add(id)
+                const li = document.getElementById(id)
+                if (!li) return
+                const item = li.cloneNode(true) as HTMLElement
+                item.removeAttribute('id')
+                item.querySelectorAll('a[data-footnote-backref]').forEach((a) =>
+                    a.remove(),
+                )
+                item.querySelectorAll('p').forEach((p) => {
+                    while (p.firstChild)
+                        p.parentNode!.insertBefore(p.firstChild, p)
+                    p.remove()
+                })
+                item.setAttribute('value', ref.textContent?.trim() || '')
+                list.append(item)
+            })
+            if (list.childElementCount) inner.append(list)
+        })
+
         for (const ref of footnoteRefs) {
             const id = ref.getAttribute('href')?.replace('#', '')
             if (!id) continue
