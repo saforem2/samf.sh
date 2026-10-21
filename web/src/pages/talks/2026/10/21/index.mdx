@@ -513,7 +513,7 @@ For more on the trials and tribulations of TorchTitan on Aurora, see [_Pre-Train
 **Job `8505298`** — step 37, then silence. No traceback. Watchdog at 30 min (`exit 124`), wrapper swapped a node, relaunched. Attempt 2 reached step 296.
 
 ```mermaid
-flowchart TB
+flowchart LR
     TRAIN["step 37"] -->|"stdout idle 30 min"| WATCH["watchdog<br/>exit 124"]
     WATCH --> TRACE{"bad host in log?"}
     TRACE -->|yes| EXCLUDE["exclude host"]
@@ -1128,9 +1128,13 @@ Scan to share feedback with us and the organizers.
     #migration-evidence .plot-stage-one { color: #1674b4; }
     #migration-evidence .plot-stage-two { color: #ce347b; }
     #migration-evidence .plot-legend-note { color: var(--foreground2); font-size: 0.84em; margin-block-start: 0.15lh; }
+  }
+  /* The LR recovery flow shrinks to ~11px labels on portrait screens;
+     swap to the step list there, not only on phones. */
+  @media screen and (max-width: 768px), screen and (orientation: portrait) {
     #operations .mermaid { display: none; }
     #operations .operations-mobile { display: grid; gap: 0.38lh; margin-block: 0.45lh; width: 100%; }
-    #operations .operations-mobile > div { display: grid; grid-template-columns: 7ch minmax(0, 1fr); gap: 0.8ch; align-items: baseline; padding: 0.35lh 0.6ch; border-left: 3px solid var(--red); background: var(--background1); line-height: 1.25; }
+    #operations .operations-mobile > div { display: grid; grid-template-columns: 10ch minmax(0, 1fr); gap: 0.8ch; align-items: baseline; padding: 0.35lh 0.6ch; border-left: 3px solid var(--red); background: var(--background1); line-height: 1.25; }
     #operations .operations-mobile strong { color: var(--foreground0); }
   }
   #migration-evidence .production-pointer { font-size: 0.75em; line-height: 1.35; margin-block-start: 0.25lh; }
