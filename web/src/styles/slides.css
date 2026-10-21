@@ -2083,14 +2083,14 @@ html[data-webtui-theme='doe']
 .pytorch-footer-anl-dark {
     display: none !important;
 }
-/* Argonne tricolor logo: bottom-right on screen, opposite
-   the PyTorch lockup. Print draws both via [is-~='slide']::before. */
+/* Argonne | ALCF lockup: bottom-right on screen, opposite the PyTorch
+   lockup. Print draws both via [is-~='slide']::before. */
 .pytorch-footer-anl,
 .pytorch-footer-anl-dark {
     position: fixed;
     right: 2ch;
     bottom: 2lh;
-    width: 140px;
+    width: clamp(200px, 15.6vw, 300px);
     height: auto;
 }
 :root[data-webtui-theme='custom-dark']
@@ -2621,11 +2621,11 @@ html:not([data-webtui-theme='alcf']) .alcf-footer {
         position: absolute;
         right: 18px;
         bottom: 10px;
-        /* Argonne tricolor (88px) + 16px gap + PyTorch lockup (96px). */
-        width: 200px;
+        /* Argonne | ALCF lockup (220px) + 16px gap + PyTorch lockup (96px). */
+        width: 332px;
         height: 51px;
         background:
-            url('/anl-logos/anl-color-light.svg') left center / 88px auto
+            url('/anl-logos/anl-alcf-lockup-light.svg') left center / 220px auto
                 no-repeat,
             url('/pytorch-template/pytorchcon-na26-black.svg') right center /
                 96px 51px no-repeat;
