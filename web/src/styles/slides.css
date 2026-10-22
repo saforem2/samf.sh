@@ -2202,6 +2202,11 @@ html[data-webtui-theme='doe']
         display: none !important;
     }
 }
+@media screen and (max-width: 1100px) and (max-height: 500px) {
+    .pytorch-footer {
+        display: none !important;
+    }
+}
 @media print {
     .pytorch-footer {
         position: absolute !important;
