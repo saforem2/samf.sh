@@ -198,9 +198,9 @@ cover all four:
   OpenAI-format client, so it joins the **OpenCode**/**Hermes** group above
   (talking OpenAI to rosetta).
 - The Anthropic-native clients (**Claude Code**, **vtcode**) can skip rosetta
-  and talk to `argo-shim` directly, since `argo-shim` already speaks Anthropic
-  `/v1/messages` (the dotted path above). Routing them through rosetta buys only
-  the unified request log.
+  and talk to `argo-shim` directly for Argo, since `argo-shim` already speaks
+  Anthropic `/v1/messages` (the dotted path above). Routing **Claude Code**
+  through rosetta also gives it access to registered ALCF inference models.
 - Argo Claude models route through rosetta → `argo-shim` → Argo `/messages`.
 - Argo GPT/o-series route through rosetta → `argo-shim` → Argo
   `/chat/completions`.
@@ -1006,14 +1006,17 @@ on-screen keyboard row, window thumbnails, and a trackpad area included.
 [sill]: https://getsill.app/
 
 <div class="sill-shot">
-<img
-    src="/posts/2026/06/27/sill-iphone-desktop.png"
-    alt="Sill on iPhone showing the macOS desktop with a slide deck and code editor floating over a Tahoe wallpaper"
-    loading="lazy"
-    decoding="async"
-    width="1206"
-    height="2622"
-/>
+<picture>
+    <source srcset="/posts/2026/06/27/sill-iphone-desktop.webp" type="image/webp" />
+    <img
+        src="/posts/2026/06/27/sill-iphone-desktop.png"
+        alt="Sill on iPhone showing the macOS desktop with a slide deck and code editor floating over a Tahoe wallpaper"
+        loading="lazy"
+        decoding="async"
+        width="1206"
+        height="2622"
+    />
+</picture>
 <p class="caption">Sill's iPhone view: the full macOS desktop streamed to the phone. Tahoe wallpaper, slide deck and editor as real windows, modifier-key bar and trackpad below — the same session that's running the agent stack.</p>
 </div>
 
@@ -1198,6 +1201,26 @@ bare and `google/...` aliases. The request transform I was going to write
 turned out to be unnecessary — worth re-testing an upstream quirk before
 building around it.
 
+### 8. Claude Code's gateway URL is the proxy root
+
+Claude Code appends `/v1/messages` to `ANTHROPIC_BASE_URL`. The
+[rosetta CLI instructions][rosetta-cli] use the proxy root:
+`http://127.0.0.1:8765`, without a trailing `/v1`. Adding `/v1` produces
+`/v1/v1/messages`, which rosetta rejects with `405 Method Not Allowed`.
+
+Set `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1` to fill Claude Code's model
+picker from rosetta's `/v1/models` catalog. The ALCF model ID is
+`alcf-minerva/muse-spark-bf16`; omit `[1m]`, which is Claude Code's context
+window suffix and is not a separate model in rosetta's catalog:
+
+```bash
+claude --model alcf-minerva/muse-spark-bf16
+```
+
+Claude Code may still warn that a gateway model is unrecognized and assume a
+200K context window. That warning concerns Claude Code's model metadata; see
+[the model configuration docs][claude-model-config].
+
 ## Token rotation
 
 Every `argo-shim` restart mints a new token. Shell helpers in
@@ -1226,6 +1249,7 @@ p = pathlib.Path.home() / ".claude" / "settings.json"
 d = json.load(open(p))
 env = d.setdefault("env", {})
 env["ANTHROPIC_BASE_URL"] = "http://127.0.0.1:8765"
+env["CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY"] = "1"
 for key in ("NO_PROXY", "no_proxy"):
     vals = [x.strip() for x in env.get(key, "").split(",") if x.strip()]
     for val in ("localhost", "127.0.0.1"):
@@ -1395,6 +1419,8 @@ workarounds, so they went back upstream as [a PR][argo-pr]:
    `$CELS_USERNAME`, then the login user: no hardcoded usernames.
 
 [argo-pr]: https://github.com/n-getty/argo-shim/pull/9
+[claude-model-config]: https://code.claude.com/docs/en/model-config#correct-the-window-for-a-gateway-or-custom-model-id
+[rosetta-cli]: https://llm-rosetta.readthedocs.io/en/latest/gateway/cli-integrations/
 
 An automated review on the PR flagged a real edge case: a non-dict JSON body
 (a top-level array, say) would crash the handler, since the injection code
