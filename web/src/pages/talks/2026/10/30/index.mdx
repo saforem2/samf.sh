@@ -2,7 +2,7 @@
 layout: '@/layouts/SlideLayout.astro'
 title: 'Towards Resilient Training and Fault-Tolerant Software at ALCF'
 shortTitle: 'Resilient Training at ALCF'
-description: 'Resilient training at Aurora scale: what actually fails when you run 10k-node jobs for weeks, how we recover across three scopes (process → node → job) today, and where the open research problems are for the dependability community.'
+description: 'Resilient training at Aurora scale: what actually fails when you run 2k-node jobs for days, how we recover across three scopes (process → node → job) today, and where the open research problems are for the dependability community.'
 date: 2026-10-30
 location: 'DEPEND Annual Retreat, UIUC'
 locationUrl: 'https://depend.csl.illinois.edu/'
@@ -22,7 +22,7 @@ export const ASSETS = 'https://samforeman.me/assets'
 
     AUDIENCE: DEPEND faculty + grad students. They know fault tolerance
     cold — Paxos, checkpoint/restart theory, MTTF models — but most have
-    not run a 10k-node training job for two weeks and watched it fail in
+    not run a 2k-node training job for days and watched it fail in
     novel ways. The job is to make ALCF-scale training legible as a
     dependability problem and to hand them real failure data + open
     questions worth collaborating on.
@@ -33,7 +33,7 @@ export const ASSETS = 'https://samforeman.me/assets'
 
     ARC (3 acts, ~45 min):
       I  Scale makes failure the default  (10 min)
-         The math of MTBF at 10k nodes + what the big labs saw (Llama 3,
+         The math of MTBF at 2k nodes + what the big labs saw (Llama 3,
          OPT, BLOOM) → why dependability is a first-order training concern.
       II What actually fails at ALCF       (15 min)
          Empirical taxonomy from real Aurora/AuroraGPT runs. Lustre melt,
@@ -115,14 +115,14 @@ Set scale once and move on. 10,624 nodes is the number that makes every rare eve
 ## What we'll cover
 
 - **I · Inevitable** — *Why does scale force dependability into the design?*
-    - The MTBF math at 10k nodes + what Llama 3 / OPT / BLOOM actually ate.
+    - The MTBF math at 2k nodes + what Llama 3 / OPT / BLOOM actually ate.
 
 
 - **II · Observed** — *What really fails on Aurora?*
     - An empirical taxonomy from real runs — not a textbook list.
 
 
-- **III · Alive** — *How do we keep a 14-day job running?*
+- **III · Alive** — *How do we keep a multi-day job running?*
     - A 3-scope recovery cascade, its measured cost, and the open problems.
 
 By the end: where the interesting research lives, and where we'd love collaborators.
@@ -180,11 +180,11 @@ Bridge slide: you're telling a systems crowd "this is your kind of problem, just
 
 ## At scale, failure is math
 
-If a single node has even a generous **MTBF of 3 years** (~26k h), a **10k-node** job has a
+Even with a generous **MTBF of 3 years per node** (~26k h), a **2,048-node** run (~25k `torch.xpu`s — ~20% of Aurora) has a
 
-> **system MTBF ≈ 2.6 hours**
+> **system MTBF ≈ 13 hours**
 
-That's *one failure expected per long lunch* — before you count software.
+About once a day on a multi-day run — and that's before you count software. At 10k nodes it'd be ~2.5 h, but we don't actually run 10k for weeks; the 2k figure is the honest one.
 
 | Campaign | Scale | What they reported |
 | --- | --- | --- |
@@ -199,9 +199,9 @@ That's *one failure expected per long lunch* — before you count software.
 [^glm]: [GLM-130B](https://arxiv.org/abs/2210.02414) (Zeng et al., ICLR 2023).
 
 <SpeakerNotes>
-You don't need the audience to believe your MTBF number — you need them to feel the shape: even excellent per-node reliability collapses at 10k nodes. Llama 3's 1-per-3h is the canonical anchor; OPT/BLOOM/GLM show it's not a Meta-specific story.
+You don't need the audience to believe your MTBF number — you need them to feel the shape: even excellent per-node reliability collapses at 2k nodes. Llama 3's 1-per-3h is the canonical anchor; OPT/BLOOM/GLM show it's not a Meta-specific story. The 13 h figure is for a realistic 2k-node allocation (20% of Aurora, ~25k XPUs); the 2.5 h at 10k is what a full-machine reservation would see — rare, but sets the scale.
 
-Pause on the 2.6h number and let it land. Then: every system in the table was NVIDIA. Aurora's numbers are similar in magnitude but different in composition — which is the next section.
+Pause on the 13 h number and note it's the honest one — we don't run 10k for two weeks. Then: every system in the table was NVIDIA. Aurora's numbers are similar in magnitude but different in composition — which is the next section.
 
 ~3 min. This is the most citable slide in the deck; get the references right.
 </SpeakerNotes>
@@ -654,7 +654,7 @@ Leave this up during Q&A if there's a lull — it's a better conversation starte
 
 ## Takeaways
 
-1. **At 10k nodes, failure is the default** — even heroic per-node MTBF collapses system-wide (~1 per lunch). Design for it.
+1. **At 2k nodes, failure is the default** — even heroic per-node MTBF collapses system-wide (~1 per day; ~2.5 h at 10k). Design for it.
 
 2. **Most failures are mundane; the hard ones are silent** — hardware/NIC/fabric are noisy and detectable; bad grads and slow drift aren't.
 
@@ -707,7 +707,7 @@ Thanks to the ALCF operations team, the AuroraGPT crew, and the Intel `torch.xpu
 
 **I'd especially love to hear from you if:**
 
-- You've built failure detectors, checkpoint oracles, or adaptive recovery policies and want a 10k-node testbed
+- You've built failure detectors, checkpoint oracles, or adaptive recovery policies and want a 2k-node testbed (full-machine if the science needs it)
 - You think about scheduling, silent errors, or heterogeneous reliability
 - You just want the failure traces — we can share what we're allowed to
 
