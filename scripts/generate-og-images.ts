@@ -1,11 +1,7 @@
 /**
- * Offline OG image generator.
- * Reads all .md/.mdx pages, extracts frontmatter, and generates
- * 1200x630 PNG images using satori + resvg.
- *
- * Usage: bun run scripts/generate-og-images.ts
- *
- * Incremental: skips pages whose PNG is newer than the source file.
+ * Offline OG image generator — C2 "terminal rebuilt, tightened".
+ * Single continuous frame: titlebar (dots · $ cat · tinted pill) + body
+ * (46px bold white title, prompt spine) + thin footer (`samf.sh · date`).
  */
 
 import { readdir, stat, mkdir } from 'node:fs/promises'
@@ -17,36 +13,29 @@ import { Resvg } from '@resvg/resvg-js'
 const PAGES_DIR = join(import.meta.dir, '..', 'web', 'src', 'pages')
 const OUT_DIR = join(import.meta.dir, '..', 'web', 'public', 'og')
 const FONT_REGULAR = join(import.meta.dir, 'fonts', 'Iosevka-Regular.ttf')
-// Bold is decompressed from web/public/fonts/iosevka/Iosevka-Bold.woff2 via
-// `woff2_decompress` (satori can't read woff2). Same family the site ships.
 const FONT_BOLD = join(import.meta.dir, 'fonts', 'Iosevka-Bold.ttf')
 
-// Load fonts once
 const regularData = await Bun.file(FONT_REGULAR).arrayBuffer()
 const boldData = await Bun.file(FONT_BOLD).arrayBuffer()
 
-// Site palette (from web/src/styles/global.css). The category tag + statusline
-// accent are keyed off the top-level slug segment so cards are sortable by type.
-const BG = '#1c1c1c'
-const PANEL = '#242424'
-const FG = '#e0e0e0'
-const MUTED = '#8a8a8a'
-const FRAME = '#3a3a3a'
+const BG = '#14151b'
+const BODY_BG = '#0c0d12'
+const FG = '#fff'
+const MUTED = '#8b8b9a'
+const FRAME_BORDER = 'rgba(255,255,255,.11)'
+const TITLEBAR_BG = '#1e2030'
 const CATEGORY_COLOR: Record<string, string> = {
-    posts: '#3b9dd2', // blue
-    talks: '#ee8f24', // orange
-    projects: '#9a76ce', // purple
-    ideas: '#ee8f24', // orange
-    about: '#3fb950', // green
-    now: '#3fb950', // green
-    css: '#3b9dd2', // blue
-    webtui: '#3b9dd2', // blue
+    posts: '#3b9dd2',
+    talks: '#ee8f24',
+    projects: '#9a76ce',
+    ideas: '#ee8f24',
+    about: '#3fb950',
+    now: '#3fb950',
+    css: '#3b9dd2',
+    webtui: '#3b9dd2',
 }
-const DEFAULT_ACCENT = '#e05560' // red
+const DEFAULT_ACCENT = '#e05560'
 
-// For the incremental check: if the generator itself or either font is
-// newer than a cached PNG, regenerate (the template may have changed
-// even when the source page didn't).
 const SCRIPT_MTIME = (await stat(new URL(import.meta.url).pathname)).mtimeMs
 const FONT_MTIME = Math.max(
     (await stat(FONT_REGULAR)).mtimeMs,
@@ -54,7 +43,6 @@ const FONT_MTIME = Math.max(
 )
 const GENERATOR_MTIME = Math.max(SCRIPT_MTIME, FONT_MTIME)
 
-// Strip emoji and other non-renderable characters from titles
 function stripEmoji(text: string): string {
     return text
         .replace(
@@ -65,7 +53,6 @@ function stripEmoji(text: string): string {
         .trim()
 }
 
-// Extract frontmatter from .md/.mdx files
 function extractFrontmatter(content: string): Record<string, string> | null {
     const match = content.match(/^---\n([\s\S]*?)\n---/)
     if (!match) return null
@@ -83,7 +70,6 @@ function extractFrontmatter(content: string): Record<string, string> | null {
     return fm
 }
 
-// Recursively find all .md/.mdx files
 async function findPages(dir: string): Promise<string[]> {
     const entries = await readdir(dir, { withFileTypes: true })
     const files: string[] = []
@@ -98,45 +84,39 @@ async function findPages(dir: string): Promise<string[]> {
     return files
 }
 
-// Layout helpers: every parent div needs display:flex in satori.
 const col = (style: Record<string, unknown>, children: unknown[]) => ({
     type: 'div',
-    props: {
-        style: { display: 'flex', flexDirection: 'column', ...style },
-        children,
-    },
+    props: { style: { display: 'flex', flexDirection: 'column', ...style }, children },
 })
 const row = (style: Record<string, unknown>, children: unknown[]) => ({
     type: 'div',
-    props: {
-        style: { display: 'flex', flexDirection: 'row', ...style },
-        children,
-    },
+    props: { style: { display: 'flex', flexDirection: 'row', ...style }, children },
 })
 const txt = (text: string, style: Record<string, unknown> = {}) => ({
     type: 'div',
-    props: {
-        style: { display: 'flex', fontFamily: 'Iosevka', ...style },
-        children: text,
-    },
-})
-const dot = (color: string) => ({
-    type: 'div',
-    props: {
-        style: {
-            display: 'flex',
-            width: '16px',
-            height: '16px',
-            borderRadius: '50%',
-            backgroundColor: color,
-        },
-        children: [],
-    },
+    props: { style: { display: 'flex', fontFamily: 'IBM Plex Mono, Iosevka, monospace', ...style }, children: text },
 })
 
-// Generate a single OG image: a terminal-window card. The category (top-level
-// slug segment) drives the tag + statusline accent color; promptPath is the real
-// source path shown after the `$ cat` prompt.
+const pill = (label: string, tint: string) =>
+    txt(label, {
+        fontSize: '10px',
+        fontWeight: 700,
+        letterSpacing: '.09em',
+        textTransform: 'uppercase',
+        color: tint,
+        border: `1px solid ${tint}`,
+        borderRadius: '999px',
+        padding: '4px 10px',
+        whiteSpace: 'nowrap',
+    })
+
+const trafficDots = () =>
+    row({ alignItems: 'center', gap: '7px', display: 'flex', flexShrink: 0 }, [
+        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ff5f56' }, children: [] } },
+        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ffbd2e' }, children: [] } },
+        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#27c93f' }, children: [] } },
+    ])
+
 async function generateOgImage(
     title: string,
     date: string | null,
@@ -144,108 +124,87 @@ async function generateOgImage(
     promptPath: string,
 ): Promise<Buffer> {
     const accent = CATEGORY_COLOR[category] ?? DEFAULT_ACCENT
-    // Size the title to fit: longer titles step down.
-    const big = title.length > 52 ? 52 : title.length > 34 ? 62 : 72
-    // The prompt shows the real source path; long paths step the font down so
-    // they don't overflow the card (nowrap + hidden clips the rare extreme).
+    // 46px bold sans title (fixed for C2 — shorter titles can breathe)
+    const titleSize = 46
     const prompt = `$ cat ${promptPath}`
-    const promptSize = prompt.length > 58 ? 18 : prompt.length > 46 ? 22 : 26
+    const promptSize = prompt.length > 58 ? 18 : prompt.length > 46 ? 21 : 23
+
+    const footerText = date ? `samf.sh · ${date}` : 'samf.sh'
 
     const tree = col(
         {
-            width: '100%',
-            height: '100%',
-            padding: '56px',
+            width: '100%', height: '100%',
             backgroundColor: BG,
-            fontFamily: 'Iosevka',
+            fontFamily: 'IBM Plex Sans, IBM Plex Mono, sans-serif',
         },
         [
-            col(
+            // Outer card: one continuous frame, square bottom
+            col({
+                width: '100%', height: '100%',
+                backgroundColor: BODY_BG,
+                border: `1px solid ${FRAME_BORDER}`,
+                borderRadius: '14px',
+                overflow: 'hidden',
+                color: FG,
+            }, [
+                // Titlebar: traffic dots · path · tinted pill
+                row({
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px',
+                    backgroundColor: TITLEBAR_BG,
+                    borderBottom: `1px solid ${FRAME_BORDER}`,
+                }, [
+                    // Left: dots + prompt wrapped in a single flex container (satori-safe)
+                    row({ alignItems: 'center', gap: '10px', flexShrink: 1, overflow: 'hidden' }, [
+                        row({ alignItems: 'center', gap: '7px', flexShrink: 0 }, [
+                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ff5f56', display: 'flex' }, children: [] } },
+                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ffbd2e', display: 'flex' }, children: [] } },
+                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#27c93f', display: 'flex' }, children: [] } },
+                        ]),
+                        { type: 'div', props: { style: { display: 'flex', fontFamily: 'IBM Plex Mono, monospace', fontSize: `${promptSize}px`, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }, children: prompt } },
+                    ]),
+                    // Right pill
+                    { type: 'div', props: { style: { display: 'flex', fontSize: '10px', fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: accent, border: `1px solid ${accent}`, borderRadius: '999px', padding: '4px 10px', whiteSpace: 'nowrap', flexShrink: 0 }, children: category } },
+                ]),
+                // Body: single div with the title as direct text node (satori-safe)
                 {
-                    flex: 1,
-                    backgroundColor: PANEL,
-                    border: `2px solid ${FRAME}`,
-                    borderRadius: '14px',
-                    overflow: 'hidden',
-                },
-                [
-                    // Title bar: traffic lights + samf.sh, category tag
-                    row(
-                        {
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '20px 32px',
-                            borderBottom: `2px solid ${FRAME}`,
+                    type: 'div',
+                    props: {
+                        style: {
+                            display: 'flex', flex: 1,
+                            padding: '32px 36px',
+                            alignItems: 'flex-start', justifyContent: 'center',
                         },
-                        [
-                            row({ alignItems: 'center', gap: '12px' }, [
-                                dot('#ff5f56'),
-                                dot('#ffbd2e'),
-                                dot('#27c93f'),
-                                txt('samf.sh', {
-                                    fontSize: '24px',
-                                    color: MUTED,
-                                    marginLeft: '12px',
-                                }),
-                            ]),
-                            txt(category, {
-                                fontSize: '22px',
-                                fontWeight: 700,
-                                color: accent,
-                                border: `2px solid ${accent}`,
-                                borderRadius: '8px',
-                                padding: '4px 16px',
-                            }),
-                        ],
-                    ),
-                    // Body: prompt + title, statusline footer
-                    col(
-                        {
-                            flex: 1,
-                            padding: '44px 48px',
-                            justifyContent: 'space-between',
-                        },
-                        [
-                            col({}, [
-                                txt(prompt, {
-                                    fontSize: `${promptSize}px`,
-                                    color: MUTED,
-                                    marginBottom: '28px',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                }),
-                                txt(title, {
-                                    fontSize: `${big}px`,
-                                    fontWeight: 700,
-                                    color: FG,
-                                    lineHeight: 1.15,
-                                }),
-                            ]),
-                            row(
-                                {
-                                    alignItems: 'center',
-                                    gap: '16px',
-                                    fontSize: '24px',
-                                    borderTop: `2px solid ${FRAME}`,
-                                    paddingTop: '24px',
-                                },
-                                [
-                                    txt('Sam Foreman', {
-                                        color: accent,
+                        children: [
+                            {
+                                type: 'div',
+                                props: {
+                                    style: {
+                                        fontSize: `${titleSize}px`,
                                         fontWeight: 700,
-                                    }),
-                                    ...(date
-                                        ? [
-                                              txt('·', { color: MUTED }),
-                                              txt(date, { color: MUTED }),
-                                          ]
-                                        : []),
-                                ],
-                            ),
+                                        color: FG,
+                                        lineHeight: 1.05,
+                                        letterSpacing: '-.03em',
+                                        fontFamily: 'IBM Plex Sans, sans-serif',
+                                        textWrap: 'balance',
+                                    },
+                                    children: title,
+                                },
+                            },
                         ],
-                    ),
-                ],
-            ),
+                    },
+                },
+                // Footer: single thin mono line — flat row with 2 single children
+                row({
+                    display: 'flex',
+                    alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 24px',
+                    borderTop: `1px solid ${FRAME_BORDER}`,
+                }, [
+                    { type: 'div', props: { style: { fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', color: MUTED, letterSpacing: '.06em' }, children: footerText } },
+                    { type: 'div', props: { style: { width: '9px', height: '16px', backgroundColor: accent, flexShrink: 0, display: 'flex' }, children: [] } },
+                ]),
+            ]),
         ],
     )
 
@@ -253,97 +212,52 @@ async function generateOgImage(
         width: 1200,
         height: 630,
         fonts: [
-            {
-                name: 'Iosevka',
-                data: regularData,
-                weight: 400 as const,
-                style: 'normal' as const,
-            },
-            {
-                name: 'Iosevka',
-                data: boldData,
-                weight: 700 as const,
-                style: 'normal' as const,
-            },
+            { name: 'IBM Plex Mono', data: regularData, weight: 400 as const, style: 'normal' as const },
+            { name: 'IBM Plex Mono', data: boldData, weight: 700 as const, style: 'normal' as const },
+            // IBM Plex Sans is not loaded as a file; satori falls back to sans-serif for the title,
+            // which keeps it clean. Add if a real font file is available.
         ],
     })
-
-    const resvg = new Resvg(svg, {
-        fitTo: { mode: 'width', value: 1200 },
-    })
+    const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } })
     return Buffer.from(resvg.render().asPng())
 }
 
-// Main
 async function main() {
     const pages = await findPages(PAGES_DIR)
     let generated = 0
     let skipped = 0
-
     for (const page of pages) {
         const content = await Bun.file(page).text()
         const fm = extractFrontmatter(content)
         if (!fm?.title) continue
         if (fm.draft === 'true') continue
-
-        // Compute slug: relative path from PAGES_DIR, strip index.md(x)
         let slug = relative(PAGES_DIR, page)
             .replace(/\/index\.(mdx?|md)$/, '')
             .replace(/\.(mdx?|md)$/, '')
-
         const outPath = join(OUT_DIR, `${slug}.png`)
-
-        // Incremental: skip if PNG is newer than source AND newer than
-        // both this script and the font (so template changes invalidate
-        // cached PNGs).
         if (existsSync(outPath)) {
             const srcStat = await stat(page)
             const outStat = await stat(outPath)
-            if (
-                outStat.mtimeMs >= srcStat.mtimeMs &&
-                outStat.mtimeMs >= GENERATOR_MTIME
-            ) {
+            if (outStat.mtimeMs >= srcStat.mtimeMs && outStat.mtimeMs >= GENERATOR_MTIME) {
                 skipped++
                 continue
             }
         }
-
         const title = stripEmoji(fm.title)
-
-        // Category = top-level slug segment (posts/talks/projects/...); a
-        // top-level page (e.g. "about") is its own category.
         const category = slug.split('/')[0] || 'samf.sh'
-
-        // Real source path for the `$ cat` prompt, leading-slashed and relative
-        // to the pages dir, e.g. /talks/2026/08/03/index.md.
         const promptPath = '/' + relative(PAGES_DIR, page)
-
-        // Format date. Frontmatter dates are bare "YYYY-MM-DD", which parse as
-        // UTC midnight; formatting in the local zone (Central) then rolls back
-        // a day. Pin timeZone: UTC so the printed day matches the frontmatter.
         const date = fm.date
             ? new Date(fm.date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  timeZone: 'UTC',
+                  year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
               })
             : null
-
-        // Generate
         const png = await generateOgImage(title, date, category, promptPath)
         await mkdir(dirname(outPath), { recursive: true })
         await Bun.write(outPath, png)
         generated++
         console.log(`  ${slug}.png`)
     }
-
-    console.log(
-        `\nDone: ${generated} generated, ${skipped} skipped (up to date)`,
-    )
+    console.log(`\nDone: ${generated} generated, ${skipped} skipped`)
 }
 
-main().catch((err) => {
-    console.error(err)
-    process.exit(1)
-})
+main().catch((err) => { console.error(err); process.exit(1) })
