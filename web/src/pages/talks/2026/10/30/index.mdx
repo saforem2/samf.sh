@@ -138,7 +138,7 @@ This is the contract slide. Read it literally — then keep the promise. I = the
 {/* ── Why DEPEND should care ──────────────────────────────────── */}
 <Slide id="why-depend">
 
-## Why this is a DEPEND talk
+## Training is a dependability workload
 
 <div class="why-depend-grid">
 
@@ -279,18 +279,18 @@ Have 1–2 concrete job IDs or dates ready verbally even if you don't put them o
 
 </Slide>
 
-{/* ── II-3: vignettes ─────────────────────────────────────────── */}
+{/* ── II-3: stories ────────────────────────────────────────────── */}
 <Slide id="vignettes">
 
-## Three vignettes from real runs
+## What it looks like in practice
 
 <Cols>
 <Col>
 
-**1. The bf16 cliff — 80B, every optimizer dead by step 14**
-- At `dim=9216`, bf16: `mano` diverged at step 5, AdamW at 9, SophiaG at 14 — grad NaN while loss still looked flat
-- Same corner, three optimizers ⇒ **physics, not tuning** (two triggers: `LBS>1` and large `dp_degree`)
-- Stable today only at `TP=4 · LBS=1 · GBS=372` (9.8% MFU) — still hunting a scalable fix
+**1. SFT that wouldn't die — 32N, 3 `SIGABRT`s, 4 attempts**
+- 32-node SFT (`tulu_math_uc_mix`, 4.5B tokens): oneCCL transport fault at 32N, three different hosts
+- Each crash → watchdog kill → spare-node swap → resume from last durable checkpoint
+- Final loss **0.77**, asset `checkpoint-729-hf` reused by GRPO the next day — no human in the loop
 
 **2. The async-collective hang — `CCL_OP_SYNC` matters**
 - `FSDP2 + TP>1` with oneCCL hung forever on async collectives; NCCL-style default doesn't hold on XPU
@@ -300,20 +300,18 @@ Have 1–2 concrete job IDs or dates ready verbally even if you don't put them o
 </Col>
 <Col>
 
-**3. SFT that wouldn't die — 32N, 3 `SIGABRT`s, 4 attempts**
-- 32-node SFT (`tulu_math_uc_mix`, 4.5B tokens): oneCCL transport fault at 32N, three different hosts
-- Each crash → watchdog kill → spare-node swap → resume from last durable checkpoint
-- Final loss **0.77**, asset `checkpoint-729-hf` reused by GRPO the next day — no human in the loop
-
-> Freshest real incidents you can name on stage — swap any one if you have a newer story with a number.
+**3. 20B overtakes 2B — recovery that pays off in science**
+- Same data, bigger model: 512N (20B) beats 256N (2B) per token — HellaSwag-norm **0.635 vs 0.555**
+- Only possible because the training ran to completion via the recovery machinery, not luck
+- The payoff for dependable training isn't just uptime — it's better models
 
 </Col>
 </Cols>
 
 <SpeakerNotes>
-Vignettes 1 and 2 are more recent than the old Lustre/NCCL pair — they show a numerical cliff (1) and a portability bug (2) alongside the recovery machinery (3). If you have a still-fresher incident (e.g., large-node GRPO, 20B/512N recovery), swap 2 or 3; keep 1 — the bf16 cliff is the most DEPEND-flavored.
+Three stories, one point: recovery isn't just infra — it's what makes the science finish. Keep each to 60s, not bullet recitation.
 
-~3 min. One minute per story, not bullet recitation. The bf16 cliff's punchline is "same failure, three optimizers → not tuning."
+~3 min.
 </SpeakerNotes>
 
 </Slide>
