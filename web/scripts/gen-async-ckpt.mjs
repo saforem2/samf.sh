@@ -66,8 +66,8 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 const LANDSCAPE = {
     W: 900,
-    H: 560,
-    M: { top: 96, right: 24, bottom: 78, left: 78 },
+    H: 440,
+    M: { top: 72, right: 24, bottom: 52, left: 78 },
     barW: 78,
     pairGap: 26,
     groupGap: 150,
