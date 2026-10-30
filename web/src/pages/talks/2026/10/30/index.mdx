@@ -528,18 +528,44 @@ Name the concrete mechanism for each: ezpz watchdog, failover wrapper + spare po
 
 NCCL's 600s timeout fires but the job just idles and burns allocation. Hang without a crash.
 
-**Fix. Stdout-idle watchdog** (`ezpz launch`). No output for *N* seconds (30 min with `--auto-retry`). Kill `mpiexec` (124), backoff, retry in place. Same path for NCCL kills and walltime crashes.
+**Fix. Stdout-idle watchdog** (`ezpz launch`). No output for *N* seconds (30 min with `--auto-retry`). Kill `mpiexec` (124), backoff, retry in place.
 
-- Catches hangs that silence logging. Fabric wedge, Lustre stall.
-- Costs one interval + backoff. Seconds to minutes, not hours.
-- Too short kills healthy long steps. Too long wastes time. Tune per job.
+<div class="layer-process-diagram">
+
+```mermaid
+flowchart TB
+    subgraph job["📋 JOB scope: PBS · hours"]
+        JOB_TXT["<i>crash / walltime</i> →<br/><span style='font-weight:700'>chained resubmit</span>"]
+        subgraph node["🖥 NODE scope: failover wrapper · minutes"]
+            NODE_TXT["<i>bad host detected</i> →<br/><span style='font-weight:700'>swap from spare pool</span>"]
+            subgraph proc["⏱ PROCESS scope: ezpz launch · seconds"]
+                PROC_TXT["<i>stdout idle ≥ N s</i> →<br/><span style='font-weight:700'>kill + backoff</span>"]
+            end
+        end
+    end
+    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
+    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
+    classDef procTxt fill:transparent,stroke:none,color:#1da811
+    class JOB_TXT jobTxt
+    class NODE_TXT nodeTxt
+    class PROC_TXT procTxt
+    class job jobC
+    class node nodeC
+    class proc procC
+```
+
+</div>
+
+- Catches hangs that silence logging — fabric wedge, Lustre stall
+- Costs one interval + backoff (seconds to minutes, not hours)
 
 <SpeakerNotes>
-This is the layer most DEPEND folks will recognize as a heartbeat / failure detector. Call it that explicitly — "this is our application-level heartbeat; stdout is the heartbeat signal because it's the one thing every training step touches."
+Heartbeat / failure detector — stdout is the heartbeat because it's the one thing every training step touches. Diagram shows where this sits (innermost loop).
 
-Mention the failure mode it doesn't catch: silent bad steps where stdout keeps flowing but the math is wrong. That's the hard problem you return to later.
-
-~3 min.
+~2 min.
 </SpeakerNotes>
 
 </Slide>
@@ -1093,6 +1119,19 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
 
   /* Layer slides */
   #layer-process table, #layer-job table { width: 100%; font-size: 0.88em; }
+  #layer-process .layer-process-diagram .mermaid { margin-block: 0.5lh; }
+  #layer-process .layer-process-diagram .mermaid g.node foreignObject { overflow: visible; }
+  #layer-process .layer-process-diagram .mermaid g.node p { line-height: 1.35; padding-bottom: 0.1em; }
+  #layer-process .layer-process-diagram .mermaid .cluster .cluster-label span { display: inline-block; padding: 0 1ch; color: var(--foreground0, #222) !important; font-weight: 600; }
+  #layer-process .layer-process-diagram .mermaid .cluster.jobC .cluster-label span { background: #118cc218; }
+  #layer-process .layer-process-diagram .mermaid .cluster.nodeC .cluster-label span { background: #ee8f2418; }
+  #layer-process .layer-process-diagram .mermaid .cluster.procC .cluster-label span { background: #1da81118; }
+  #layer-process .layer-process-diagram .mermaid g.node.jobTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.jobTxt span, #layer-process .layer-process-diagram .mermaid g.node.jobTxt p { color: #118cc2 !important; }
+  #layer-process .layer-process-diagram .mermaid g.node.nodeTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.nodeTxt span, #layer-process .layer-process-diagram .mermaid g.node.nodeTxt p { color: #ee8f24 !important; }
+  #layer-process .layer-process-diagram .mermaid g.node.procTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.procTxt span, #layer-process .layer-process-diagram .mermaid g.node.procTxt p { color: #1da811 !important; }
+  #layer-process .layer-process-diagram .mermaid g.cluster.jobC > rect { filter: drop-shadow(0 4px 12px #118cc230); }
+  #layer-process .layer-process-diagram .mermaid g.cluster.nodeC > rect { filter: drop-shadow(0 3px 8px #ee8f2438); }
+  #layer-process .layer-process-diagram .mermaid g.cluster.procC > rect { filter: drop-shadow(0 2px 5px #1da81140); }
   #layer-node .mermaid { font-size: 1.05em; margin-block: 0.6lh; }
   #layer-node .operations-mobile { display: none; }
   @media (max-width: 768px) {
@@ -1104,6 +1143,10 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #checkpoint-detail .slide-cols { gap: 2.5ch; }
   #checkpoint-detail .slide-col { font-size: 0.92em; }
   #evidence-sft table { width: 100%; font-size: 0.9em; }
+  #evidence-sft .evidence-figure { margin: 0; display: flex; flex-direction: column; min-height: 0; width: 100%; }
+  #evidence-sft .evidence-figure img { width: 100%; height: auto; max-height: 56vh; object-fit: contain; display: block; }
+  #evidence-sft .evidence-figure figcaption { font-size: 0.62em; line-height: 1.3; margin-block-start: 0.3lh; color: var(--foreground2); }
+  @media (max-width: 900px) { #evidence-sft .slide-cols { grid-template-columns: 1fr; } #evidence-sft .evidence-figure img { max-height: 40vh; } }
   #determinism table { width: 100%; font-size: 0.88em; }
   #still-breaks table { width: 100%; font-size: 0.8em; }
   #still-breaks th:nth-child(1), #still-breaks td:nth-child(1) { width: 22%; }
