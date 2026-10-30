@@ -65,12 +65,12 @@ const Y_MAX = 26 // seconds
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 const LANDSCAPE = {
-    W: 900,
-    H: 440,
-    M: { top: 72, right: 24, bottom: 52, left: 78 },
-    barW: 78,
-    pairGap: 26,
-    groupGap: 150,
+    W: 920,
+    H: 420,
+    M: { top: 58, right: 32, bottom: 52, left: 84 },
+    barW: 88,
+    pairGap: 20,
+    groupGap: 260,
     titleSize: 27,
     subSize: 18,
     axisSize: 21,
@@ -107,8 +107,8 @@ function buildSVG(cfg) {
     let body = ''
 
     // title + subtitle
-    body += `<text x="${W / 2}" y="34" text-anchor="middle" font-family="${FONT}" font-size="${cfg.titleSize}" font-weight="700" fill="#838383">Async hides the write: per-save training stall</text>`
-    body += `<text x="${W / 2}" y="58" text-anchor="middle" font-family="${FONT}" font-size="${cfg.subSize}" fill="#838383">sync blocks on the full write; async pays only stage + drain</text>`
+    body += `<text x="${W / 2}" y="22" text-anchor="middle" font-family="${FONT}" font-size="${cfg.titleSize}" font-weight="700" fill="#838383">Async hides the write: per-save training stall</text>`
+    body += `<text x="${W / 2}" y="40" text-anchor="middle" font-family="${FONT}" font-size="${cfg.subSize}" fill="#838383">sync blocks on the full write; async pays only stage + drain</text>`
 
     // axes box + y gridlines (every 5 s)
     body += `<rect x="${ax}" y="${ay}" width="${aw}" height="${ah}" fill="none" stroke="#83838355" stroke-width="1"/>`
@@ -166,7 +166,7 @@ function buildSVG(cfg) {
     const sw = 16
     // legend sits under the subtitle, inside the top margin, so the bottom row
     // is free for the per-group model labels (which used to collide with it)
-    const legendY = 82
+    const legendY = 64
     const approxW = items.reduce(
         (a, [, lbl]) => a + sw + 8 + lbl.length * cfg.legendSize * 0.58 + 24,
         0,
