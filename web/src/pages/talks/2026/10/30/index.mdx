@@ -638,9 +638,13 @@ If you have a number — "this saved us X hours on the 2B 512-node chain" — pu
 
 Walltime expired. Allocation ended. Spares exhausted. Job's over.
 
-**Fix. Checkpoint-restart + chained resubmit.** Async writes `model + optimizer + RNG + dataloader`. Under 5% step cost. Each checkpoint is a durable asset (`checkpoint-729-hf`). Job *N* submits *N+1* at launch. If *N* dies, *N+1* resumes from the latest one. No human needed.
+**Fix — checkpoint-restart + chained resubmit.**
 
-Young's formula (1974) and Daly's refinement give the optimal checkpoint interval, but they assume known MTBF and instant detection. At Aurora neither holds.
+- Async writes `model + optimizer + RNG + dataloader` — under 5% step cost
+- Each checkpoint is a durable asset (`checkpoint-729-hf`) that SFT/GRPO can branch from
+- Job *N* submits *N+1* at launch — if *N* dies, *N+1* resumes from the latest one, no human needed
+
+> Optimal interval? Young's / Daly's formula assumes known MTBF — at Aurora it drifts. See appendix.
 
 <SpeakerNotes>
 This is the outermost loop. Emphasize two things: (1) checkpoint is the ONLY durable boundary — everything else is best-effort; (2) chained resubmit is what turns a collection of PBS jobs into a single logical training run.

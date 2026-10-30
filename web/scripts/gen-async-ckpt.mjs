@@ -32,7 +32,15 @@ const FIG_DIR = join(
     'figures',
 )
 const OUT = join(FIG_DIR, 'async-ckpt.svg')
-const OUT_1030 = join(__dirname, '..', 'public', 'talks', '2026/10/30', 'figures', 'async-ckpt.svg')
+const OUT_1030 = join(
+    __dirname,
+    '..',
+    'public',
+    'talks',
+    '2026/10/30',
+    'figures',
+    'async-ckpt.svg',
+)
 const OUT_MOBILE = join(FIG_DIR, 'async-ckpt-mobile.svg')
 
 const FONT = FONT_STACK
@@ -192,6 +200,17 @@ writeFileSync(OUT_1030, buildSVG(LANDSCAPE))
 console.log('wrote', OUT)
 console.log('wrote', OUT_1030)
 writeFileSync(OUT_MOBILE, buildSVG(MOBILE))
-writeFileSync(join(__dirname, '..', 'public', 'talks', '2026/10/30', 'figures', 'async-ckpt-mobile.svg'), buildSVG(MOBILE))
+writeFileSync(
+    join(
+        __dirname,
+        '..',
+        'public',
+        'talks',
+        '2026/10/30',
+        'figures',
+        'async-ckpt-mobile.svg',
+    ),
+    buildSVG(MOBILE),
+)
 console.log('wrote', OUT_MOBILE)
 console.log('wrote 10/30 mobile')
