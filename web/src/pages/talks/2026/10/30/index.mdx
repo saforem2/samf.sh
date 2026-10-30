@@ -308,7 +308,6 @@ Three stories, one point: recovery isn't just infra — it's what makes the scie
 
 </Slide>
 
-{/* ── II-4: one program across vendors — portability as prerequisite */}
 <Slide id="portable-training">
 
 ## One training program across vendors
@@ -317,88 +316,138 @@ Three stories, one point: recovery isn't just infra — it's what makes the scie
 
 <div class="portable-demo-col">
 
+**Hello world:**
+
 ```python
-# same program, any machine
+# example.py
+import torch
 import ezpz
 rank = ezpz.setup_torch()
-dev = ezpz.get_torch_device()      # xpu, cuda, cpu
-model = ezpz.wrap_model(model.to(dev))
+world_size = ezpz.get_world_size()
+dev = ezpz.get_torch_device()      # {xpu, cuda, cpu, ...}
+# FSDP2 by default — accepts DeviceMesh
+model = ezpz.wrap_model(torch.nn.Linear(128, 10).to(dev))
+print(f"Hello from {rank}/{world_size}!")
 ```
 
 ```bash
-ezpz launch python3 train.py       # Aurora, Polaris, Frontier, ...
+$ ezpz launch python3 example.py
+Hello from rank 0/24!
+Hello from rank 1/24!
+# ... etc
 ```
+
+<details class="portable-extra">
+<summary>Other examples</summary>
+
+```bash
+# your own script — no changes needed
+ezpz launch python3 your_training_script.py
+# full HF model + dataset via ezpz examples
+ezpz launch python3 -m ezpz.examples.fsdp_tp \
+    --dataset=allenai/olmo-mix-1124
+    --model=meta-models/Muse-Spark-Open-816B-A42B \
+    --local-batch-size=1
+    # ...etc
+```
+</details>
 
 </div>
 
 <div class="portable-demo-col">
 
+Same command on every machine: [`ezpz`](https://github.com/saforem2/ezpz) picks the backend.
+
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 30, 'rankSpacing': 28, 'padding': 10}}}%%
+%%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
 flowchart LR
-    EZ{"ezpz launch"}
-    EZ --> AURORA["PBS · Intel · Aurora"]
-    EZ --> POLARIS["PBS · NVIDIA · Polaris"]
-    EZ --> PM["SLURM · NVIDIA · Perlmutter"]
-    EZ --> FRONTIER["SLURM · AMD · Frontier"]
-    classDef hub fill:none,stroke:#ee4c2c,color:#181716,stroke-width:1.8px
+    EZ{"<span style='font-weight:700'>ezpz launch</span>"}
+    EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
+    EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
+    EZ --> PM["<i>SLURM · NVIDIA</i><br/><span style='font-weight:700'>Perlmutter</span>"]
+    EZ --> FRONTIER["<i>SLURM · AMD</i><br/><span style='font-weight:700'>Frontier</span>"]
+    EZ --> MAC["<span style='font-weight:700'>Multi-CPU</span>"]
+    EZ --> MPS["<i>MPS · Apple</i><br/><span style='font-weight:700'>Multi-MPS*</span>"]
+
+    classDef hub        fill:none,stroke:#ee4c2c,color:#181716,stroke-width:1.8px
     linkStyle default stroke:#ee4c2c,stroke-width:1.8px
-    classDef aurora fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
-    classDef polaris fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
+    classDef aurora     fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
+    classDef polaris    fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
     classDef perlmutter fill:#06b6d408,stroke:#06b6d4,color:#06b6d4,stroke-width:1.5px
-    classDef frontier fill:#ef444408,stroke:#ef4444,color:#ef4444,stroke-width:1.5px
+    classDef frontier   fill:#ef444408,stroke:#ef4444,color:#ef4444,stroke-width:1.5px
+    classDef mac        fill:#a78bfa08,stroke:#a78bfa,color:#a78bfa,stroke-width:1.5px
+    classDef mps        fill:#f59e0b08,stroke:#f59e0b,color:#d97706,stroke-width:1.5px
     class EZ hub
     class AURORA aurora
     class POLARIS polaris
     class PM perlmutter
     class FRONTIER frontier
+    class MAC mac
+    class MPS mps
 ```
+*\*`mccl` ([mps-ddp/mccl](https://github.com/mps-ddp/mccl)): `MPS` on Apple silicon, so `ezpz launch` works even on a laptop.*
 
-[`ezpz`](https://github.com/saforem2/ezpz) picks the backend. Same command on every machine. Fail the same way everywhere, fix once.
+</div>
 
 </div>
 
-</div>
+
 
 <SpeakerNotes>
-Portability isn't a nice-to-have — it's how you debug. Same hang on 4 machines means it's your code, not the fabric. Different hang per machine means it's the machine.
-
-~1 min.
+`AMD` uses the `CUDA` API in `PyTorch`; launch and environment settings still differ. `ezpz launch` handles the machine-specific launch path. `mccl` supplies the distributed `MPS` backend on Apple silicon.
 </SpeakerNotes>
 
 </Slide>
 
-{/* ── II-5: the charts — eval proof (PTC #14) + production progress */}
+{/* ── II-5: the charts — eval proof + production progress */}
 <Slide id="eval-proof">
 
 ## Recovery matters: 20B beats 2B per token
 
 Same data, larger model. 512N (20B) wouldn't have finished without this stack.
 
-<div class="eval-charts">
+<div class="eval-proof-layout">
 
-<figure class="chart-figure">
+<figure class="eval-proof-progress">
 
 ![AuroraGPT-2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes](/talks/2026/10/30/figures/agpt-2b-progress.svg)
 
-<figcaption>512N stage 2 to **6.927T** tokens. Solid 256N, dashed 512N. Training mixes differ.</figcaption>
+<figcaption>**Left:** training loss vs tokens — 512N stage 2 to **6.927T** (solid 256N, dashed 512N; mixes differ).</figcaption>
 
 </figure>
 
-<figure class="chart-figure">
+<div class="eval-proof-evals">
 
-![Eval composite: HellaSwag and other tasks vs tokens for 2B and 20B — 20B leads at matched token count](/talks/2026/10/30/figures/eval-inflight.png)
+<div class="eval-proof-legend">
 
-<figcaption>HellaSwag **0.635 vs 0.555**. Same data. 20B finished because the job survived.</figcaption>
+<span><i style="border-color:#2196f3;border-style:dashed"></i> 2B MDS ref</span>
+<span><i style="border-color:#ef5350"></i> 2B v2 256N</span>
+<span><i style="border-color:#b71c1c"></i> 2B v2 512N</span>
+<span><i style="border-color:#1b8a3a"></i> 20B v2 512N</span>
 
-</figure>
+</div>
+
+<div class="eval-proof-grid">
+
+<img src="/talks/2026/10/30/figures/eval-panel-hellaswag.svg" alt="HellaSwag accuracy vs tokens" loading="lazy" />
+<img src="/talks/2026/10/30/figures/eval-panel-arc_easy.svg" alt="ARC-Easy accuracy vs tokens" loading="lazy" />
+<img src="/talks/2026/10/30/figures/eval-panel-arc_challenge.svg" alt="ARC-Challenge accuracy vs tokens" loading="lazy" />
+<img src="/talks/2026/10/30/figures/eval-panel-winogrande.svg" alt="Winogrande accuracy vs tokens" loading="lazy" />
+
+</div>
+
+<span class="eval-proof-caption">**Right:** lm-eval accuracy vs tokens — 20B leads at matched tokens (HellaSwag **0.635 vs 0.555**).</span>
+
+</div>
 
 </div>
 
 <SpeakerNotes>
-Point at HellaSwag — 0.635 vs 0.555 at matched tokens. Same data; the only difference is the model made it to the end. That's why recovery is a science problem, not an ops footnote.
+
+Point at HellaSwag — 0.635 vs 0.555 at matched tokens. Same data; the only difference is the model made it to the end. That's why recovery is a science problem, not an ops footnote. Left is the familiar loss curve; right is the pay-off — four eval tasks that all move together for the larger model.
 
 ~1.5 min.
+
 </SpeakerNotes>
 
 </Slide>
@@ -502,7 +551,7 @@ Mention the failure mode it doesn't catch: silent bad steps where stdout keeps f
 
 One bad host poisons every retry. Same allocation hits the same HBM fault or flaky NIC.
 
-**Fix. Bad-node failover. Job `8505298`: step 37, then silence. No traceback. Watchdog at 30 min (124), wrapper swapped a node, relaunched. Attempt 2 at step 296.**
+**Fix — bad-node failover.** Job `8505298`: step 37, then silence. No traceback. Watchdog at 30 min (124), wrapper swapped a node, relaunched — attempt 2 reached step 296.
 
 ```mermaid
 flowchart LR
@@ -950,10 +999,21 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   /* checkpoint-detail: keep centered, no overscan */
   #checkpoint-detail .checkpoint-figure { width: 100%; max-width: 100%; overflow: visible; }
   #checkpoint-detail .checkpoint-figure img { width: 100%; max-height: 52vh; object-fit: contain; display: block; }
-  /* eval-proof: chart should fill the slide */
+  /* eval-proof: left = progress chart, right = 4-row eval column */
   #eval-proof .slide-inner { justify-content: flex-start; }
-  #eval-proof .chart-figure { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; width: 100%; max-width: 100%; margin-block: 0.5lh 0; overflow: hidden; }
-  #eval-proof .chart-figure img { flex: 1 1 auto; min-height: 120px; width: 100%; max-height: none; height: clamp(280px, 50vh, 620px); object-fit: contain; display: block; }
+  #eval-proof .eval-proof-layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 2ch; width: 100%; align-items: start; flex: 1; min-height: 0; margin-block: 0.5lh 0; }
+  #eval-proof .eval-proof-progress { margin: 0; display: flex; flex-direction: column; min-width: 0; }
+  #eval-proof .eval-proof-progress img { width: 100%; height: auto; max-height: 60vh; object-fit: contain; display: block; }
+  #eval-proof .eval-proof-progress figcaption { font-size: 0.62em; line-height: 1.3; margin-block-start: 0.3lh; color: var(--foreground2); }
+  #eval-proof .eval-proof-evals { display: flex; flex-direction: column; gap: 0.4lh; min-width: 0; min-height: 0; align-self: stretch; }
+  #eval-proof .eval-proof-legend { display: flex; flex-wrap: wrap; gap: 0.5ch 1.2ch; font-size: 0.62em; color: var(--foreground2); line-height: 1.4; }
+  #eval-proof .eval-proof-legend span { display: inline-flex; align-items: center; gap: 0.4ch; white-space: nowrap; }
+  #eval-proof .eval-proof-legend i { display: inline-block; width: 1.6ch; border-top: 2.5px solid; }
+  #eval-proof .eval-proof-grid { display: grid; grid-template-rows: repeat(4, 1fr); gap: 0.3lh; flex: 1; min-height: 0; }
+  #eval-proof .eval-proof-grid img { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; }
+  #eval-proof .eval-proof-caption { font-size: 0.6em; line-height: 1.3; color: var(--foreground2); }
+  @media (max-width: 900px) { #eval-proof .eval-proof-layout { grid-template-columns: 1fr; } #eval-proof .eval-proof-progress img { max-height: 40vh; } }
+  @media print { #eval-proof .eval-proof-progress img { max-height: 48vh; } }
   /* Global: every Cols slide was overflowing because Cols.astro defaults to min-width:min-content.
      One fix for all of them. Also clip slide-inner so even an over-wide table can't scroll the viewport. */
   [is-~="slide"] .slide-cols { gap: 2.5ch; max-width: 100%; overflow: hidden; }
@@ -981,13 +1041,7 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
     font-weight: 600;
   }
 
-  /* Eval-proof: two charts stacked tightly */
-  #eval-proof .eval-charts { display: flex; flex-direction: column; gap: 1.2lh; width: 100%; }
-  #eval-proof .eval-charts .project-figure, #eval-proof .eval-charts .chart-figure { margin: 0; width: 100%; }
-  #eval-proof .eval-charts .project-figure img { width: 100%; max-height: 32vh; object-fit: contain; display: block; }
-  #eval-proof .eval-charts .chart-figure img { width: 100%; max-height: 36vh; object-fit: contain; display: block; }
-  #eval-proof .eval-charts figcaption { font-size: 0.62em; line-height: 1.3; margin-block-start: 0.15lh; }
-  @media (max-height: 750px) { #eval-proof .eval-charts .project-figure img { max-height: 26vh; } #eval-proof .eval-charts .chart-figure img { max-height: 30vh; } }
+
 
   /* Taxonomy + vignettes */
   #failure-taxonomy table { width: 100%; font-size: 0.82em; }
@@ -1040,6 +1094,13 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   /* Layer slides */
   #layer-process table, #layer-job table { width: 100%; font-size: 0.88em; }
   #layer-node .mermaid { font-size: 1.05em; margin-block: 0.6lh; }
+  #layer-node .operations-mobile { display: none; }
+  @media (max-width: 768px) {
+    #layer-node .mermaid { display: none; }
+    #layer-node .operations-mobile { display: grid; gap: 0.38lh; margin-block: 0.45lh; width: 100%; }
+    #layer-node .operations-mobile > div { display: grid; grid-template-columns: 10ch minmax(0, 1fr); gap: 0.8ch; align-items: baseline; padding: 0.35lh 0.6ch; border-left: 3px solid var(--red); background: var(--background1); line-height: 1.25; }
+    #layer-node .operations-mobile strong { color: var(--foreground0); }
+  }
   #checkpoint-detail .slide-cols { gap: 2.5ch; }
   #checkpoint-detail .slide-col { font-size: 0.92em; }
   #evidence-sft table { width: 100%; font-size: 0.9em; }
@@ -1076,6 +1137,26 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
     .node-mobile > div { display: grid; grid-template-columns: 1fr; gap: 0.1lh; }
     .node-mobile > p { margin: 0.2lh 0; line-height: 1.35; }
   }
+
+  /* portable-training: exact PTC styling for code + mermaid two-col */
+  #portable-training .portable-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5ch; width: 100%; align-items: start; }
+  #portable-training .portable-demo-col { min-width: 0; }
+  #portable-training .portable-demo-col:last-child { align-self: center; }
+  #portable-training .portable-demo-col em { font-size: 0.75em; color: var(--foreground2); line-height: 1.3; display: block; margin-block-start: 0.15lh; }
+  #portable-training .portable-demo-col pre.astro-code { font-size: 0.72em; padding-block: 0.25lh; --pre-background: transparent !important; background: var(--background0) !important; width: 100%; max-width: 100%; }
+  #portable-training .portable-demo-col pre.astro-code::before { border-color: oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.28); }
+  #portable-training .portable-demo-col pre.astro-code code { background: transparent !important; }
+  #portable-training .portable-demo-col pre { margin-block: 0.15lh 0; }
+  #portable-training .portable-demo-col li { text-indent: 0 !important; padding-inline-start: 0 !important; }
+  #portable-training .portable-demo-col li > p { text-indent: 0 !important; padding-inline-start: 0 !important; }
+  #portable-training .portable-demo-col li > ul { padding-inline-start: 0 !important; margin-inline-start: 0 !important; }
+  #portable-training .portable-demo-col > p { margin-block: 0.35lh 0; }
+  #portable-training .portable-demo-col > p:has(> strong) { font-size: 0.92em; margin-block: 0.25lh 0.15lh; }
+  #portable-training h2 { margin-block-end: 0.3lh; }
+  #portable-training .slide-inner { gap: 0.3lh; padding-block-end: 3lh; overflow: auto; justify-content: safe center; }
+  @media screen and (min-width: 769px) { #portable-training .portable-demo-col pre.astro-code { font-size: 0.72em; } }
+  @media (max-width: 768px) { #portable-training .portable-demo { grid-template-columns: 1fr; } }
+  @media print { #portable-training .slide-inner { padding-block-end: 0; } }
 
   /* Dark variant slides */
   [data-variant='dark'] { color: #fff; }
