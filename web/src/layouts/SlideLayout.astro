@@ -20,9 +20,10 @@ const description = (Astro.props as Props).description ?? fm.description
 // `theme: doe` in a deck's frontmatter pins the page to that theme and turns
 // on the template chrome in Presentation (footer, dark title slide).
 const deckTheme = fm.theme
+const ogSlug = Astro.url.pathname.replace(/^\//, '').replace(/\/$/, '')
 ---
 
-<Layout {title} {description} {deckTheme}>
+<Layout {title} {description} {deckTheme} {ogSlug}>
     <Presentation {title} {deckTheme}>
         <slot />
     </Presentation>
