@@ -796,6 +796,9 @@ Read the left column, pause on the middle, land on the right. The right column i
 
 6. **Resilience-aware scheduling.** If the scheduler knew the job was long and tightly coupled, what would it do?
 
+</Col>
+</Cols>
+
 <figure class="open-questions-meme">
 
 ![Even our Claude Muse deleted prod jobs](/talks/2026/10/30/figures/muse-apology.png)
@@ -803,9 +806,6 @@ Read the left column, pause on the middle, land on the right. The right column i
 <figcaption>Even the AI that wrote this stack deleted prod jobs once.</figcaption>
 
 </figure>
-
-</Col>
-</Cols>
 
 <SpeakerNotes>
 This is the invitation slide. Read it as "here are six PhD-sized problems that our operational data can ground." You're not asking for help as a favor — you're offering a real-scale testbed (Aurora) and real failure traces in exchange for their expertise.
@@ -1039,8 +1039,8 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #why-depend .why-depend-grid > div { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
   @media (max-width: 768px) { #why-depend .why-depend-grid { grid-template-columns: 1fr; gap: 1lh; } }
   /* checkpoint-detail: keep centered, no overscan */
-  #checkpoint-detail .checkpoint-figure { width: 100%; max-width: 100%; overflow: visible; }
-  #checkpoint-detail .checkpoint-figure img { width: 100%; max-height: 52vh; object-fit: contain; display: block; }
+  #checkpoint-detail .checkpoint-figure { width: 96%; max-width: 920px; margin-inline: auto; overflow: visible; }
+  #checkpoint-detail .checkpoint-figure img { width: 100%; max-height: 62vh; object-fit: contain; display: block; }
   /* eval-proof: left = progress chart, right = 4-row eval column */
   #eval-proof .slide-inner { justify-content: flex-start; }
   #eval-proof .eval-proof-layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 2ch; width: 100%; align-items: start; flex: 1; min-height: 0; margin-block: 0.5lh 0; }
@@ -1187,7 +1187,7 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   }
   #open-questions ol { font-size: 0.92em; line-height: 1.5; }
   #open-questions li { margin-block: 0.3lh; }
-  #open-questions .open-questions-meme { margin: 0.8lh 0 0; max-width: 28ch; }
+  #open-questions .open-questions-meme { margin: 0.8lh auto 0; max-width: 52ch; width: 100%; }
   #open-questions .open-questions-meme img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); display: block; }
   #open-questions .open-questions-meme figcaption { font-size: 0.58em; line-height: 1.3; margin-block-start: 0.3lh; color: var(--foreground2); }
   #takeaways ol { font-size: 1em; line-height: 1.5; }
