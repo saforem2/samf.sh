@@ -1,7 +1,7 @@
 /**
- * Offline OG image generator — C2 "terminal rebuilt, tightened".
- * Single continuous frame: titlebar (dots · $ cat · tinted pill) + body
- * (46px bold white title, prompt spine) + thin footer (`samf.sh · date`).
+ * Offline OG image generator — C2 + description + larger type (no stoplights, square badge).
+ * Single continuous frame: titlebar ($ cat + square pill) + body
+ * (left-aligned title + muted description at 28px) + footer (samf.sh · date, 14px).
  */
 
 import { readdir, stat, mkdir } from 'node:fs/promises'
@@ -92,44 +92,31 @@ const row = (style: Record<string, unknown>, children: unknown[]) => ({
     type: 'div',
     props: { style: { display: 'flex', flexDirection: 'row', ...style }, children },
 })
-const txt = (text: string, style: Record<string, unknown> = {}) => ({
-    type: 'div',
-    props: { style: { display: 'flex', fontFamily: 'IBM Plex Mono, Iosevka, monospace', ...style }, children: text },
-})
-
-const pill = (label: string, tint: string) =>
-    txt(label, {
-        fontSize: '10px',
-        fontWeight: 700,
-        letterSpacing: '.09em',
-        textTransform: 'uppercase',
-        color: tint,
-        border: `1px solid ${tint}`,
-        borderRadius: '999px',
-        padding: '4px 10px',
-        whiteSpace: 'nowrap',
-    })
-
-const trafficDots = () =>
-    row({ alignItems: 'center', gap: '7px', display: 'flex', flexShrink: 0 }, [
-        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ff5f56' }, children: [] } },
-        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ffbd2e' }, children: [] } },
-        { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#27c93f' }, children: [] } },
-    ])
 
 async function generateOgImage(
     title: string,
+    description: string | null,
     date: string | null,
     category: string,
     promptPath: string,
 ): Promise<Buffer> {
     const accent = CATEGORY_COLOR[category] ?? DEFAULT_ACCENT
-    // 46px bold sans title (fixed for C2 — shorter titles can breathe)
-    const titleSize = 46
+    const titleSize = description ? 52 : 56
     const prompt = `$ cat ${promptPath}`
-    const promptSize = prompt.length > 58 ? 18 : prompt.length > 46 ? 21 : 23
-
+    const promptSize = prompt.length > 58 ? 20 : prompt.length > 46 ? 23 : 26
     const footerText = date ? `samf.sh · ${date}` : 'samf.sh'
+
+    let shortDesc: string | null = null
+    if (description) {
+        const cleaned = description.replace(/\s+/g, ' ').trim()
+        if (cleaned.length > 140) {
+            const cut = cleaned.slice(0, 137)
+            const lastSpace = cut.lastIndexOf(' ')
+            shortDesc = (lastSpace > 100 ? cut.slice(0, lastSpace) : cut) + '…'
+        } else {
+            shortDesc = cleaned
+        }
+    }
 
     const tree = col(
         {
@@ -138,7 +125,6 @@ async function generateOgImage(
             fontFamily: 'IBM Plex Sans, IBM Plex Mono, sans-serif',
         },
         [
-            // Outer card: one continuous frame, square bottom
             col({
                 width: '100%', height: '100%',
                 backgroundColor: BODY_BG,
@@ -147,33 +133,26 @@ async function generateOgImage(
                 overflow: 'hidden',
                 color: FG,
             }, [
-                // Titlebar: traffic dots · path · tinted pill
+                // Titlebar: $ cat path + square badge (no stoplights)
                 row({
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 16px',
+                    padding: '12px 18px',
                     backgroundColor: TITLEBAR_BG,
                     borderBottom: `1px solid ${FRAME_BORDER}`,
                 }, [
-                    // Left: dots + prompt wrapped in a single flex container (satori-safe)
-                    row({ alignItems: 'center', gap: '10px', flexShrink: 1, overflow: 'hidden' }, [
-                        row({ alignItems: 'center', gap: '7px', flexShrink: 0 }, [
-                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ff5f56', display: 'flex' }, children: [] } },
-                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#ffbd2e', display: 'flex' }, children: [] } },
-                            { type: 'div', props: { style: { width: '11px', height: '11px', borderRadius: '50%', backgroundColor: '#27c93f', display: 'flex' }, children: [] } },
-                        ]),
-                        { type: 'div', props: { style: { display: 'flex', fontFamily: 'IBM Plex Mono, monospace', fontSize: `${promptSize}px`, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }, children: prompt } },
-                    ]),
-                    // Right pill
-                    { type: 'div', props: { style: { display: 'flex', fontSize: '10px', fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: accent, border: `1px solid ${accent}`, borderRadius: '999px', padding: '4px 10px', whiteSpace: 'nowrap', flexShrink: 0 }, children: category } },
+                    { type: 'div', props: { style: { display: 'flex', fontFamily: 'IBM Plex Mono, monospace', fontSize: `${promptSize}px`, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }, children: prompt } },
+                    { type: 'div', props: { style: { display: 'flex', fontSize: '13px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: accent, border: `1px solid ${accent}`, borderRadius: '0', padding: '5px 12px', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '16px' }, children: category } },
                 ]),
-                // Body: single div with the title as direct text node (satori-safe)
+                // Body: left-aligned title + description
                 {
                     type: 'div',
                     props: {
                         style: {
-                            display: 'flex', flex: 1,
-                            padding: '32px 36px',
+                            display: 'flex', flex: 1, width: '100%',
+                            padding: '28px 36px',
+                            flexDirection: 'column',
                             alignItems: 'flex-start', justifyContent: 'center',
+                            gap: '14px',
                         },
                         children: [
                             {
@@ -185,24 +164,38 @@ async function generateOgImage(
                                         color: FG,
                                         lineHeight: 1.05,
                                         letterSpacing: '-.03em',
-                                        fontFamily: 'IBM Plex Sans, sans-serif',
-                                        textWrap: 'balance',
+                                        textAlign: 'left',
                                     },
                                     children: title,
                                 },
                             },
+                            ...(shortDesc
+                                ? [{
+                                      type: 'div' as const,
+                                      props: {
+                                          style: {
+                                              fontSize: '28px',
+                                              fontWeight: 400,
+                                              color: MUTED,
+                                              lineHeight: 1.35,
+                                              textAlign: 'left' as const,
+                                          },
+                                          children: shortDesc,
+                                      },
+                                  }]
+                                : []),
                         ],
                     },
                 },
-                // Footer: single thin mono line — flat row with 2 single children
+                // Footer
                 row({
                     display: 'flex',
                     alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 24px',
+                    padding: '14px 24px',
                     borderTop: `1px solid ${FRAME_BORDER}`,
                 }, [
-                    { type: 'div', props: { style: { fontSize: '11px', fontFamily: 'IBM Plex Mono, monospace', color: MUTED, letterSpacing: '.06em' }, children: footerText } },
-                    { type: 'div', props: { style: { width: '9px', height: '16px', backgroundColor: accent, flexShrink: 0, display: 'flex' }, children: [] } },
+                    { type: 'div', props: { style: { fontSize: '14px', fontFamily: 'IBM Plex Mono, monospace', color: MUTED, letterSpacing: '.05em' }, children: footerText } },
+                    { type: 'div', props: { style: { width: '10px', height: '18px', backgroundColor: accent, flexShrink: 0, display: 'flex' }, children: [] } },
                 ]),
             ]),
         ],
@@ -214,8 +207,6 @@ async function generateOgImage(
         fonts: [
             { name: 'IBM Plex Mono', data: regularData, weight: 400 as const, style: 'normal' as const },
             { name: 'IBM Plex Mono', data: boldData, weight: 700 as const, style: 'normal' as const },
-            // IBM Plex Sans is not loaded as a file; satori falls back to sans-serif for the title,
-            // which keeps it clean. Add if a real font file is available.
         ],
     })
     const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } })
@@ -244,6 +235,8 @@ async function main() {
             }
         }
         const title = stripEmoji(fm.title)
+        const rawDesc = fm.description?.trim() || null
+        const description = rawDesc && rawDesc.length > 0 ? stripEmoji(rawDesc) : null
         const category = slug.split('/')[0] || 'samf.sh'
         const promptPath = '/' + relative(PAGES_DIR, page)
         const date = fm.date
@@ -251,7 +244,7 @@ async function main() {
                   year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
               })
             : null
-        const png = await generateOgImage(title, date, category, promptPath)
+        const png = await generateOgImage(title, description, date, category, promptPath)
         await mkdir(dirname(outPath), { recursive: true })
         await Bun.write(outPath, png)
         generated++
