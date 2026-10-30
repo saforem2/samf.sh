@@ -467,12 +467,27 @@ Transition into the systems answer. Frame it as: we didn't design this top-down 
 
 </Slide>
 
-{/* ── III-2: the cascade — PTC proven layout: LR desktop, TB mobile */}
+{/* ── III-2: the cascade — exact clone of PTC #17 (table + flow) */}
 <Slide id="restart-cascade">
 
-## Three layers of recovery
+## Process, node, and allocation restarts
 
-Each layer operates at a different scope and timescale. Inner loops catch most failures; outer loops catch the rest.
+<div class="recovery-summary">
+<div>
+
+| Layer | Scope | Trigger | Cost of being wrong |
+| --- | --- | --- | --- |
+| Process | 1 rank | Crash / OOM | Tokens since last ckpt |
+| Node | 12 XPUs | Hang on one host | 1 node's work + re-shard |
+| Allocation | 2k nodes | Bad FS / scheduler | Whole-job walltime |
+
+</div>
+<div class="recovery-explanation">
+
+`ezpz` handles node + allocation restarts: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. `DCP` writes the checkpoints.
+
+</div>
+</div>
 
 <div class="layered-visual">
 
@@ -483,9 +498,9 @@ Each layer operates at a different scope and timescale. Inner loops catch most f
 flowchart LR
     LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
     CLASSIFY -->|rc = 0| DONE["Done"]
-    CLASSIFY -->|"bad node + spare"| SWAP["Swap spare<br/>+ retry"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
     SWAP -.-> LAUNCH
-    CLASSIFY -->|no retry| STOP["Stop<br/>spare empty or<br/>stuck before train"]
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
     class DONE retry-done
     class STOP retry-stop
 ```
@@ -498,25 +513,25 @@ flowchart LR
 flowchart TB
     LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
     CLASSIFY -->|rc = 0| DONE["Done"]
-    CLASSIFY -->|"bad node + spare"| SWAP["Swap spare<br/>+ retry"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
     SWAP -.-> LAUNCH
-    CLASSIFY -->|no retry| STOP["Stop<br/>spare empty or<br/>stuck before train"]
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
     class DONE retry-done
     class STOP retry-stop
 ```
 
 </div>
 
-<span class="layered-visual-caption">Exit code + log pattern + watchdog (`124`) → next action. [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md).</span>
+<span class="layered-visual-caption">Exit trailer + crash patterns + idle watchdog (`exit 124`) → next action. [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md).</span>
 
 </div>
 
 <SpeakerNotes>
-This diagram is the conceptual anchor of Part III. Read it inside-out in your narration: the innermost loop (seconds) handles the common case (a collective wedges, stdout goes quiet), the middle loop (minutes) handles the bad-host case, the outer loop (hours) handles "we need a new PBS allocation entirely."
 
-Name the concrete mechanism for each: ezpz watchdog, failover wrapper + spare pool, PBS chained resubmit + checkpoint restart. Promise to detail each next.
+Table distinguishes recovery scopes; diagram shows the auto-retry control flow. Adapted from the TPC workshop paper. Re-shard is not free: DeviceMesh rebuild is part of the cost.
 
 ~2 min.
+
 </SpeakerNotes>
 
 </Slide>
@@ -1113,6 +1128,15 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #restart-cascade .mermaid g.cluster.jobC > rect { filter: drop-shadow(0 4px 12px #118cc230); }
   #restart-cascade .mermaid g.cluster.nodeC > rect { filter: drop-shadow(0 3px 8px #ee8f2438); }
   #restart-cascade .mermaid g.cluster.procC > rect { filter: drop-shadow(0 2px 5px #1da81140); }
+  #restart-cascade .recovery-summary { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 3ch; align-items: center; width: 100%; }
+  #restart-cascade .recovery-summary table { font-size: 0.85em !important; min-width: 0 !important; max-width: 100% !important; width: 100% !important; }
+  #restart-cascade .recovery-explanation { font-size: 0.85em; line-height: 1.4; }
+  @media (max-width: 768px) { #restart-cascade .recovery-summary { grid-template-columns: 1fr; gap: 0.5lh; } }
+  /* PTC retry-done/stop colors — adapt theme selector from pytorch to alcf */
+  html[data-webtui-theme='alcf'] #restart-cascade .mermaid .node.retry-done rect, #restart-cascade .mermaid .node.retry-done rect { fill: #e8faf3 !important; stroke: #16a678 !important; }
+  html[data-webtui-theme='alcf'] #restart-cascade .mermaid .node.retry-stop rect, #restart-cascade .mermaid .node.retry-stop rect { fill: #fff0ee !important; stroke: #ee4c2c !important; }
+  /* ligature fix for --auto-retry */
+  #restart-cascade .mermaid :is(.nodeLabel, .edgeLabel, text, span) { font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; }
   #restart-cascade .mermaid .cluster .cluster-label span,
   #restart-cascade .mermaid g.node span,
   #restart-cascade .mermaid g.node p { font-size: 1.15em; }
