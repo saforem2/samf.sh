@@ -374,21 +374,27 @@ Portability isn't a nice-to-have — it's how you debug. Same hang on 4 machines
 
 ## Recovery matters: 20B beats 2B per token
 
-<div class="project-figure">
+Same data, larger model. 512N (20B) wouldn't have finished without this stack.
+
+<div class="eval-charts">
+
+<figure class="chart-figure">
 
 ![AuroraGPT-2B training loss over cumulative tokens: MDS reference, stages 1 and 2 at 256 and 512 nodes](/talks/2026/10/30/figures/agpt-2b-progress.svg)
 
-</div>
+<figcaption>512N stage 2 to **6.927T** tokens. Solid 256N, dashed 512N. Training mixes differ.</figcaption>
 
-Same data, larger model. 512N (20B) would not have finished without the recovery stack.
+</figure>
 
 <figure class="chart-figure">
 
 ![Eval composite: HellaSwag and other tasks vs tokens for 2B and 20B — 20B leads at matched token count](/talks/2026/10/30/figures/eval-inflight.png)
 
-<figcaption>HellaSwag **0.635 vs 0.555**. Same data; 20B finished because the job survived. TPC paper: [`aurora-gpt-tpc-sc26`](https://github.com/saforem2/aurora-gpt-tpc-sc26).</figcaption>
+<figcaption>HellaSwag **0.635 vs 0.555**. Same data. 20B finished because the job survived.</figcaption>
 
 </figure>
+
+</div>
 
 <SpeakerNotes>
 Point at HellaSwag — 0.635 vs 0.555 at matched tokens. Same data; the only difference is the model made it to the end. That's why recovery is a science problem, not an ops footnote.
@@ -955,6 +961,14 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
     background: color-mix(in oklch, var(--red, #c0392b) 7%, transparent);
     font-weight: 600;
   }
+
+  /* Eval-proof: two charts stacked tightly */
+  #eval-proof .eval-charts { display: flex; flex-direction: column; gap: 1.2lh; width: 100%; }
+  #eval-proof .eval-charts .project-figure, #eval-proof .eval-charts .chart-figure { margin: 0; width: 100%; }
+  #eval-proof .eval-charts .project-figure img { width: 100%; max-height: 32vh; object-fit: contain; display: block; }
+  #eval-proof .eval-charts .chart-figure img { width: 100%; max-height: 36vh; object-fit: contain; display: block; }
+  #eval-proof .eval-charts figcaption { font-size: 0.62em; line-height: 1.3; margin-block-start: 0.15lh; }
+  @media (max-height: 750px) { #eval-proof .eval-charts .project-figure img { max-height: 26vh; } #eval-proof .eval-charts .chart-figure img { max-height: 30vh; } }
 
   /* Taxonomy + vignettes */
   #failure-taxonomy table { width: 100%; font-size: 0.82em; }
