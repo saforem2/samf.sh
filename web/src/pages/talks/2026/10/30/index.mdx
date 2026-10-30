@@ -662,9 +662,9 @@ You can cut this slide if you're long, but it's the one that makes checkpointing
 
 <figure class="evidence-figure">
 
-![SFT loss over steps: 32N, 3 crashes recovered — final 0.77](/talks/2026/10/30/figures/tt-2b-512n-production-preview.png)
+![SFT loss over steps: 32N, 3 SIGABRTs recovered — final 0.77 (crashes marked)](/talks/2026/10/30/figures/sft-loss.svg)
 
-<figcaption>32N SFT survived 3 `SIGABRT`s. Recovery, not luck.</figcaption>
+<figcaption>Loss vs step — `SIGABRT` crashes marked (dashed). Watchdog + swap + resume each time.</figcaption>
 
 </figure>
 
