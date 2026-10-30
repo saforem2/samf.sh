@@ -286,7 +286,7 @@ Have 1–2 concrete job IDs or dates ready verbally even if you don't put them o
 
 **② One line fixed a hang — `CCL_OP_SYNC=1`**
 
-`FSDP2 + TP>1` on XPU hung forever on async collectives. NCCL default doesn't hold on XPU. Fix was one line: `ezpz` now forces `CCL_OP_SYNC=1` (`3904431`). Documented, not optional.
+`FSDP2 + TP>1` on XPU hung forever on async collectives. NCCL default doesn't hold on XPU. Fix was one line: `ezpz` now forces `CCL_OP_SYNC=1` ([`#172`](https://github.com/argonne-lcf/AuroraBugTracking/issues/172)). Documented, not optional.
 
 </div>
 
