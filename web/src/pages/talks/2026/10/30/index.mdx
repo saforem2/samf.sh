@@ -286,7 +286,7 @@ Have 1–2 concrete job IDs or dates ready verbally even if you don't put them o
 
 **② One line fixed a hang — `CCL_OP_SYNC=1`**
 
-`FSDP2 + TP>1` on XPU hung forever on async collectives. NCCL default doesn't hold on XPU. Fix was one line: `ezpz` now forces `CCL_OP_SYNC=1` (`3904431`). Documented, not optional.
+`FSDP2 + TP>1` on XPU hung forever on async collectives. NCCL default doesn't hold on XPU. Fix was one line: `ezpz` now forces `CCL_OP_SYNC=1` ([`#172`](https://github.com/argonne-lcf/AuroraBugTracking/issues/172)). Documented, not optional.
 
 </div>
 
@@ -467,12 +467,27 @@ Transition into the systems answer. Frame it as: we didn't design this top-down 
 
 </Slide>
 
-{/* ── III-2: the cascade — PTC proven layout: LR desktop, TB mobile */}
+{/* ── III-2: the cascade — exact clone of PTC #17 (table + flow) */}
 <Slide id="restart-cascade">
 
-## Three layers of recovery
+## Process, node, and allocation restarts
 
-Each layer operates at a different scope and timescale. Inner loops catch most failures; outer loops catch the rest.
+<div class="recovery-summary">
+<div>
+
+| Layer | Scope | Trigger | Cost of being wrong |
+| --- | --- | --- | --- |
+| Process | 1 rank | Crash / OOM | Tokens since last ckpt |
+| Node | 12 XPUs | Hang on one host | 1 node's work + re-shard |
+| Allocation | 2k nodes | Bad FS / scheduler | Whole-job walltime |
+
+</div>
+<div class="recovery-explanation">
+
+`ezpz` handles node + allocation restarts: [`checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) + node exclude + scheduler resubmit. `DCP` writes the checkpoints.
+
+</div>
+</div>
 
 <div class="layered-visual">
 
@@ -483,9 +498,9 @@ Each layer operates at a different scope and timescale. Inner loops catch most f
 flowchart LR
     LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
     CLASSIFY -->|rc = 0| DONE["Done"]
-    CLASSIFY -->|"bad node + spare"| SWAP["Swap spare<br/>+ retry"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
     SWAP -.-> LAUNCH
-    CLASSIFY -->|no retry| STOP["Stop<br/>spare empty or<br/>stuck before train"]
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
     class DONE retry-done
     class STOP retry-stop
 ```
@@ -498,25 +513,25 @@ flowchart LR
 flowchart TB
     LAUNCH["ezpz launch<br/>--auto-retry"] -->|run + monitor| CLASSIFY{"Classify exit"}
     CLASSIFY -->|rc = 0| DONE["Done"]
-    CLASSIFY -->|"bad node + spare"| SWAP["Swap spare<br/>+ retry"]
+    CLASSIFY -->|bad node + spare available| SWAP["Swap spare<br/>+ retry"]
     SWAP -.-> LAUNCH
-    CLASSIFY -->|no retry| STOP["Stop<br/>spare empty or<br/>stuck before train"]
+    CLASSIFY -->|no retry possible| STOP["Stop<br/>spares exhausted /<br/>stuck before training"]
     class DONE retry-done
     class STOP retry-stop
 ```
 
 </div>
 
-<span class="layered-visual-caption">Exit code + log pattern + watchdog (`124`) → next action. [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md).</span>
+<span class="layered-visual-caption">Exit trailer + crash patterns + idle watchdog (`exit 124`) → next action. [Failover writeup](https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/experiments/agpt/aurora/20260523-failover-silent-hang-recovery-8505298.md).</span>
 
 </div>
 
 <SpeakerNotes>
-This diagram is the conceptual anchor of Part III. Read it inside-out in your narration: the innermost loop (seconds) handles the common case (a collective wedges, stdout goes quiet), the middle loop (minutes) handles the bad-host case, the outer loop (hours) handles "we need a new PBS allocation entirely."
 
-Name the concrete mechanism for each: ezpz watchdog, failover wrapper + spare pool, PBS chained resubmit + checkpoint restart. Promise to detail each next.
+Table distinguishes recovery scopes; diagram shows the auto-retry control flow. Adapted from the TPC workshop paper. Re-shard is not free: DeviceMesh rebuild is part of the cost.
 
 ~2 min.
+
 </SpeakerNotes>
 
 </Slide>
@@ -528,18 +543,44 @@ Name the concrete mechanism for each: ezpz watchdog, failover wrapper + spare po
 
 NCCL's 600s timeout fires but the job just idles and burns allocation. Hang without a crash.
 
-**Fix. Stdout-idle watchdog** (`ezpz launch`). No output for *N* seconds (30 min with `--auto-retry`). Kill `mpiexec` (124), backoff, retry in place. Same path for NCCL kills and walltime crashes.
+**Fix. Stdout-idle watchdog** (`ezpz launch`). No output for *N* seconds (30 min with `--auto-retry`). Kill `mpiexec` (124), backoff, retry in place.
 
-- Catches hangs that silence logging. Fabric wedge, Lustre stall.
-- Costs one interval + backoff. Seconds to minutes, not hours.
-- Too short kills healthy long steps. Too long wastes time. Tune per job.
+<div class="layer-process-diagram">
+
+```mermaid
+flowchart TB
+    subgraph job["📋 JOB scope: PBS · hours"]
+        JOB_TXT["<i>crash / walltime</i> →<br/><span style='font-weight:700'>chained resubmit</span>"]
+        subgraph node["🖥 NODE scope: failover wrapper · minutes"]
+            NODE_TXT["<i>bad host detected</i> →<br/><span style='font-weight:700'>swap from spare pool</span>"]
+            subgraph proc["⏱ PROCESS scope: ezpz launch · seconds"]
+                PROC_TXT["<i>stdout idle ≥ N s</i> →<br/><span style='font-weight:700'>kill + backoff</span>"]
+            end
+        end
+    end
+    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
+    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
+    classDef procTxt fill:transparent,stroke:none,color:#1da811
+    class JOB_TXT jobTxt
+    class NODE_TXT nodeTxt
+    class PROC_TXT procTxt
+    class job jobC
+    class node nodeC
+    class proc procC
+```
+
+</div>
+
+- Catches hangs that silence logging — fabric wedge, Lustre stall
+- Costs one interval + backoff (seconds to minutes, not hours)
 
 <SpeakerNotes>
-This is the layer most DEPEND folks will recognize as a heartbeat / failure detector. Call it that explicitly — "this is our application-level heartbeat; stdout is the heartbeat signal because it's the one thing every training step touches."
+Heartbeat / failure detector — stdout is the heartbeat because it's the one thing every training step touches. Diagram shows where this sits (innermost loop).
 
-Mention the failure mode it doesn't catch: silent bad steps where stdout keeps flowing but the math is wrong. That's the hard problem you return to later.
-
-~3 min.
+~2 min.
 </SpeakerNotes>
 
 </Slide>
@@ -597,9 +638,13 @@ If you have a number — "this saved us X hours on the 2B 512-node chain" — pu
 
 Walltime expired. Allocation ended. Spares exhausted. Job's over.
 
-**Fix. Checkpoint-restart + chained resubmit.** Async writes `model + optimizer + RNG + dataloader`. Under 5% step cost. Each checkpoint is a durable asset (`checkpoint-729-hf`). Job *N* submits *N+1* at launch. If *N* dies, *N+1* resumes from the latest one. No human needed.
+**Fix — checkpoint-restart + chained resubmit.**
 
-Young's formula (1974) and Daly's refinement give the optimal checkpoint interval, but they assume known MTBF and instant detection. At Aurora neither holds.
+- Async writes `model + optimizer + RNG + dataloader` — under 5% step cost
+- Each checkpoint is a durable asset (`checkpoint-729-hf`) that SFT/GRPO can branch from
+- Job *N* submits *N+1* at launch — if *N* dies, *N+1* resumes from the latest one, no human needed
+
+> Optimal interval? Young's / Daly's formula assumes known MTBF — at Aurora it drifts. See appendix.
 
 <SpeakerNotes>
 This is the outermost loop. Emphasize two things: (1) checkpoint is the ONLY durable boundary — everything else is best-effort; (2) chained resubmit is what turns a collection of PBS jobs into a single logical training run.
@@ -662,9 +707,9 @@ You can cut this slide if you're long, but it's the one that makes checkpointing
 
 <figure class="evidence-figure">
 
-![SFT loss over steps: 32N, 3 crashes recovered — final 0.77](/talks/2026/10/30/figures/tt-2b-512n-production-preview.png)
+![SFT loss over steps: 32N, 3 SIGABRTs recovered — final 0.77 (crashes marked)](/talks/2026/10/30/figures/sft-loss.svg)
 
-<figcaption>32N SFT survived 3 `SIGABRT`s. Recovery, not luck.</figcaption>
+<figcaption>Loss vs step — `SIGABRT` crashes marked (dashed). Watchdog + swap + resume each time.</figcaption>
 
 </figure>
 
@@ -755,6 +800,9 @@ Read the left column, pause on the middle, land on the right. The right column i
 
 6. **Resilience-aware scheduling.** If the scheduler knew the job was long and tightly coupled, what would it do?
 
+</Col>
+</Cols>
+
 <figure class="open-questions-meme">
 
 ![Even our Claude Muse deleted prod jobs](/talks/2026/10/30/figures/muse-apology.png)
@@ -762,9 +810,6 @@ Read the left column, pause on the middle, land on the right. The right column i
 <figcaption>Even the AI that wrote this stack deleted prod jobs once.</figcaption>
 
 </figure>
-
-</Col>
-</Cols>
 
 <SpeakerNotes>
 This is the invitation slide. Read it as "here are six PhD-sized problems that our operational data can ground." You're not asking for help as a favor — you're offering a real-scale testbed (Aurora) and real failure traces in exchange for their expertise.
@@ -815,6 +860,7 @@ Re-state the three-scope mantra one last time — it's the thing you want them t
 | Checkpoint-restart guide | [`ezpz.cool/guides/checkpoint-restart`](https://ezpz.cool/guides/checkpoint-restart/) |
 | TPC paper | [`github.com/saforem2/aurora-gpt-tpc-sc26`](https://github.com/saforem2/aurora-gpt-tpc-sc26) · Aurora system paper [`arxiv.org/abs/2509.08207`](https://arxiv.org/abs/2509.08207) |
 | Aurora docs | [`docs.alcf.anl.gov/aurora`](https://docs.alcf.anl.gov/aurora) |
+| Hermes infra | [Working from Anywhere: persistent access](https://samf.sh/posts/2026/09/22/) · [Cross-agent memory store](https://samf.sh/posts/2026/09/22/#3-a-single-persistent-cross-agent-memory-store) · [Small service mesh](https://samf.sh/posts/2026/09/25/) |
 
 <span class="links-qr-note">QR on the title slide goes to the live deck — mermaid diagrams are interactive and every citation is a real link.</span>
 
@@ -997,8 +1043,9 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #why-depend .why-depend-grid > div { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
   @media (max-width: 768px) { #why-depend .why-depend-grid { grid-template-columns: 1fr; gap: 1lh; } }
   /* checkpoint-detail: keep centered, no overscan */
+  #checkpoint-detail .slide-inner { justify-content: center; }
   #checkpoint-detail .checkpoint-figure { width: 100%; max-width: 100%; overflow: visible; }
-  #checkpoint-detail .checkpoint-figure img { width: 100%; max-height: 52vh; object-fit: contain; display: block; }
+  #checkpoint-detail .checkpoint-figure img { width: 100%; max-height: 82vh; object-fit: contain; display: block; }
   /* eval-proof: left = progress chart, right = 4-row eval column */
   #eval-proof .slide-inner { justify-content: flex-start; }
   #eval-proof .eval-proof-layout { display: grid; grid-template-columns: 1.35fr 1fr; gap: 2ch; width: 100%; align-items: start; flex: 1; min-height: 0; margin-block: 0.5lh 0; }
@@ -1087,12 +1134,34 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #restart-cascade .mermaid g.cluster.jobC > rect { filter: drop-shadow(0 4px 12px #118cc230); }
   #restart-cascade .mermaid g.cluster.nodeC > rect { filter: drop-shadow(0 3px 8px #ee8f2438); }
   #restart-cascade .mermaid g.cluster.procC > rect { filter: drop-shadow(0 2px 5px #1da81140); }
+  #restart-cascade .recovery-summary { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 3ch; align-items: center; width: 100%; }
+  #restart-cascade .recovery-summary table { font-size: 0.85em !important; min-width: 0 !important; max-width: 100% !important; width: 100% !important; }
+  #restart-cascade .recovery-explanation { font-size: 0.85em; line-height: 1.4; }
+  @media (max-width: 768px) { #restart-cascade .recovery-summary { grid-template-columns: 1fr; gap: 0.5lh; } }
+  /* PTC retry-done/stop colors — adapt theme selector from pytorch to alcf */
+  html[data-webtui-theme='alcf'] #restart-cascade .mermaid .node.retry-done rect, #restart-cascade .mermaid .node.retry-done rect { fill: #e8faf3 !important; stroke: #16a678 !important; }
+  html[data-webtui-theme='alcf'] #restart-cascade .mermaid .node.retry-stop rect, #restart-cascade .mermaid .node.retry-stop rect { fill: #fff0ee !important; stroke: #ee4c2c !important; }
+  /* ligature fix for --auto-retry */
+  #restart-cascade .mermaid :is(.nodeLabel, .edgeLabel, text, span) { font-variant-ligatures: none; font-feature-settings: "calt" 0, "liga" 0; }
   #restart-cascade .mermaid .cluster .cluster-label span,
   #restart-cascade .mermaid g.node span,
   #restart-cascade .mermaid g.node p { font-size: 1.15em; }
 
   /* Layer slides */
   #layer-process table, #layer-job table { width: 100%; font-size: 0.88em; }
+  #layer-process .layer-process-diagram .mermaid { margin-block: 0.5lh; }
+  #layer-process .layer-process-diagram .mermaid g.node foreignObject { overflow: visible; }
+  #layer-process .layer-process-diagram .mermaid g.node p { line-height: 1.35; padding-bottom: 0.1em; }
+  #layer-process .layer-process-diagram .mermaid .cluster .cluster-label span { display: inline-block; padding: 0 1ch; color: var(--foreground0, #222) !important; font-weight: 600; }
+  #layer-process .layer-process-diagram .mermaid .cluster.jobC .cluster-label span { background: #118cc218; }
+  #layer-process .layer-process-diagram .mermaid .cluster.nodeC .cluster-label span { background: #ee8f2418; }
+  #layer-process .layer-process-diagram .mermaid .cluster.procC .cluster-label span { background: #1da81118; }
+  #layer-process .layer-process-diagram .mermaid g.node.jobTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.jobTxt span, #layer-process .layer-process-diagram .mermaid g.node.jobTxt p { color: #118cc2 !important; }
+  #layer-process .layer-process-diagram .mermaid g.node.nodeTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.nodeTxt span, #layer-process .layer-process-diagram .mermaid g.node.nodeTxt p { color: #ee8f24 !important; }
+  #layer-process .layer-process-diagram .mermaid g.node.procTxt .nodeLabel, #layer-process .layer-process-diagram .mermaid g.node.procTxt span, #layer-process .layer-process-diagram .mermaid g.node.procTxt p { color: #1da811 !important; }
+  #layer-process .layer-process-diagram .mermaid g.cluster.jobC > rect { filter: drop-shadow(0 4px 12px #118cc230); }
+  #layer-process .layer-process-diagram .mermaid g.cluster.nodeC > rect { filter: drop-shadow(0 3px 8px #ee8f2438); }
+  #layer-process .layer-process-diagram .mermaid g.cluster.procC > rect { filter: drop-shadow(0 2px 5px #1da81140); }
   #layer-node .mermaid { font-size: 1.05em; margin-block: 0.6lh; }
   #layer-node .operations-mobile { display: none; }
   @media (max-width: 768px) {
@@ -1104,6 +1173,10 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   #checkpoint-detail .slide-cols { gap: 2.5ch; }
   #checkpoint-detail .slide-col { font-size: 0.92em; }
   #evidence-sft table { width: 100%; font-size: 0.9em; }
+  #evidence-sft .evidence-figure { margin: 0; display: flex; flex-direction: column; min-height: 0; width: 100%; }
+  #evidence-sft .evidence-figure img { width: 100%; height: auto; max-height: 56vh; object-fit: contain; display: block; }
+  #evidence-sft .evidence-figure figcaption { font-size: 0.62em; line-height: 1.3; margin-block-start: 0.3lh; color: var(--foreground2); }
+  @media (max-width: 900px) { #evidence-sft .slide-cols { grid-template-columns: 1fr; } #evidence-sft .evidence-figure img { max-height: 40vh; } }
   #determinism table { width: 100%; font-size: 0.88em; }
   #still-breaks table { width: 100%; font-size: 0.8em; }
   #still-breaks th:nth-child(1), #still-breaks td:nth-child(1) { width: 22%; }
@@ -1119,7 +1192,7 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   }
   #open-questions ol { font-size: 0.92em; line-height: 1.5; }
   #open-questions li { margin-block: 0.3lh; }
-  #open-questions .open-questions-meme { margin: 0.8lh 0 0; max-width: 28ch; }
+  #open-questions .open-questions-meme { margin: 0.8lh auto 0; max-width: 52ch; width: 100%; }
   #open-questions .open-questions-meme img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); display: block; }
   #open-questions .open-questions-meme figcaption { font-size: 0.58em; line-height: 1.3; margin-block-start: 0.3lh; color: var(--foreground2); }
   #takeaways ol { font-size: 1em; line-height: 1.5; }

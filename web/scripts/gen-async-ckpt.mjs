@@ -32,6 +32,15 @@ const FIG_DIR = join(
     'figures',
 )
 const OUT = join(FIG_DIR, 'async-ckpt.svg')
+const OUT_1030 = join(
+    __dirname,
+    '..',
+    'public',
+    'talks',
+    '2026/10/30',
+    'figures',
+    'async-ckpt.svg',
+)
 const OUT_MOBILE = join(FIG_DIR, 'async-ckpt-mobile.svg')
 
 const FONT = FONT_STACK
@@ -60,24 +69,24 @@ const GROUPS = [
         x: '4.4x',
     },
 ]
-const Y_MAX = 26 // seconds
+const Y_MAX = 26 // tight: top bar at 23.6s leaves ~10% headroom // seconds
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 const LANDSCAPE = {
     W: 920,
-    H: 420,
-    M: { top: 58, right: 32, bottom: 52, left: 84 },
-    barW: 88,
-    pairGap: 20,
-    groupGap: 260,
-    titleSize: 27,
-    subSize: 18,
-    axisSize: 21,
-    tickSize: 18,
-    labelSize: 19,
-    valSize: 18,
-    legendSize: 19,
+    H: 620,
+    M: { top: 58, right: 24, bottom: 56, left: 84 },
+    barW: 110,
+    pairGap: 16,
+    groupGap: 200,
+    titleSize: 24,
+    subSize: 16,
+    axisSize: 19,
+    tickSize: 16,
+    labelSize: 17,
+    valSize: 16,
+    legendSize: 17,
 }
 const MOBILE = {
     W: 620,
@@ -187,6 +196,21 @@ ${body}
 }
 
 writeFileSync(OUT, buildSVG(LANDSCAPE))
+writeFileSync(OUT_1030, buildSVG(LANDSCAPE))
 console.log('wrote', OUT)
+console.log('wrote', OUT_1030)
 writeFileSync(OUT_MOBILE, buildSVG(MOBILE))
+writeFileSync(
+    join(
+        __dirname,
+        '..',
+        'public',
+        'talks',
+        '2026/10/30',
+        'figures',
+        'async-ckpt-mobile.svg',
+    ),
+    buildSVG(MOBILE),
+)
 console.log('wrote', OUT_MOBILE)
+console.log('wrote 10/30 mobile')
