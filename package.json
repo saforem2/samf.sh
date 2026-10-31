@@ -35,7 +35,9 @@
     "packages/*"
   ],
   "overrides": {
-    "katex": "0.16.33"
+    "katex": "0.16.33",
+    "postcss": "^8.5.23",
+    "lodash-es": "^4.18.1"
   },
   "trustedDependencies": [
     "eslint",
