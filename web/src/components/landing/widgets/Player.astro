@@ -12,9 +12,9 @@
             l</a
         >]ast.fm
     </span>
-    <column box-="round" pad-="2 1" id="playing">
-        <row gap-="1">
-            <span style="margin-right: 1ch;">&#xf04c;</span>
+    <column box-="round" pad-="1 1" id="playing">
+        <row gap-="1" style="align-items: center;">
+            <span class="np-icon" aria-hidden="true"><span class="np-pause">&#xf04c;</span><span class="np-eq"><i></i><i></i><i></i><i></i></span></span>
             <row self-="grow shrink !basis" style="overflow: hidden; gap: 1ch;">
                 <strong class="title" id="track-title">Loading...</strong>
                 <span class="album" id="track-album">
@@ -28,15 +28,11 @@
                 <span class="duration" id="track-duration">--:--</span>
             </row>
         </row>
-        <row id="progress-bar" role="progressbar" aria-label="Now playing" aria-valuemin="0" aria-valuemax="100" aria-valuenow="35">
-            <span aria-hidden="true">[</span>
+        <row id="progress-bar">
+            <span>[</span>
             <div id="progress" is-="separator"></div>
             <div id="progress-gutter" is-="separator"></div>
-            <span aria-hidden="true">]</span>
-            <!-- CSS-only now-playing equalizer: 5 bars, visible only when .eq-live -->
-            <span id="live-eq" class="live-eq" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i>
-            </span>
+            <span>]</span>
         </row>
     </column>
 
@@ -63,8 +59,7 @@
     const trackArtist = document.getElementById('track-artist')
     const trackDuration = document.getElementById('track-duration')
     const upNext = document.getElementById('up-next')
-    const progressBar = document.getElementById('progress-bar')
-    const liveEq = document.getElementById('live-eq')
+    const playingEl = document.getElementById('playing')
 
     const clearUpNext = () => {
         if (!upNext) return
@@ -125,11 +120,8 @@
     }
 
     const setLive = (isLive) => {
-        if (!progressBar || !liveEq) return
-        progressBar.dataset.live = isLive ? 'true' : 'false'
-        liveEq.dataset.live = isLive ? 'true' : 'false'
-        progressBar.setAttribute('aria-valuenow', isLive ? '35' : '0')
-        progressBar.setAttribute('aria-label', isLive ? 'Now playing' : 'Not playing')
+        if (!playingEl) return
+        playingEl.dataset.live = isLive ? 'true' : 'false'
     }
 
     const updateNowPlaying = (track) => {
@@ -209,7 +201,7 @@
 <style>
     #progress-bar {
         color: var(--blue);
-        position: relative;
+        margin-top: 0.15lh;
         #progress {
             --separator-color: var(--green);
             width: 15ch;
@@ -221,39 +213,55 @@
         }
     }
 
-    /* Now-playing equalizer: 5 bars that bounce via CSS only when live.
-       Lives inline inside the progress row so it doesn't move layout. */
-    .live-eq {
+    /* Now-playing indicator: pause icon normally, tiny sparkline when live.
+       Swapped via data-live on #playing — no layout shift (same box). */
+    .np-icon {
+        display: inline-flex;
+        align-items: flex-end;
+        justify-content: center;
+        width: 2.4ch;
+        height: 1lh;
+        margin-right: 1ch;
+        flex-shrink: 0;
+        vertical-align: middle;
+    }
+
+    .np-pause {
+        line-height: 1lh;
+    }
+
+    .np-eq {
         display: none;
         align-items: flex-end;
-        gap: 0.35ch;
-        height: 1lh;
-        margin-left: 1ch;
-        flex-shrink: 0;
+        gap: 0.22ch;
+        height: 0.9lh;
 
         i {
             display: block;
-            width: 0.45ch;
+            width: 0.38ch;
             border-radius: 999px;
             background: var(--red);
             height: 22%;
             transform-origin: bottom center;
         }
-
-        &[data-live='true'] {
-            display: inline-flex;
-        }
-
-        &[data-live='true'] i {
-            animation: eq-bounce 650ms ease-in-out infinite alternate;
-        }
-
-        &[data-live='true'] i:nth-child(1) { animation-duration: 420ms; animation-delay: -80ms; }
-        &[data-live='true'] i:nth-child(2) { animation-duration: 560ms; animation-delay: -160ms; }
-        &[data-live='true'] i:nth-child(3) { animation-duration: 380ms; animation-delay: -40ms; }
-        &[data-live='true'] i:nth-child(4) { animation-duration: 610ms; animation-delay: -190ms; }
-        &[data-live='true'] i:nth-child(5) { animation-duration: 470ms; animation-delay: -110ms; }
     }
+
+    #playing[data-live='true'] .np-pause {
+        display: none;
+    }
+
+    #playing[data-live='true'] .np-eq {
+        display: inline-flex;
+    }
+
+    #playing[data-live='true'] .np-eq i {
+        animation: eq-bounce 650ms ease-in-out infinite alternate;
+    }
+
+    #playing[data-live='true'] .np-eq i:nth-child(1) { animation-duration: 420ms; animation-delay: -80ms; }
+    #playing[data-live='true'] .np-eq i:nth-child(2) { animation-duration: 560ms; animation-delay: -160ms; }
+    #playing[data-live='true'] .np-eq i:nth-child(3) { animation-duration: 380ms; animation-delay: -40ms; }
+    #playing[data-live='true'] .np-eq i:nth-child(4) { animation-duration: 610ms; animation-delay: -190ms; }
 
     @keyframes eq-bounce {
         0% { height: 18%; opacity: 0.85; }
@@ -261,7 +269,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .live-eq[data-live='true'] i {
+        #playing[data-live='true'] .np-eq i {
             animation: none !important;
             height: 55% !important;
         }
