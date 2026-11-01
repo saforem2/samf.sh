@@ -603,9 +603,13 @@ const total = variants.length
         :global(#widgets-grid.intro-in-grid) {
             min-width: 0;
         }
+    </style>
 
-        /* Allow vertical overflow when grid content exceeds viewport */
-        .intro:has(:global(.intro-in-grid)) {
+    <style is:global>
+        /* Allow vertical overflow when the widget grid is inside .intro.
+           Lives in is:global so lightningcss sees plain :has() without the
+           :global() pseudo that breaks its parser in a scoped <style>. */
+        .intro:has(.intro-in-grid) {
             overflow: visible;
             overflow-x: clip;
 

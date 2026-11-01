@@ -1357,7 +1357,7 @@ body[data-speaker-window] [is-~='notes'] {
 }
 
 @media print {
-    body.slides-print-mode\? body {
+    body.slides-print-mode {
         background-color: white;
     }
 }
