@@ -141,7 +141,11 @@
     const setProgress = (pct) => {
         if (!progressEl) return
         const w = Math.max(0, Math.min(100, pct))
-        progressEl.style.width = `${(w / 100) * 15}ch`
+        // Keep a minimum visible slug when live so 0:01 isn't a single pixel
+        const isLiveNow = playingEl?.dataset.live === 'true'
+        const ch = (w / 100) * 15
+        const visible = isLiveNow && w > 0 && w < 8 ? Math.max(ch, 1.1) : ch
+        progressEl.style.width = `${visible}ch`
     }
 
     const startProgress = (durationMs) => {
@@ -150,15 +154,22 @@
         trackMs = durationMs
         startedAt = Date.now()
         setProgress(0)
+        if (playingEl) {
+            playingEl.style.setProperty('--progress-head', '0ch')
+        }
         progressTimer = setInterval(() => {
             const elapsed = Date.now() - startedAt
             const pct = (elapsed / trackMs) * 100
             if (pct >= 100) {
                 setProgress(100)
+                if (playingEl) playingEl.style.setProperty('--progress-head', '15ch')
                 stopProgress()
                 return
             }
             setProgress(pct)
+            if (playingEl) {
+                playingEl.style.setProperty('--progress-head', `${(pct / 100) * 15}ch`)
+            }
             if (trackDuration) {
                 trackDuration.textContent = `${fmt(elapsed)} / ${fmt(trackMs)}`
             }
@@ -217,14 +228,16 @@
                 }
                 startProgress(d)
             } else {
-                if (trackDuration) trackDuration.textContent = ' '
+                if (trackDuration) trackDuration.textContent = 'LIVE'
                 stopProgress()
                 setProgress(15)
+                if (playingEl) playingEl.style.setProperty('--progress-head', '15ch')
             }
         } else {
-            if (trackDuration) trackDuration.textContent = ' '
+            if (trackDuration) trackDuration.textContent = ''
             stopProgress()
             setProgress(0)
+            if (playingEl) playingEl.style.removeProperty('--progress-head')
         }
     }
 
@@ -289,15 +302,54 @@
     #progress-bar {
         color: var(--blue);
         margin-top: 0.15lh;
+        --progress-h: 2px;
         #progress {
             --separator-color: var(--green);
+            --separator-width: var(--progress-h);
             width: 15ch;
         }
 
         #progress-gutter {
             --separator-color: var(--background2);
+            --separator-width: var(--progress-h);
             flex-grow: 1;
         }
+    }
+
+    /* Live: ticker is the accent — thick green bar + pulsing dot on the head.
+       Paused: guttered empty trough (existing colors, 0 width) reads as idle. */
+    #playing[data-live='true'] #progress-bar #progress {
+        --separator-color: var(--green);
+        --separator-width: 3px;
+        filter: drop-shadow(0 0 2px var(--green));
+    }
+
+    #playing[data-live='true'] #progress-bar {
+        position: relative;
+    }
+
+    #playing[data-live='true'] #progress-bar::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: calc(1ch + var(--progress-head, 0ch));
+        translate: -50% -50%;
+        width: 1.05ch;
+        height: 1.05ch;
+        border-radius: 999px;
+        background: var(--green);
+        box-shadow: 0 0 3px var(--green);
+        animation: live-dot-pulse 900ms ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+
+    @keyframes live-dot-pulse {
+        0% { opacity: 0.85; scale: 0.92; }
+        100% { opacity: 1; scale: 1.02; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #playing[data-live='true'] #progress-bar::after { animation: none; }
     }
 
     .np-icon {
@@ -313,20 +365,21 @@
 
     .np-pause {
         line-height: 1lh;
+        color: var(--foreground2);
     }
 
     .np-eq {
         display: none;
         align-items: flex-end;
-        gap: 0.22ch;
-        height: 0.9lh;
+        gap: 0.26ch;
+        height: 1lh;
 
         i {
             display: block;
-            width: 0.38ch;
+            width: 0.5ch;
             border-radius: 999px;
-            background: var(--red);
-            height: 22%;
+            background: var(--green);
+            height: 18%;
             transform-origin: bottom center;
         }
     }
