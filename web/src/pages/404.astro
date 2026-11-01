@@ -1,0 +1,70 @@
+---
+import Layout from '@/layouts/Layout.astro'
+---
+
+<Layout
+    title="404 — not found"
+    description="page not found — the page you asked for has moved or never existed.">
+    <main id="main-content" class="not-found-page">
+        <script type="module" src="https://ascii.rest/ascii.js"></script>
+        <ascii-art
+            piece="not-found"
+            style="--art-cols: 60; --art-rows: 21; --art-cell: 2"></ascii-art>
+        <noscript>
+            <pre
+                class="fallback">                404 — page not found
+  the page you asked for has moved or never existed
+            </pre>
+        </noscript>
+        <nav class="goback">
+            <a href="/">← back home</a>
+            <a href="/about">[about]</a>
+            <a href="/posts/">[posts]</a>
+            <a href="/talks/">[talks]</a>
+        </nav>
+    </main>
+</Layout>
+
+<style>
+    .not-found-page {
+        display: grid;
+        place-items: center;
+        min-height: 62dvh;
+        padding: 4rem 2ch 3rem;
+        gap: 2.2rem;
+        text-align: center;
+    }
+    ascii-art {
+        display: block;
+        width: min(62ch, 100%);
+        font-size: clamp(8px, 1.65vw, 13.5px);
+        line-height: 1;
+        color: var(--foreground0);
+    }
+    ascii-art::part(art) {
+        line-height: 1;
+    }
+    .fallback {
+        margin: 0;
+        color: var(--foreground1);
+        font-size: 0.92em;
+        line-height: 1.6;
+        white-space: pre;
+    }
+    .goback {
+        display: flex;
+        gap: 1.5ch;
+        flex-wrap: wrap;
+        justify-content: center;
+        font-size: 0.92em;
+    }
+    .goback a {
+        color: var(--foreground1);
+        text-decoration: none;
+        padding: 0 0.6ch;
+    }
+    .goback a:hover {
+        background: var(--foreground0);
+        color: var(--background0);
+    }
+</style>

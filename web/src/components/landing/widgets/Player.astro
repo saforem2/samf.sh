@@ -15,10 +15,10 @@
     <column box-="round" pad-="1" id="playing">
         <row gap-="1" style="align-items: center;">
             <span class="np-icon" aria-hidden="true"
-                ><span class="np-pause">&#xf1bc;</span
-                ><span class="np-eq"
+                ><span class="np-pause">&#xf1bc;</span><span class="np-eq"
                     ><i></i><i></i><i></i><i></i></span
-            ></span>
+                ></span
+            >
             <row self-="grow shrink !basis" style="overflow: hidden; gap: 1ch;">
                 <strong class="title" id="track-title">Loading...</strong>
                 <span class="album" id="track-album">
@@ -173,8 +173,7 @@
     const fetchDuration = async (artist, track) => {
         if (!artist || !track) return 0
         try {
-            const u =
-                `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&user=${lastfmData.user}&api_key=${lastfmData.apiKey}&format=json`
+            const u = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&user=${lastfmData.user}&api_key=${lastfmData.apiKey}&format=json`
             const r = await fetch(u)
             if (!r.ok) return 0
             const j = await r.json()
@@ -194,8 +193,7 @@
         const nowUrl = track?.url || null
         if (trackTitle) {
             if (nowUrl) {
-                trackTitle.innerHTML =
-                    `<a href="${nowUrl}" target="_blank" rel="noopener noreferrer" class="np-link">${track?.name ?? 'Silence!'}</a>`
+                trackTitle.innerHTML = `<a href="${nowUrl}" target="_blank" rel="noopener noreferrer" class="np-link">${track?.name ?? 'Silence!'}</a>`
             } else {
                 trackTitle.textContent = track?.name ?? 'Silence!'
             }

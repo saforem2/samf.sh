@@ -402,12 +402,13 @@
         color: var(--background0);
     }
 
-    /* Native text selection — match the active theme accent so the
-       highlight doesn't fight catppuccin/custom-dark backgrounds with
-       the default OS blue. The 0.3 alpha keeps text readable. */
+    /* Native text selection — tinted from the theme accent so it
+       doesn't fall back to the OS blue (which clashes with the dark
+       surfaces), but at 0.14 alpha so it reads as "dragged text",
+       not "selected card". */
     ::selection {
-        background-color: oklch(from var(--accent, var(--blue)) l c h / 0.3);
-        color: var(--foreground0);
+        background-color: oklch(from var(--accent, var(--blue)) l c h / 0.14);
+        color: inherit;
     }
 
     /* Hash-jumps + heading anchors: stop the heading from landing
