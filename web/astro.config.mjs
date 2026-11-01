@@ -537,6 +537,24 @@ export default defineConfig({
         sitemap(),
     ],
     vite: {
+        resolve: {
+            alias: {
+                '@': new URL('./src', import.meta.url).pathname,
+            },
+        },
+        css: {
+            // PostCSS handles @import before Vite's resolver, so without
+            // the alias above the "@/styles/*.css" imports in <style>
+            // blocks would fail with ENOENT.
+        },
+        build: {
+            // Workaround: Vite 8's default lightningcss minifier is strict
+            // about nested CSS and rejects patterns that esbuild tolerates
+            // (e.g. :global() inside scoped <style> leaking literal
+            // `:global(.x)` into the bundle). Until those style blocks are
+            // migrated, keep the old esbuild minifier so builds pass.
+            cssMinify: 'esbuild',
+        },
         server: {
             // The dev server is intentionally bound to the LAN/tailnet. Keep
             // Vite's DNS-rebinding protection, but permit this machine's two
