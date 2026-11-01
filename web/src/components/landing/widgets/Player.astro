@@ -12,9 +12,9 @@
             l</a
         >]ast.fm
     </span>
-    <column box-="round" pad-="1 1" id="playing">
-        <row gap-="1" style="align-items: center;">
-            <span class="np-icon" aria-hidden="true"><span class="np-pause">&#xf04c;</span><span class="np-eq"><i></i><i></i><i></i><i></i></span></span>
+    <column box-="round" pad-="0 1" id="playing">
+        <row gap-="1" style="align-items: center; line-height: 1.2;">
+            <span class="np-icon" aria-hidden="true"><span class="np-pause">&#xf1bc;</span><span class="np-eq"><i></i><i></i><i></i><i></i></span></span>
             <row self-="grow shrink !basis" style="overflow: hidden; gap: 1ch;">
                 <strong class="title" id="track-title">Loading...</strong>
                 <span class="album" id="track-album">
@@ -60,6 +60,7 @@
     const trackDuration = document.getElementById('track-duration')
     const upNext = document.getElementById('up-next')
     const playingEl = document.getElementById('playing')
+    const progressEl = document.getElementById('progress')
 
     const clearUpNext = () => {
         if (!upNext) return
@@ -91,13 +92,14 @@
         }
 
         const icon = document.createElement('span')
-        icon.innerHTML = '&#xf04b;'
+        icon.innerHTML = '&#xf1bc;'
         row.appendChild(icon)
 
         const details = document.createElement('row')
-        details.setAttribute('self-', 'grow')
+        details.setAttribute('self-', 'grow shrink !basis')
         details.style.overflow = 'hidden'
         details.style.gap = '1ch'
+        details.style.minWidth = '0'
 
         const title = document.createElement('strong')
         title.className = 'title'
@@ -127,12 +129,59 @@
         return row
     }
 
+    let progressTimer = null
+    let startedAt = 0
+    let trackMs = 0
+
+    const fmt = (ms) => {
+        const s = Math.max(0, Math.floor(ms / 1000))
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    }
+
+    const setProgress = (pct) => {
+        if (!progressEl) return
+        const w = Math.max(0, Math.min(100, pct))
+        progressEl.style.width = `${(w / 100) * 15}ch`
+    }
+
+    const startProgress = (durationMs) => {
+        stopProgress()
+        if (!durationMs || durationMs <= 0) return
+        trackMs = durationMs
+        startedAt = Date.now()
+        // rough: assume scrobble started ~ elapsed already if available, else 0
+        setProgress(0)
+        progressTimer = setInterval(() => {
+            const elapsed = Date.now() - startedAt
+            const pct = (elapsed / trackMs) * 100
+            if (pct >= 100) { setProgress(100); stopProgress(); return }
+            setProgress(pct)
+            if (trackDuration) trackDuration.textContent = `${fmt(elapsed)} / ${fmt(trackMs)}`
+        }, 500)
+    }
+
+    const stopProgress = () => {
+        if (progressTimer) clearInterval(progressTimer)
+        progressTimer = null
+    }
+
+    const fetchDuration = async (artist, track) => {
+        if (!artist || !track) return 0
+        try {
+            const u = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&user=${lastfmData.user}&api_key=${lastfmData.apiKey}&format=json`
+            const r = await fetch(u)
+            if (!r.ok) return 0
+            const j = await r.json()
+            return Number(j?.track?.duration) || 0
+        } catch { return 0 }
+    }
+
     const setLive = (isLive) => {
         if (!playingEl) return
         playingEl.dataset.live = isLive ? 'true' : 'false'
     }
 
-    const updateNowPlaying = (track) => {
+    const updateNowPlaying = async (track) => {
         const isLive = Boolean(track?.['@attr']?.nowplaying === 'true')
         const nowUrl = track?.url || null
         if (trackTitle) {
@@ -151,8 +200,24 @@
             const artist = track?.artist?.['#text'] || 'Sam Foreman'
             trackArtist.innerHTML = `<span>&#xf007;</span> ${artist}`
         }
-        if (trackDuration) trackDuration.textContent = ' '
         setLive(isLive)
+        if (isLive) {
+            const artist = track?.artist?.['#text'] || ''
+            const name = track?.name || ''
+            const d = await fetchDuration(artist, name)
+            if (d > 0) {
+                if (trackDuration) trackDuration.textContent = `0:00 / ${fmt(d)}`
+                startProgress(d)
+            } else {
+                if (trackDuration) trackDuration.textContent = ' '
+                stopProgress()
+                setProgress(15)
+            }
+        } else {
+            if (trackDuration) trackDuration.textContent = ' '
+            stopProgress()
+            setProgress(0)
+        }
     }
 
     const setLastFM = async () => {
@@ -170,7 +235,7 @@
             const tracks = data?.recenttracks?.track ?? []
             const [current, ...rest] = tracks
 
-            updateNowPlaying(current)
+            await updateNowPlaying(current)
 
             clearUpNext()
             if (upNext && rest.length > 0) {
@@ -189,7 +254,7 @@
                 })
             }
         } catch {
-            updateNowPlaying(null)
+            await updateNowPlaying(null)
             clearUpNext()
         }
     }
@@ -326,7 +391,8 @@
     #playing {
         --box-border-color: var(--background2);
         color: var(--accent);
-        line-height: 1.3;
+        line-height: 1.1;
+        gap: 0;
     }
 
     .lastfm-badge {
@@ -361,11 +427,15 @@
     }
 
     :global(.song) {
+        display: flex;
         gap: 1ch;
         padding-left: 1ch;
         padding-right: 1ch;
         color: var(--foreground1);
         text-decoration: none;
+        flex-wrap: nowrap;
+        align-items: baseline;
+        overflow: hidden;
     }
 
     :global(a.song:hover) {
