@@ -8,7 +8,7 @@ This guide is for coding agents working in `/Users/samforeman/projects/saforem2/
 - Workspaces: `web/` (Astro site/docs) and `packages/*` (CSS/plugin/theme packages).
 - Legacy folder: `old/` is not part of active workspace tooling.
 - Module format: ESM (`"type": "module"`).
-- Runtime/tooling: Node `>=18`, Bun (`packageManager: bun@1.2.16`, `engines.bun: >=1.3.0`).
+- Runtime/tooling: Node `^20.19.0 || >=22.12.0` (Astro 7 / Vite 8 floor), Bun (`packageManager: bun@1.3.10`, `engines.bun: >=1.3.0`).
 
 ## Root Commands (all workspaces)
 
