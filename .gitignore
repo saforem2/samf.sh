@@ -89,5 +89,10 @@ bun.lockb
 _*.html
 tmp-*/
 
+# One-off PDF slide exports (regenerated via web/scripts/gen-ptc26-alcf-pdf.mjs)
+ptc26-alcf-slide-pdf.txt
+web/gen-alcf-pdf-clean.mjs
+web/scripts/gen-ptc26-alcf-pdf.mjs
+
 # Agent scratch: per-run todo checklists and lessons notes, not site content.
 tasks/
