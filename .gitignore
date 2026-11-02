@@ -94,5 +94,9 @@ ptc26-alcf-slide-pdf.txt
 web/gen-alcf-pdf-clean.mjs
 web/scripts/gen-ptc26-alcf-pdf.mjs
 
+# Playwright one-off report leftover (not a configured test suite)
+test-results/
+test-results
+
 # Agent scratch: per-run todo checklists and lessons notes, not site content.
 tasks/

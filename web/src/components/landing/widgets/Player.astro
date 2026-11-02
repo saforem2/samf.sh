@@ -162,13 +162,17 @@
             const pct = (elapsed / trackMs) * 100
             if (pct >= 100) {
                 setProgress(100)
-                if (playingEl) playingEl.style.setProperty('--progress-head', '15ch')
+                if (playingEl)
+                    playingEl.style.setProperty('--progress-head', '15ch')
                 stopProgress()
                 return
             }
             setProgress(pct)
             if (playingEl) {
-                playingEl.style.setProperty('--progress-head', `${(pct / 100) * 15}ch`)
+                playingEl.style.setProperty(
+                    '--progress-head',
+                    `${(pct / 100) * 15}ch`,
+                )
             }
             if (trackDuration) {
                 trackDuration.textContent = `${fmt(elapsed)} / ${fmt(trackMs)}`
@@ -231,7 +235,8 @@
                 if (trackDuration) trackDuration.textContent = 'LIVE'
                 stopProgress()
                 setProgress(15)
-                if (playingEl) playingEl.style.setProperty('--progress-head', '15ch')
+                if (playingEl)
+                    playingEl.style.setProperty('--progress-head', '15ch')
             }
         } else {
             if (trackDuration) trackDuration.textContent = ''
@@ -301,8 +306,10 @@
 <style>
     #progress-bar {
         color: var(--blue);
-        margin-top: 0.15lh;
+        margin-top: 0.25lh;
         --progress-h: 2px;
+        /* Inset content off the rounded border — brackets + track don't kiss the edge (Image #14) */
+        padding-inline: 0.5ch;
         #progress {
             --separator-color: var(--green);
             --separator-width: var(--progress-h);
@@ -322,17 +329,17 @@
         --separator-color: var(--green);
         --separator-width: 3px;
         filter: drop-shadow(0 0 2px var(--green));
-    }
-
-    #playing[data-live='true'] #progress-bar {
+        /* Anchor the live dot so ::after can ride the fill edge */
         position: relative;
+        overflow: visible;
     }
 
-    #playing[data-live='true'] #progress-bar::after {
+    #playing[data-live='true'] #progress::after {
         content: '';
         position: absolute;
         top: 50%;
-        left: calc(1ch + var(--progress-head, 0ch));
+        left: 100%;
+        /* Straddle the fill edge; clamp so the dot never sits outside the 15ch + gutter track */
         translate: -50% -50%;
         width: 1.05ch;
         height: 1.05ch;
@@ -344,12 +351,20 @@
     }
 
     @keyframes live-dot-pulse {
-        0% { opacity: 0.85; scale: 0.92; }
-        100% { opacity: 1; scale: 1.02; }
+        0% {
+            opacity: 0.85;
+            scale: 0.92;
+        }
+        100% {
+            opacity: 1;
+            scale: 1.02;
+        }
     }
 
     @media (prefers-reduced-motion: reduce) {
-        #playing[data-live='true'] #progress-bar::after { animation: none; }
+        #playing[data-live='true'] #progress-bar::after {
+            animation: none;
+        }
     }
 
     .np-icon {
@@ -377,8 +392,8 @@
         i {
             display: block;
             width: 0.5ch;
-            border-radius: 999px;
-            background: var(--green);
+            border-radius: 0;
+            background: var(--accent);
             height: 18%;
             transform-origin: bottom center;
         }
@@ -458,6 +473,8 @@
         color: var(--accent);
         line-height: 1.2;
         gap: 0;
+        /* Keep the "now playing" row + progress off the rounded border */
+        padding-inline: 0.6ch;
     }
 
     .lastfm-badge {
