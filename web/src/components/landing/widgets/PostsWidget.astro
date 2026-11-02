@@ -99,9 +99,16 @@ function stripEmoji(text: string): string {
         flex-shrink: 0;
         overflow: hidden;
         min-width: 0;
+        padding: 0 0.5ch;
+        margin-inline: -0.5ch;
+        border-radius: 2px;
 
         &:hover {
             color: var(--blue);
+        }
+
+        &:nth-child(even) {
+            background: color-mix(in srgb, var(--foreground0) 4%, transparent);
         }
     }
 

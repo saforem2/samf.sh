@@ -21,11 +21,11 @@
             >
             <row self-="grow shrink !basis" style="overflow: hidden; gap: 1ch;">
                 <strong class="title" id="track-title">Loading...</strong>
-                <span class="album" id="track-album">
-                    <span>&#xf001;</span> —
-                </span>
                 <span class="author" id="track-artist">
                     <span>&#xf007;</span> —
+                </span>
+                <span class="album" id="track-album">
+                    <span>&#xf001;</span> —
                 </span>
             </row>
             <row self-="!shrink">
@@ -114,8 +114,8 @@
         artistEl.innerHTML = `<span>&#xf007;</span> ${artist ?? 'Unknown'}`
 
         details.appendChild(title)
-        details.appendChild(albumEl)
         details.appendChild(artistEl)
+        details.appendChild(albumEl)
         row.appendChild(details)
 
         const durationRow = document.createElement('row')
@@ -534,10 +534,8 @@
         text-underline-offset: 2px;
     }
 
-    :global(.author),
-    :global(.album),
     :global(.title) {
-        flex: 1 1 0;
+        flex: 0 1 auto;
         min-width: 0;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -548,8 +546,30 @@
         }
     }
 
-    :global(.author),
-    :global(.album) {
+    :global(.author) {
+        flex: 0 0 auto;
+        min-width: 0;
+        max-width: 14ch;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
         color: var(--foreground2);
+
+        :global(span) {
+            color: var(--pink);
+        }
+    }
+
+    :global(.album) {
+        flex: 1 1 0;
+        min-width: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        color: var(--foreground2);
+
+        :global(span) {
+            color: var(--pink);
+        }
     }
 </style>
