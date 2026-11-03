@@ -322,20 +322,93 @@ docs. Rather than guess, `ezpz` looks up the full resource list at submit time
 and matches by name. If that lookup fails, you get the list of names it saw —
 not a silent mis-route.
 
+## Update — 2026-11-03: what's new on [ezpz.cool](https://ezpz.cool)
+
+Since this post went up, `ezpz` (`v0.34.3` on `main`) has added a handful of
+small, well-documented pieces that round out the remote workflow above.
+Every item below links to its page on [ezpz.cool](https://ezpz.cool) — those
+pages are the canonical docs, not this post.
+
+- **[`ezpz status --watch`](https://ezpz.cool/cli/status/)** — poll the IRI
+  status table on a configurable interval with desktop notifications on
+  `Q→R` / `R→F` transitions. `rich.live.Live` + `Ctrl-C`-clean teardown.
+  Docs: [CLI → status](https://ezpz.cool/cli/status/) ·
+  PR [#289](https://github.com/saforem2/ezpz/pull/289).
+
+- **[`ezpz fetch`](https://ezpz.cool/cli/fetch/)** — snapshot the last _N_
+  lines of a job's stdout without opening an interactive session. IRI metadata
+  for `stdout_path` with a PBS `qstat -xf` fallback; `tail` over SSH for the
+  bytes. Docs: [CLI → fetch](https://ezpz.cool/cli/fetch/) ·
+  PR [#282](https://github.com/saforem2/ezpz/pull/282).
+
+- **[`ezpz logs`](https://ezpz.cool/cli/logs/)** — per-example benchmark logs
+  (`outputs/ezpz-benchmarks/*/EXAMPLE.log`) without the MPI-duplicated spool.
+  Requires `--remote HOST` + `JOB_ID`; picks the last-failed example by
+  default, or `--example <name>` explicitly. Docs:
+  [CLI → logs](https://ezpz.cool/cli/logs/) · added in
+  [`bc50ab5`](https://github.com/saforem2/ezpz/commit/bc50ab5).
+
+- **[`ezpz completion`](https://ezpz.cool/cli/completion/)** — shell
+  completions for `bash`/`zsh`/`fish` via Click's `click.shell_completion`
+  (no `shtab`). `ezpz completion bash` prints the script; `--install` where
+  supported. Docs: [CLI → completion](https://ezpz.cool/cli/completion/) ·
+  added in [`bc50ab5`](https://github.com/saforem2/ezpz/commit/bc50ab5).
+
+- **[CLI index — all 19 commands](https://ezpz.cool/cli/)** — the
+  [CLI overview](https://ezpz.cool/cli/) now lists every `ezpz <cmd>` with
+  one-line summaries and links. Missing pages (`logs`, `completion`) were
+  created and the nav was wired up. Docs:
+  [CLI index](https://ezpz.cool/cli/) ·
+  [`bc50ab5`](https://github.com/saforem2/ezpz/commit/bc50ab5) +
+  [`66e8dd4`](https://github.com/saforem2/ezpz/commit/66e8dd4).
+
+- **[Status parity with qmert](https://ezpz.cool/cli/status/)** — `NODES` /
+  `WALL` / `ELAP` / `NOTE` columns plus running-job nodelists, matching
+  `qmert`'s width-aware truncation. Fan-out `ezpz status` across machines and
+  positional sugar documented alongside. Docs:
+  [CLI → status](https://ezpz.cool/cli/status/) ·
+  [`f064ba7`](https://github.com/saforem2/ezpz/commit/f064ba7) +
+  [`14cd882`](https://github.com/saforem2/ezpz/commit/14cd882).
+
+- **[PBS exit-status propagation](https://ezpz.cool/troubleshooting/)** — the
+  submission wrapper now preserves `PIPESTATUS` so a failed `ezpz launch` is
+  no longer masked as success. Noted in
+  [Troubleshooting](https://ezpz.cool/troubleshooting/) ·
+  [`0d9a786`](https://github.com/saforem2/ezpz/commit/0d9a786) +
+  PR [#288](https://github.com/saforem2/ezpz/pull/288).
+
+- **[Profiler example](https://ezpz.cool/examples/profiler/)** —
+  `ezpz.examples.profiler`, a minimal `torch.profiler` example with
+  per-cycle traces and local-rank-gated logging. Docs:
+  [Examples → profiler](https://ezpz.cool/examples/profiler/) ·
+  [`1ce1346`](https://github.com/saforem2/ezpz/commit/1ce1346) +
+  [`aed6521`](https://github.com/saforem2/ezpz/commit/aed6521).
+
+- **Remote-workdir & env contract** — `submit` now creates
+  `$PBS_O_WORKDIR/ezpz-$PBS_JOBID` on shared FS (not `/tmp`), and
+  `--env` / `--env-setup-script` with `--workdir` / `--env` tarball
+  support. Full write-up in
+  [Remote submission](https://ezpz.cool/guides/remote-submission/) ·
+  [`9717c9a`](https://github.com/saforem2/ezpz/commit/9717c9a) +
+  [`0846f1c`](https://github.com/saforem2/ezpz/commit/0846f1c).
+
+Previous items from this post remain accurate — `fetch` and `logs` complement
+`status --watch`, while `completion` sits alongside the existing `resources` /
+`incidents` / `extend` surface rather than replacing it.
+
 ## What's next
 
 Two small things, both already scoped:
 
-- **Tab completions.** Queue and project names come from the resources endpoint
-  already; exposing them as shell completions for `--queue`/`-q` and `--account`/
-  `-A` is a short step. The shape is `ezpz completion bash|zsh|fish` plus a
-  dynamic source for the IRI-backed values.
+- **Richer completions.** Queue and project names come from the resources
+  endpoint already; exposing them as dynamic shell completions for `--queue`/`-q`
+  and `--account`/`-A` is a short step on top of the now-shipped
+  [`ezpz completion`](https://ezpz.cool/cli/completion/) (`bash`/`zsh`/`fish`).
 
-- **Watch mode.** `ezpz status --remote aurora --watch` — the same Rich table
-  on a 5-second poll, with a one-line transition log when a job moves
-  `queued → active → completed`. The primitive already exists in
-  `status_cancel_cmd.py:state_list` and `list_jobs_via_iri`; the loop is
-  `rich.live.Live` plus a `Ctrl-C` that leaves the terminal clean.
+- **Watch is now shipped.** `ezpz status --watch` (see above) covers the
+  `rich.live.Live` poll + transition log sketched in the original post:
+  [`ezpz status --watch`](https://ezpz.cool/cli/status/) · PR
+  [#289](https://github.com/saforem2/ezpz/pull/289).
 
 Longer-term, the incident feed wants to be surfaced in `ezpz doctor` ("Polaris
 is degraded, your next submit targets Polaris — queue on Aurora instead?"),
@@ -349,17 +422,27 @@ with a token, `ezpz submit` just works.
 uvx alcf-tokens login iri
 ezpz submit --remote aurora -N 2 -q debug -A datascience -- python3 hello.py
 ezpz status --remote aurora --limit 5
+ezpz status --remote aurora --watch        # new: live poll + notify
+ezpz fetch 8936286 --remote aurora --lines 80 --no-dedupe  # new
+ezpz logs 12481065 --remote sunspot --example fsdp          # new
 ezpz extend 8936286 --remote aurora --time 06:00:00
 ezpz cancel 8936286 --remote aurora
 ezpz resources
 ezpz incidents --resource aurora
+ezpz completion bash                        # new: shell completions
 ```
 
-_All of this is in `ezpz` `v0.32` on `main`
-([`a87a828`](https://github.com/saforem2/ezpz/commit/a87a828),
+_All of this is in `ezpz` `v0.34.3` on `main`
+([`211c6e7`](https://github.com/saforem2/ezpz/commit/211c6e7),
+[`54c069f`](https://github.com/saforem2/ezpz/commit/54c069f) — `v0.34.3`).
+Earlier IRI surface: `v0.32` at
+[`a87a828`](https://github.com/saforem2/ezpz/commit/a87a828),
 [`a324f7f`](https://github.com/saforem2/ezpz/commit/a324f7f),
-[`0bdc270`](https://github.com/saforem2/ezpz/commit/0bdc270)).
-Docs: [Remote submission](https://github.com/saforem2/ezpz/blob/main/docs/guides/remote-submission.md).
+[`0bdc270`](https://github.com/saforem2/ezpz/commit/0bdc270).
+Docs: [Remote submission](https://ezpz.cool/guides/remote-submission.md) ·
+[CLI index](https://ezpz.cool/cli/) · [status](https://ezpz.cool/cli/status/) ·
+[fetch](https://ezpz.cool/cli/fetch/) · [logs](https://ezpz.cool/cli/logs/) ·
+[completion](https://ezpz.cool/cli/completion/) · [profiler example](https://ezpz.cool/examples/profiler/).
 API: [ALCF IRI](https://docs.alcf.anl.gov/services/iri-api/)._
 
 _This research used resources of the Argonne Leadership Computing Facility, a
