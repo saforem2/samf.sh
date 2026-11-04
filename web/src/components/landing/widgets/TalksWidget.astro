@@ -20,7 +20,12 @@ function formatDate(date: Date): string {
 }
 ---
 
-<column box-="square" pad-="2 1" gap-="0" class="talks-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="2 1"
+    gap-="0"
+    class="talks-widget"
+    tabindex="0">
     <span is-="badge" variant-="orange" class="tw-title"
         >&#xf19d; <a href="/talks" class="widget-link"><u>t</u>alks</a></span
     >
@@ -42,6 +47,7 @@ function formatDate(date: Date): string {
 
 <style>
     .talks-widget {
+        --widget-accent: var(--blue);
         gap: 1lh;
         overflow: hidden;
         min-height: 0;
@@ -53,7 +59,7 @@ function formatDate(date: Date): string {
         background-image: none;
         --badge-text: none;
         --badge-color: none;
-        --color: var(--orange);
+        --color: var(--widget-accent);
         color: var(--color);
         background-color: oklch(
             from var(--color) calc(l * var(--oklch-scale, 0.85)) c h / 0.1
@@ -73,10 +79,12 @@ function formatDate(date: Date): string {
            23.8px and keeps 9.2. */
         row-gap: 0.25lh;
         flex: 1;
+        overflow-x: hidden;
         overflow-y: auto;
         min-height: 0;
         scrollbar-width: thin;
         scrollbar-color: var(--foreground2) transparent;
+        scrollbar-gutter: stable;
         margin-block-start: -0.5lh;
     }
 
@@ -87,10 +95,20 @@ function formatDate(date: Date): string {
         text-decoration: none;
         color: var(--foreground1);
         white-space: nowrap;
+        min-width: 0;
         flex-shrink: 0;
+        padding: 0 0.5ch;
+        margin-inline: -0.5ch;
+        border-radius: 2px;
 
         &:hover {
-            color: var(--blue);
+            color: var(--background0);
+            background: var(--widget-accent) !important;
+            .tw-date { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent)); }
+        }
+
+        &:nth-child(even) {
+            background: color-mix(in srgb, var(--foreground0) 4%, transparent);
         }
     }
 
@@ -112,7 +130,10 @@ function formatDate(date: Date): string {
     }
 
     .tw-name {
+        min-width: 0;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 </style>
+

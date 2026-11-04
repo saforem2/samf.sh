@@ -12,35 +12,34 @@
             l</a
         >]ast.fm
     </span>
-    <column box-="round" pad-="2 1" id="playing">
-        <row gap-="1">
-            <span style="margin-right: 1ch;">&#xf04c;</span>
-            <row self-="grow shrink !basis" style="overflow: hidden; gap: 1ch;">
-                <strong class="title" id="track-title">Loading...</strong>
-                <span class="album" id="track-album">
-                    <span>&#xf001;</span> —
-                </span>
-                <span class="author" id="track-artist">
-                    <span>&#xf007;</span> —
-                </span>
-            </row>
-            <row self-="!shrink">
-                <span class="duration" id="track-duration">--:--</span>
-            </row>
+    <column box-="round" pad-="1" id="playing">
+        <row class="np-row" gap-="1" style="align-items: center;">
+            <span class="np-icon" aria-hidden="true"
+                ><span class="np-pause">&#xf04c;</span><span class="np-eq"
+                    ><i></i><i></i><i></i><i></i></span
+                ></span
+            >
+            <strong class="title" id="track-title">Loading...</strong>
+            <span class="author" id="track-artist">—</span>
+            <span class="album" id="track-album">—</span>
         </row>
         <row id="progress-bar">
             <span>[</span>
             <div id="progress" is-="separator"></div>
             <div id="progress-gutter" is-="separator"></div>
             <span>]</span>
+            <span class="duration" id="track-duration">--:--</span>
         </row>
     </column>
 
     <column pad-="1 0" self-="grow" class="history-section">
-        <!-- <column> -->
-        <!--     <div is-="separator" style="--separator-color: var(--background2)"> -->
-        <!--     </div> -->
-        <!-- </column> -->
+        <row class="history-head" aria-hidden="true"
+            ><span class="song-icon"></span><span class="col-track"
+                ><span>&#xf001;</span> track</span
+            ><span class="col-artist"><span>&#xf007;</span> artist</span><span
+                class="col-album"><span>&#xf001;</span> album</span
+            ></row
+        >
         <column id="up-next"></column>
     </column>
 </column>
@@ -54,11 +53,20 @@
         additional: '&format=json&limit=10',
     }
 
-    const trackTitle = document.getElementById('track-title')
-    const trackAlbum = document.getElementById('track-album')
-    const trackArtist = document.getElementById('track-artist')
-    const trackDuration = document.getElementById('track-duration')
-    const upNext = document.getElementById('up-next')
+    // Showcase renders two Player instances (Current + Proposed) with duplicate
+    // ids. Scope lookups to the first #stats-widget so only one instance claims
+    // the ids — the other is rewired by the showcase fixup below. Without this,
+    // getElementById returns the first DOM match and the duplicate stays on
+    // "Loading…".
+    const statsRoot = document.getElementById('stats-widget')
+    const getInStats = (id) => statsRoot?.querySelector(`#${id}`) ?? document.getElementById(id)
+    const trackTitle = getInStats('track-title')
+    const trackAlbum = getInStats('track-album')
+    const trackArtist = getInStats('track-artist')
+    const trackDuration = getInStats('track-duration')
+    const upNext = getInStats('up-next')
+    const playingEl = getInStats('playing')
+    const progressEl = getInStats('progress')
 
     const clearUpNext = () => {
         if (!upNext) return
@@ -77,58 +85,156 @@
         return column
     }
 
-    const makeRow = ({ name, album, artist }) => {
-        const row = document.createElement('row')
+    const makeRow = ({ name, album, artist, url }) => {
+        const link = url || null
+        const row = link
+            ? document.createElement('a')
+            : document.createElement('div')
         row.className = 'song'
+        if (link) {
+            row.href = link
+            row.target = '_blank'
+            row.rel = 'noopener noreferrer'
+        }
 
         const icon = document.createElement('span')
-        icon.innerHTML = '&#xf04b;'
+        icon.className = 'song-icon'
+        icon.innerHTML = '&#xf1bc;'
         row.appendChild(icon)
-
-        const details = document.createElement('row')
-        details.setAttribute('self-', 'grow')
-        details.style.overflow = 'hidden'
-        details.style.gap = '1ch'
 
         const title = document.createElement('strong')
         title.className = 'title'
         title.textContent = name ?? 'Unknown'
-
-        const albumEl = document.createElement('span')
-        albumEl.className = 'album'
-        albumEl.innerHTML = `<span>&#xf001;</span> ${album ?? 'Unknown'}`
+        row.appendChild(title)
 
         const artistEl = document.createElement('span')
         artistEl.className = 'author'
-        artistEl.innerHTML = `<span>&#xf007;</span> ${artist ?? 'Unknown'}`
+        artistEl.textContent = artist ?? 'Unknown'
+        row.appendChild(artistEl)
 
-        details.appendChild(title)
-        details.appendChild(albumEl)
-        details.appendChild(artistEl)
-        row.appendChild(details)
-
-        const durationRow = document.createElement('row')
-        durationRow.setAttribute('self-', '!shrink')
-        const duration = document.createElement('span')
-        duration.className = 'duration'
-        duration.textContent = ' '
-        durationRow.appendChild(duration)
-        row.appendChild(durationRow)
+        const albumEl = document.createElement('span')
+        albumEl.className = 'album'
+        albumEl.textContent = album ?? 'Unknown'
+        row.appendChild(albumEl)
 
         return row
     }
 
-    const updateNowPlaying = (track) => {
-        if (trackTitle) trackTitle.textContent = track?.name ?? 'Silence!'
+    let progressTimer = null
+    let startedAt = 0
+    let trackMs = 0
+
+    const fmt = (ms) => {
+        const s = Math.max(0, Math.floor(ms / 1000))
+        return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+    }
+
+    const setProgress = (pct) => {
+        if (!progressEl) return
+        const w = Math.max(0, Math.min(100, pct))
+        // Keep a minimum visible slug when live so 0:01 isn't a single pixel
+        const isLiveNow = playingEl?.dataset.live === 'true'
+        const ch = (w / 100) * 15
+        const visible = isLiveNow && w > 0 && w < 8 ? Math.max(ch, 1.1) : ch
+        progressEl.style.width = `${visible}ch`
+    }
+
+    const startProgress = (durationMs) => {
+        stopProgress()
+        if (!durationMs || durationMs <= 0) return
+        trackMs = durationMs
+        startedAt = Date.now()
+        setProgress(0)
+        if (playingEl) {
+            playingEl.style.setProperty('--progress-head', '0ch')
+        }
+        progressTimer = setInterval(() => {
+            const elapsed = Date.now() - startedAt
+            const pct = (elapsed / trackMs) * 100
+            if (pct >= 100) {
+                setProgress(100)
+                if (playingEl)
+                    playingEl.style.setProperty('--progress-head', '15ch')
+                stopProgress()
+                return
+            }
+            setProgress(pct)
+            if (playingEl) {
+                playingEl.style.setProperty(
+                    '--progress-head',
+                    `${(pct / 100) * 15}ch`,
+                )
+            }
+            if (trackDuration) {
+                trackDuration.textContent = `${fmt(elapsed)} / ${fmt(trackMs)}`
+            }
+        }, 500)
+    }
+
+    const stopProgress = () => {
+        if (progressTimer) clearInterval(progressTimer)
+        progressTimer = null
+    }
+
+    const fetchDuration = async (artist, track) => {
+        if (!artist || !track) return 0
+        try {
+            const u = `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(artist)}&track=${encodeURIComponent(track)}&user=${lastfmData.user}&api_key=${lastfmData.apiKey}&format=json`
+            const r = await fetch(u)
+            if (!r.ok) return 0
+            const j = await r.json()
+            return Number(j?.track?.duration) || 0
+        } catch {
+            return 0
+        }
+    }
+
+    const setLive = (isLive) => {
+        if (!playingEl) return
+        playingEl.dataset.live = isLive ? 'true' : 'false'
+    }
+
+    const updateNowPlaying = async (track) => {
+        const isLive = Boolean(track?.['@attr']?.nowplaying === 'true')
+        const nowUrl = track?.url || null
+        if (trackTitle) {
+            if (nowUrl) {
+                trackTitle.innerHTML = `<a href="${nowUrl}" target="_blank" rel="noopener noreferrer" class="np-link">${track?.name ?? 'Silence!'}</a>`
+            } else {
+                trackTitle.textContent = track?.name ?? 'Silence!'
+            }
+        }
         if (trackAlbum) {
             const album = track?.album?.['#text'] || 'Unknown'
-            trackAlbum.innerHTML = `<span>&#xf001;</span> ${album}`
+            trackAlbum.textContent = album
         }
         if (trackArtist) {
             const artist = track?.artist?.['#text'] || 'Sam Foreman'
-            trackArtist.innerHTML = `<span>&#xf007;</span> ${artist}`
+            trackArtist.textContent = artist
         }
-        if (trackDuration) trackDuration.textContent = ' '
+        setLive(isLive)
+        if (isLive) {
+            const artist = track?.artist?.['#text'] || ''
+            const name = track?.name || ''
+            const d = await fetchDuration(artist, name)
+            if (d > 0) {
+                if (trackDuration) {
+                    trackDuration.textContent = `0:00 / ${fmt(d)}`
+                }
+                startProgress(d)
+            } else {
+                if (trackDuration) trackDuration.textContent = 'LIVE'
+                stopProgress()
+                setProgress(15)
+                if (playingEl)
+                    playingEl.style.setProperty('--progress-head', '15ch')
+            }
+        } else {
+            if (trackDuration) trackDuration.textContent = ''
+            stopProgress()
+            setProgress(0)
+            if (playingEl) playingEl.style.removeProperty('--progress-head')
+        }
     }
 
     const setLastFM = async () => {
@@ -146,8 +252,7 @@
             const tracks = data?.recenttracks?.track ?? []
             const [current, ...rest] = tracks
 
-            updateNowPlaying(current)
-
+            // Render history before awaiting now-playing (which may fetch track duration)
             clearUpNext()
             if (upNext && rest.length > 0) {
                 rest.forEach((track, index) => {
@@ -156,6 +261,7 @@
                             name: track?.name,
                             album: track?.album?.['#text'],
                             artist: track?.artist?.['#text'],
+                            url: track?.url,
                         }),
                     )
                     if (index < rest.length - 1) {
@@ -163,20 +269,18 @@
                     }
                 })
             }
+
+            await updateNowPlaying(current)
         } catch {
-            updateNowPlaying(null)
             clearUpNext()
+            try {
+                await updateNowPlaying(null)
+            } catch {
+                /* ignore */
+            }
         }
     }
 
-    // Defer the first last.fm fetch off the initial critical path — it's a
-    // third-party request (ws.audioscrobbler.com) that Lighthouse flags as the
-    // max critical-path latency (~474ms). The widget already shows "Loading..."
-    // in static HTML, so nothing above the fold waits on it. rIC's 2nd arg
-    // must be an options object ({ timeout }), NOT a bare number (a bare number
-    // throws and silently kills the callback); mirror Layout.astro's
-    // scheduleIdle helper. The periodic refresh still starts once the first
-    // fetch has been scheduled.
     const scheduleIdle = (fn) => {
         if (window.requestIdleCallback) {
             window.requestIdleCallback(fn, { timeout: 3000 })
@@ -193,18 +297,151 @@
 <style>
     #progress-bar {
         color: var(--blue);
+        margin-top: 0.25lh;
+        --progress-h: 2px;
+        /* Inset content off the rounded border — brackets + track don't kiss the edge (Image #14) */
+        padding-inline: 0.5ch;
         #progress {
             --separator-color: var(--green);
+            --separator-width: var(--progress-h);
             width: 15ch;
         }
 
         #progress-gutter {
             --separator-color: var(--background2);
+            --separator-width: var(--progress-h);
             flex-grow: 1;
         }
     }
 
+    /* Live: ticker is the accent — thick green bar + pulsing dot on the head.
+       Paused: guttered empty trough (existing colors, 0 width) reads as idle. */
+    #playing[data-live='true'] #progress-bar #progress {
+        --separator-color: var(--green);
+        --separator-width: 3px;
+        filter: drop-shadow(0 0 2px var(--green));
+        /* Anchor the live dot so ::after can ride the fill edge */
+        position: relative;
+        overflow: visible;
+    }
+
+    #playing[data-live='true'] #progress::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 100%;
+        /* Straddle the fill edge; clamp so the dot never sits outside the 15ch + gutter track */
+        translate: -50% -50%;
+        width: 1.05ch;
+        height: 1.05ch;
+        border-radius: 999px;
+        background: var(--green);
+        box-shadow: 0 0 3px var(--green);
+        animation: live-dot-pulse 900ms ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+
+    @keyframes live-dot-pulse {
+        0% {
+            opacity: 0.85;
+            scale: 0.92;
+        }
+        100% {
+            opacity: 1;
+            scale: 1.02;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #playing[data-live='true'] #progress-bar::after {
+            animation: none;
+        }
+    }
+
+    .np-icon {
+        display: inline-flex;
+        align-items: flex-end;
+        justify-content: center;
+        width: 2.4ch;
+        height: 1lh;
+        margin-right: 1ch;
+        flex-shrink: 0;
+        vertical-align: middle;
+    }
+
+    .np-pause {
+        line-height: 1lh;
+        color: var(--foreground2);
+    }
+
+    .np-eq {
+        display: none;
+        align-items: flex-end;
+        gap: 0.26ch;
+        height: 1lh;
+
+        i {
+            display: block;
+            width: 0.5ch;
+            border-radius: 0;
+            background: var(--accent);
+            height: 18%;
+            transform-origin: bottom center;
+        }
+    }
+
+    #playing[data-live='true'] .np-pause {
+        display: none;
+    }
+
+    #playing[data-live='true'] .np-eq {
+        display: inline-flex;
+    }
+
+    #playing[data-live='true'] .np-eq i {
+        animation: eq-bounce 650ms ease-in-out infinite alternate;
+    }
+
+    #playing[data-live='true'] .np-eq i:nth-child(1) {
+        animation-duration: 420ms;
+        animation-delay: -80ms;
+    }
+
+    #playing[data-live='true'] .np-eq i:nth-child(2) {
+        animation-duration: 560ms;
+        animation-delay: -160ms;
+    }
+
+    #playing[data-live='true'] .np-eq i:nth-child(3) {
+        animation-duration: 380ms;
+        animation-delay: -40ms;
+    }
+
+    #playing[data-live='true'] .np-eq i:nth-child(4) {
+        animation-duration: 610ms;
+        animation-delay: -190ms;
+    }
+
+    @keyframes eq-bounce {
+        0% {
+            height: 18%;
+            opacity: 0.85;
+        }
+        100% {
+            height: 92%;
+            opacity: 1;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #playing[data-live='true'] .np-eq i {
+            animation: none !important;
+            height: 55% !important;
+        }
+    }
+
     #stats-widget {
+        --widget-accent: var(--red);
         grid-column: 2 / 4;
         grid-row: 1 / 3;
         min-height: 0;
@@ -216,17 +453,29 @@
         line-height: 1;
     }
 
+    #stats-widget {
+        --history-grid: 2.4ch 1.4fr 1fr 1.05fr;
+    }
+
     #up-next {
+        overflow-x: hidden;
         overflow-y: auto;
         min-height: 0;
         scrollbar-width: thin;
         scrollbar-color: var(--foreground2) transparent;
+        scrollbar-gutter: stable;
     }
 
     #playing {
         --box-border-color: var(--background2);
-        color: var(--accent);
-        line-height: 1.3;
+        color: var(--widget-accent, var(--red));
+        line-height: 1.2;
+        gap: 0;
+        padding-inline: 0.6ch;
+    }
+    /* Equalizer bars + now-playing link should use the widget's own accent (red for last.fm) not global pink */
+    .np-eq i {
+        background: var(--widget-accent, var(--red)) !important;
     }
 
     .lastfm-badge {
@@ -249,7 +498,7 @@
         background-image: none;
         --badge-text: none;
         --badge-color: none;
-        --color: var(--red);
+        --color: var(--widget-accent, var(--red));
         color: var(--color);
         background-color: oklch(
             from var(--color) calc(l * var(--oklch-scale, 0.85)) c h / 0.1
@@ -260,29 +509,111 @@
         }
     }
 
+    /* History rows: one shared grid so icon/track/artist/album align across rows. */
+    :global(.history-head) {
+        display: grid;
+        grid-template-columns: var(--history-grid);
+        gap: 1ch;
+        align-items: center;
+        justify-items: center;
+        text-align: center;
+        padding: 0 1ch;
+        font-size: 0.72em;
+        letter-spacing: 0.06em;
+        color: var(--foreground2);
+        opacity: 0.55;
+        text-transform: uppercase;
+        min-width: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 12%, transparent);
+        padding-bottom: 0.4lh;
+        margin-bottom: 0.15lh;
+        span span { color: var(--widget-accent, var(--red)); }
+    }
+    :global(.history-head > span) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6ch;
+        width: 100%;
+    }
+    /* Now-playing row and history rows share the same columns so title/artist/album line up */
+    :global(.np-row) {
+        display: grid !important;
+        grid-template-columns: var(--history-grid);
+        gap: 1ch;
+        align-items: center;
+        padding-left: 1ch;
+        padding-right: 1ch;
+        min-width: 0;
+    }
+    /* Progress row: keep bar in first 3 cols, push duration to the right edge */
+    #progress-bar {
+        padding-left: 1ch;
+        padding-right: 1ch;
+        gap: 1ch;
+        #track-duration {
+            margin-left: auto;
+            color: inherit;
+            white-space: nowrap;
+            font-size: 0.85em;
+            opacity: 0.85;
+        }
+    }
     :global(.song) {
+        display: grid;
+        grid-template-columns: var(--history-grid);
         gap: 1ch;
         padding-left: 1ch;
         padding-right: 1ch;
         color: var(--foreground1);
+        text-decoration: none;
+        align-items: center;
+        min-width: 0;
+    }
+    :global(.song-icon) {
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
     }
 
-    :global(.author),
-    :global(.album),
+    :global(a.song:hover) {
+        color: var(--background0);
+        background: var(--widget-accent, var(--accent));
+        :global(.author), :global(.album) { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent, var(--accent))); }
+    }
+
+    :global(.np-link) {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    :global(.np-link:hover) {
+        color: var(--background0);
+        background: var(--widget-accent, var(--accent));
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
     :global(.title) {
-        flex: 1 1 0;
         min-width: 0;
         text-overflow: ellipsis;
         white-space: nowrap;
         overflow: hidden;
-
-        :global(span) {
-            color: var(--pink);
-        }
     }
 
-    :global(.author),
+    :global(.author) {
+        min-width: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        color: var(--foreground2);
+    }
+
     :global(.album) {
+        min-width: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
         color: var(--foreground2);
     }
 </style>

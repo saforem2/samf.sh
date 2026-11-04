@@ -1,0 +1,192 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import WidgetFrameShowcase from '@/components/landing/widgets/WidgetFrameShowcase.astro'
+---
+
+<Layout title="Widget frame labels — showcase">
+    <main class="wbl-page">
+        <header class="wbl-header">
+            <a href="/showcase" class="wbl-back">← all showcases</a>
+            <h1>Widget labels — in the frame</h1>
+            <p class="wbl-desc">
+                Current style keeps the label <em>inside</em> the box (left). Proposed
+                style breaks the top border around a badge like the code blocks do
+                (right). This page is a side-by-side trial — the homepage is unchanged.
+                Toggle between the two below, or scroll to compare.
+            </p>
+            <row class="wbl-toggle" gap-="1">
+                <button id="wbl-btn-current" is-="button" variant-="default"
+                    >Current (inside)</button
+                >
+                <button id="wbl-btn-framed" is-="button" variant-="default"
+                    >Framed (in border)</button
+                >
+                <button id="wbl-btn-both" is-="button" variant-="default"
+                    >Side-by-side</button
+                >
+            </row>
+        </header>
+
+        <div id="wbl-compare" class="wbl-compare" data-mode="both">
+            <section class="wbl-pane" data-pane="current">
+                <h2 class="wbl-pane-title">Current — label inside</h2>
+                <WidgetFrameShowcase framed={false} />
+            </section>
+            <section class="wbl-pane" data-pane="framed">
+                <h2 class="wbl-pane-title">Proposed — label in border</h2>
+                <WidgetFrameShowcase framed />
+            </section>
+        </div>
+
+        <footer class="wbl-footer">
+            <p>
+                Nothing here ships until you say so — this page is the decision
+                artifact. To promote the framed style, move its CSS into the
+                widget components (or a shared <code>widget-frame.css</code>)
+                and delete the current inside-badge markup.
+            </p>
+        </footer>
+    </main>
+
+    <style>
+        .wbl-page {
+            max-width: min(150ch, 75vw);
+            margin: 1lh auto 3lh;
+            padding: 0 2ch;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5lh;
+            overflow: visible;
+        }
+        .wbl-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6lh;
+        }
+        .wbl-header h1 {
+            margin: 0;
+            font-size: 1.25em;
+        }
+        .wbl-header h1::before {
+            content: '';
+            margin: 0;
+        }
+        .wbl-back {
+            color: var(--foreground2);
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .wbl-back:hover {
+            color: var(--blue);
+        }
+        .wbl-desc {
+            color: var(--foreground1);
+            max-width: 76ch;
+            margin: 0;
+        }
+        .wbl-desc em {
+            font-style: normal;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .wbl-toggle {
+            flex-wrap: wrap;
+            margin-top: 0.25lh;
+        }
+        .wbl-toggle button[aria-pressed='true'] {
+            --button-color: var(--blue);
+            --button-text: var(--background0);
+            background: var(--button-color);
+            color: var(--button-text);
+            border-color: var(--button-color);
+        }
+        .wbl-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2ch;
+            align-items: start;
+            overflow: visible;
+        }
+        .wbl-compare[data-mode='current'] {
+            grid-template-columns: 1fr;
+        }
+        .wbl-compare[data-mode='current'] [data-pane='framed'] {
+            display: none;
+        }
+        .wbl-compare[data-mode='framed'] {
+            grid-template-columns: 1fr;
+        }
+        .wbl-compare[data-mode='framed'] [data-pane='current'] {
+            display: none;
+        }
+        .wbl-pane {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5lh;
+            overflow: visible;
+            padding-top: 0.7lh;
+        }
+        .wbl-pane-title {
+            font-size: 0.95em;
+            color: var(--foreground2);
+            margin: 0;
+            font-weight: 600;
+        }
+        .wbl-pane-title::before {
+            content: '';
+            margin: 0;
+        }
+        .wbl-footer {
+            color: var(--foreground2);
+            font-size: 0.9em;
+            max-width: 76ch;
+            border-top: 1px solid var(--background2);
+            padding-top: 1lh;
+        }
+        .wbl-footer code {
+            background: var(--background1);
+            padding: 0 0.4ch;
+            border-radius: 2px;
+        }
+        @media (max-width: 110ch) {
+            .wbl-compare[data-mode='both'] {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script>
+        const compare = document.getElementById('wbl-compare')
+        const btns = {
+            current: document.getElementById('wbl-btn-current'),
+            framed: document.getElementById('wbl-btn-framed'),
+            both: document.getElementById('wbl-btn-both'),
+        } as const
+
+        const setMode = (mode: 'current' | 'framed' | 'both') => {
+            if (!compare) return
+            compare.dataset.mode = mode
+            for (const [k, btn] of Object.entries(btns)) {
+                btn?.setAttribute('aria-pressed', String(k === mode))
+            }
+            try {
+                localStorage.setItem('wbl-compare-mode', mode)
+            } catch {}
+        }
+
+        btns.current?.addEventListener('click', () => setMode('current'))
+        btns.framed?.addEventListener('click', () => setMode('framed'))
+        btns.both?.addEventListener('click', () => setMode('both'))
+
+        // Restore last choice.
+        try {
+            const saved = localStorage.getItem('wbl-compare-mode')
+            if (saved === 'current' || saved === 'framed' || saved === 'both')
+                setMode(saved)
+            else setMode('both')
+        } catch {
+            setMode('both')
+        }
+    </script>
+</Layout>

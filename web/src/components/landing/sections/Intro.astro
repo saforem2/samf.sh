@@ -324,28 +324,12 @@ const total = variants.length
                 grid,
                 '[tabindex="0"], a[href], button:not([disabled])',
             )
-            // Start with About highlighted without moving keyboard focus.
-            // Retire this initial marker when another widget is used; vim
-            // navigation only tracks markers it sets itself.
-            const intro = document.getElementById('intro-widget')
-            if (intro) {
-                intro.setAttribute('data-vim-focused', 'true')
-                const clearInitialHighlight = (event: Event) => {
-                    if (!(event.target instanceof Element)) return
-                    const widget = event.target.closest(
-                        '#widgets-grid > [tabindex="0"]',
-                    )
-                    if (!widget || widget === intro) return
-                    intro.removeAttribute('data-vim-focused')
-                    grid.removeEventListener(
-                        'pointerover',
-                        clearInitialHighlight,
-                    )
-                    grid.removeEventListener('focusin', clearInitialHighlight)
-                }
-                grid.addEventListener('pointerover', clearInitialHighlight)
-                grid.addEventListener('focusin', clearInitialHighlight)
-            }
+            // Mouse visitors start with no widget "selected" — the
+            // frame highlight is keyboard/scroll only (see Widgets.astro
+            // + Intro.astro CSS gating on data-vim-focused /
+            // data-scroll-active / :focus-within). Removing the
+            // on-load data-vim-focused avoids the jarring purple box
+            // a first-time clicker saw on the About card.
 
             const shortcuts: Record<string, string> = {
                 a: '#intro-widget',
@@ -363,6 +347,12 @@ const total = variants.length
             // <=768px, but running two highlighters left the frame and content
             // out of sync in the 769-1024 band; markActiveWidget subsumes it.)
 
+            // On homepage (home=true) the w/a/p/t/l/m keys focus widgets;
+            // on non-home variants the same letters should fall through to
+            // NavbarMinimal's page-navigation (p/t/m → /posts /talks /more).
+            const isHome = grid.classList.contains('home-grid')
+
+            // Grid-local listener: fires when focus is already inside the grid.
             grid.addEventListener('keydown', (e) => {
                 if (isUserTyping()) return
                 const selector = shortcuts[e.key]
@@ -375,6 +365,33 @@ const total = variants.length
                     vimFocusElement(target)
                 }
             })
+
+            // Window-level capture on homepage: when focus is on <body> or any
+            // non-input element outside the grid (the common initial state), the
+            // grid listener never fires because the event target isn't inside the
+            // grid. Capture here so homepage widget jumps win over navbar nav.
+            if (isHome) {
+                const onWindowKeydown = (e: KeyboardEvent) => {
+                    if (isUserTyping()) return
+                    if (e.defaultPrevented) return
+                    const sel = shortcuts[e.key]
+                    if (!sel) return
+                    const target = grid.querySelector(sel) as HTMLElement | null
+                    if (!target) return
+                    e.preventDefault()
+                    // stopImmediatePropagation so NavbarMinimal's window listener
+                    // (registered later in DOM order) doesn't fire on the same key
+                    // and navigate away (p/t/m collide with both maps).
+                    e.stopImmediatePropagation()
+                    vimFocusElement(target)
+                }
+                // Capturing at the window: NavbarMinimal regs at default (bubble).
+                // Capture wins regardless of registration order, so our handler
+                // runs first and can guard with defaultPrevented / stopImmediate.
+                window.addEventListener('keydown', onWindowKeydown, {
+                    capture: true,
+                })
+            }
         }
     </script>
 
@@ -543,10 +560,20 @@ const total = variants.length
             opacity: 0.3;
         }
 
-        /* Dim unfocused widgets, highlight focused */
+        /* Dim idle widgets only after keyboard nav has entered the
+           grid (something has data-vim-focused). Mouse visitors see
+           all cards equal (1) until they j/k — avoids the "one card
+           is already selected" first paint. Mobile scroll uses
+           data-scroll-active at <=1024px and doesn't need this. */
         :global(#widgets-grid.intro-in-grid [tabindex='0']) {
-            opacity: 0.4;
+            opacity: 1;
             transition: opacity 0.15s;
+        }
+        :global(
+            #widgets-grid.intro-in-grid:has([data-vim-focused='true'])
+                [tabindex='0']
+        ) {
+            opacity: 0.4;
         }
 
         /* Brighten the active widget's content. Must cover the SAME set of

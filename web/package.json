@@ -11,6 +11,7 @@
         "format:check": "prettier --check \"src/**/*.{ts,css,astro}\" \"scripts/**/*.mjs\"",
         "lint": "eslint src/ scripts/",
         "astro": "astro",
+        "postinstall": "node ./scripts/patches/astro-dev-maybe-head+page-inject.mjs",
         "og": "bun run ../scripts/generate-og-images.ts"
     },
     "dependencies": {

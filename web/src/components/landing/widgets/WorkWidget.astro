@@ -1,4 +1,9 @@
 ---
+interface Props {
+    accentPool?: string[]
+    randomAccent?: boolean
+}
+const { accentPool, randomAccent = true } = Astro.props as Props
 const works = [
     {
         year: '2026',
@@ -116,7 +121,14 @@ const works = [
 ]
 ---
 
-<column box-="square" pad-="2 1" gap-="0" class="work-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="2 1"
+    gap-="0"
+    class="work-widget"
+    tabindex="0"
+    data-random-accent={String(randomAccent)}
+    data-accent-pool={accentPool?.join(',') ?? undefined}>
     <span is-="badge" variant-="green" class="ww-title"
         >&#xf0b1; <a
             href="https://scholar.google.com/citations?user=vV_1zDwAAAAJ"
@@ -141,6 +153,7 @@ const works = [
 
 <style>
     .work-widget {
+        --widget-accent: var(--purple, var(--mauve, #9a76ce));
         gap: 1lh;
         overflow: hidden;
         min-height: 0;
@@ -152,9 +165,7 @@ const works = [
         background-image: none;
         --badge-text: none;
         --badge-color: none;
-        /* line-height: 1.5; */
-
-        --color: var(--green);
+        --color: var(--widget-accent);
         color: var(--color);
         background-color: oklch(
             from var(--color) calc(l * var(--oklch-scale, 0.85)) c h / 0.1
@@ -174,10 +185,12 @@ const works = [
            23.8px and keeps 9.2. */
         row-gap: 0.25lh;
         flex: 1;
+        overflow-x: hidden;
         overflow-y: auto;
         min-height: 0;
         scrollbar-width: thin;
         scrollbar-color: var(--foreground2) transparent;
+        scrollbar-gutter: stable;
         margin-block-start: -0.5lh;
     }
 
@@ -188,10 +201,21 @@ const works = [
         text-decoration: none;
         color: var(--foreground1);
         white-space: nowrap;
+        min-width: 0;
         flex-shrink: 0;
+        padding: 0 0.5ch;
+        margin-inline: -0.5ch;
+        border-radius: 2px;
 
         &:hover {
-            color: var(--blue);
+            color: var(--background0);
+            background: var(--widget-accent) !important;
+            .ww-year { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent)); }
+            .ww-badge { color: var(--background0); opacity: 0.9; }
+        }
+
+        &:nth-child(even) {
+            background: color-mix(in srgb, var(--foreground0) 4%, transparent);
         }
     }
 
@@ -213,6 +237,8 @@ const works = [
     }
 
     .ww-name {
+        min-width: 0;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
@@ -223,3 +249,8 @@ const works = [
         font-size: 0.85em;
     }
 </style>
+
+<script>
+    import { initWidgetAccentShuffle } from './shuffle-accents'
+    initWidgetAccentShuffle()
+</script>

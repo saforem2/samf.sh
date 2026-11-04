@@ -12,6 +12,7 @@ import TalksWidget from './TalksWidget.astro'
 import IntroWidget from './IntroWidget.astro'
 import WorkWidget from './WorkWidget.astro'
 import '@webtui/css/components/radio.css'
+import './widget-frame.css'
 
 interface Props {
     variant: number
@@ -110,7 +111,7 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
         left: 50%;
         transform: translate(round(-50%, 1ch), round(-50%, 1lh));
         display: grid;
-        max-width: 175ch;
+        max-width: 150ch;
         max-height: 90vh;
         min-width: min(80ch, 100%);
         min-height: 32lh;
@@ -182,7 +183,7 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
     #widgets-grid > [tabindex='0'][data-scroll-active='true']::before,
     #widgets-grid > [tabindex='0'][data-vim-focused='true']::before {
         border-color: var(--foreground0);
-        box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.55);
+        box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--widget-accent, var(--foreground0)) 55%, rgba(0,0,0,0.55));
     }
     #widgets-grid > [tabindex='0'][data-scroll-active='true'],
     #widgets-grid > [tabindex='0'][data-vim-focused='true'] {
@@ -837,4 +838,7 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll, { passive: true })
+</script>
+<script>
+    import './widget-frame'
 </script>

@@ -1231,9 +1231,15 @@ Appendix — pull up if someone asks about checkpoint frequency. The point is: t
   @media (max-width: 768px) { #portable-training .portable-demo { grid-template-columns: 1fr; } }
   @media print { #portable-training .slide-inner { padding-block-end: 0; } }
 
-  /* Dark variant slides */
-  [data-variant='dark'] { color: #fff; }
+  /* Dark variant slides — section dividers. Must set both bg + fg so
+     white text doesn't sit on the light theme's white page (observed/
+     alive are variant=dark but this deck has no branded theme:). */
+  [data-variant='dark'] {
+    color: #edeef7;
+    background-color: #0a0a1a;
+  }
   [data-variant='dark'] h2 { color: #fff !important; }
+  [data-variant='dark'] h3 { color: #c9ccf0 !important; }
 
   /* Callout polish */
   .callout-note {
