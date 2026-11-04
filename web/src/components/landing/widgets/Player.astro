@@ -13,7 +13,7 @@
         >]ast.fm
     </span>
     <column box-="round" pad-="1" id="playing">
-        <row class="np-row" gap-="1" style="align-items: center;">
+        <row class="np-row" style="align-items: center;">
             <span class="np-icon" aria-hidden="true"
                 ><span class="np-pause">&#xf04c;</span><span class="np-eq"
                     ><i></i><i></i><i></i><i></i></span
@@ -364,7 +364,6 @@
         justify-content: center;
         width: 2.4ch;
         height: 1lh;
-        margin-right: 1ch;
         flex-shrink: 0;
         vertical-align: middle;
     }
@@ -465,7 +464,6 @@
         scrollbar-color: var(--foreground2) transparent;
         scrollbar-gutter: stable;
     }
-
     #playing {
         --box-border-color: var(--background2);
         color: var(--widget-accent, var(--red));
@@ -509,7 +507,12 @@
         }
     }
 
-    /* History rows: one shared grid so icon/track/artist/album align across rows. */
+    /* Header + rows share one grid (Image #52): .history-head's 0.72em shrinks its
+       own 1ch, so 2.4ch / 1ch gaps would be 72% of the rows'. Fix by isolating
+       font-size to the labels, not the grid — wrapper stays at 1em. Header
+       also sits outside the scroll container's scrollbar-gutter, so pad its
+       right by that gutter width so both grids compute on the same available
+       width. */
     :global(.history-head) {
         display: grid;
         grid-template-columns: var(--history-grid);
@@ -517,16 +520,16 @@
         align-items: center;
         justify-items: start;
         text-align: left;
-        padding: 0 1ch;
-        font-size: 0.72em;
+        padding: 0 1ch 0.4lh 1ch;
+        margin-bottom: 0.15lh;
         letter-spacing: 0.06em;
         color: var(--foreground2);
         opacity: 0.55;
         text-transform: uppercase;
         min-width: 0;
+        box-sizing: border-box;
+        scrollbar-gutter: stable;
         border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 12%, transparent);
-        padding-bottom: 0.4lh;
-        margin-bottom: 0.15lh;
         span span { color: var(--widget-accent, var(--red)); }
     }
     :global(.history-head > span) {
@@ -534,17 +537,22 @@
         align-items: center;
         justify-content: flex-start;
         gap: 0.6ch;
+        min-width: 0;
         width: 100%;
+        font-size: 0.72em;
     }
-    /* Now-playing row and history rows share the same columns so title/artist/album line up */
+    /* Now-playing row + history rows share the same columns so title/artist/album
+       line up. np-row lives inside the WebTUI round box (#playing, pad-="1")
+       so its available width is already inset — same idea as the history
+       header compensating for scrollbar-gutter. */
     :global(.np-row) {
         display: grid !important;
         grid-template-columns: var(--history-grid);
         gap: 1ch;
         align-items: center;
-        padding-left: 1ch;
-        padding-right: 1ch;
+        padding: 0;
         min-width: 0;
+        box-sizing: border-box;
     }
     /* Progress row: keep bar in first 3 cols, push duration to the right edge */
     #progress-bar {
@@ -563,8 +571,7 @@
         display: grid;
         grid-template-columns: var(--history-grid);
         gap: 1ch;
-        padding-left: 1ch;
-        padding-right: 1ch;
+        padding: 0 1ch;
         color: var(--foreground1);
         text-decoration: none;
         align-items: center;
