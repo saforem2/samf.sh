@@ -99,6 +99,43 @@ uv tool install argo-shim
 tunnel, and prints the token. Each restart **rotates** the token (important
 later).
 
+> [!WARNING]- Once `llm-rosetta` owns `settings.json`, tell `argo-shim` to leave it alone
+> After the next section you will route Claude Code through `llm-rosetta` on
+> `127.0.0.1:8765` — a `route-claude-through-rosetta` helper rewrites
+> `ANTHROPIC_BASE_URL` away from the shim. From that point on every plain
+> `argo-shim` start **overwrites** `~/.claude/settings.json` back to
+> `http://127.0.0.1:25940/argoapi`. That includes `argo-shim --restart` and the
+> remote-host form `CELS_USERNAME=… uvx argo-shim --host compute-01.cels.anl.gov --restart`,
+> which is exactly how this bites: you restart a remote shim for a login-node
+> job and silently break the laptop's gateway routing.
+>
+> The fix is one flag:
+>
+> ```bash
+> argo-shim --no-update-settings               # local restart
+> argo-shim --host compute-01.cels.anl.gov --no-update-settings --restart  # remote host
+> ```
+>
+> `llm-rosetta` cannot replace the shim — its `argo` provider still points at
+> `http://127.0.0.1:25940` and expects a running `argo-shim` underneath — but it
+> *does* replace the shim as the owner of `ANTHROPIC_BASE_URL`. Keep it that
+> way. If you want the flag on by default, wrap `argo-shim` in `~/.zshrc`:
+>
+> ```zsh
+> argo-shim() {
+>   if [[ "$*" == *"--no-update-settings"* ]]; then
+>     command uvx --no-cache argo-shim "$@"
+>   else
+>     command uvx --no-cache argo-shim --no-update-settings "$@"
+>   fi
+> }
+> ```
+>
+> `argo-rosetta-sync` (in [Token rotation](#token-rotation)) re-applies
+> `route-claude-through-rosetta` after a shim restart, so a missed flag is
+> recoverable — it just costs a second restart of the gateway before the
+> dashboard sees Claude Code traffic again.
+
 Sanity check. The token lives in `~/.claude/settings.json`, so the helper digs
 it out itself. It builds the request body with [`jq`][jq] (`brew install jq`)
 rather than string interpolation, so a prompt containing quotes or an apostrophe
@@ -123,8 +160,9 @@ argo-ask "Claude Opus 5" "what's 2+2?"   # quotes are safe
 
 ### Claude Code (Anthropic, native)
 
-Claude Code needs no extra config; `argo-shim` writes the base URL and token
-into `~/.claude/settings.json` for you:
+`argo-shim` writes the base URL and token into `~/.claude/settings.json` for
+you, so Claude Code needs no extra config. This is the right default when the
+shim is the _only_ thing in front of Argo:
 
 ```json
 {
@@ -1268,7 +1306,7 @@ argo-rosetta-sync() {
 The startup ritual after a reboot:
 
 ```bash
-argo-shim                    # in a terminal: creates tunnel, rotates token
+argo-shim --no-update-settings  # in a terminal: creates tunnel, rotates token (see box above)
 refresh-argo-token           # sync Argo token into env
 rosetta-gateway-restart      # restart rosetta after config/token changes
 route-claude-through-rosetta # optional: send Claude Code through rosetta too
