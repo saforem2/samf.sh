@@ -347,6 +347,12 @@ const total = variants.length
             // <=768px, but running two highlighters left the frame and content
             // out of sync in the 769-1024 band; markActiveWidget subsumes it.)
 
+            // On homepage (home=true) the w/a/p/t/l/m keys focus widgets;
+            // on non-home variants the same letters should fall through to
+            // NavbarMinimal's page-navigation (p/t/m → /posts /talks /more).
+            const isHome = grid.classList.contains('home-grid')
+
+            // Grid-local listener: fires when focus is already inside the grid.
             grid.addEventListener('keydown', (e) => {
                 if (isUserTyping()) return
                 const selector = shortcuts[e.key]
@@ -359,6 +365,33 @@ const total = variants.length
                     vimFocusElement(target)
                 }
             })
+
+            // Window-level capture on homepage: when focus is on <body> or any
+            // non-input element outside the grid (the common initial state), the
+            // grid listener never fires because the event target isn't inside the
+            // grid. Capture here so homepage widget jumps win over navbar nav.
+            if (isHome) {
+                const onWindowKeydown = (e: KeyboardEvent) => {
+                    if (isUserTyping()) return
+                    if (e.defaultPrevented) return
+                    const sel = shortcuts[e.key]
+                    if (!sel) return
+                    const target = grid.querySelector(sel) as HTMLElement | null
+                    if (!target) return
+                    e.preventDefault()
+                    // stopImmediatePropagation so NavbarMinimal's window listener
+                    // (registered later in DOM order) doesn't fire on the same key
+                    // and navigate away (p/t/m collide with both maps).
+                    e.stopImmediatePropagation()
+                    vimFocusElement(target)
+                }
+                // Capturing at the window: NavbarMinimal regs at default (bubble).
+                // Capture wins regardless of registration order, so our handler
+                // runs first and can guard with defaultPrevented / stopImmediate.
+                window.addEventListener('keydown', onWindowKeydown, {
+                    capture: true,
+                })
+            }
         }
     </script>
 
