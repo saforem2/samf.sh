@@ -135,7 +135,10 @@ export function rehypeAnsi() {
             }
             flush()
             code.children = out
-            // Preserve Shiki's astro-code frame (border + language chip) — the
+            // Relabel as `ansi` in orange so the Rich-table block reads as a
+            // terminal dump rather than a code snippet — green `bash` would
+            // compete with the table's own cyan/yellow cells.
+            // Preserve Shiki's astro-code frame (border + chip) — the
             // plugin previously overwrote the class list with just 'ansi-block',
             // which stripped the styling. Append instead.
             node.properties = node.properties ?? {}
@@ -144,10 +147,19 @@ export function rehypeAnsi() {
             if (!classes.includes('ansi-block')) classes.push('ansi-block')
             // Shiki normally adds astro-code; if for any reason it's missing (e.g.
             // fence declared as ```ansi which is in excludeLangs), add it so the
-            // border/chip CSS applies. The language chip reads data-language which
-            // Shiki already set.
+            // border/chip CSS applies. The chip reads data-language which we set
+            // to `ansi` above so it gets the orange badge.
             if (!classes.includes('astro-code')) classes.push('astro-code')
             node.properties.className = classes
+            // Override the fence's original `bash` label — this block's visual
+            // identity is terminal output, not a shell snippet. The existing
+            // `data-language` is still `bash` from the ```bash fence; swap it
+            // so the chip + border use the ansi/orange theme.
+            node.properties['data-language'] = 'ansi'
+            // Shiki also stashes the language on the inner <code> — keep it in
+            // sync so any downstream selector that keys on code[data-language]
+            // doesn't see a mismatch.
+            if (code.properties) code.properties['data-language'] = 'ansi'
         })
     }
 }

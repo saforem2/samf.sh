@@ -2052,7 +2052,7 @@ pre.astro-code[data-language='go'] {
     --lang-icon: '\e627';
 }
 pre.astro-code[data-language='ansi'] {
-    --lang-badge: var(--material-green);
+    --lang-badge: var(--material-orange);
 }
 
 /* WebTUI's typography.css sets `content: '- '` on `ul li::before` — a
