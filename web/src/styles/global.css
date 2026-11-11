@@ -1670,6 +1670,14 @@ code.language-logs .log-msg {
     color: var(--foreground0);
 }
 
+/* ANSI SGR decoded inside a normal bash block (see rehype-ansi.mjs) */
+.ansi-block .ansi-line { display: block; }
+.ansi-block span.line::before { content: none !important; border-right: none !important; }
+.ansi-black{color:var(--foreground2)} .ansi-red{color:var(--red)} .ansi-green{color:var(--green)} .ansi-yellow{color:var(--yellow)} .ansi-blue{color:var(--blue)} .ansi-magenta{color:var(--mauve,var(--pink,#c678dd))} .ansi-cyan{color:var(--teal,var(--blue))} .ansi-white{color:var(--foreground0)}
+.ansi-bright-black{color:var(--foreground2);opacity:.85} .ansi-bright-red{color:var(--red);filter:brightness(1.15)} .ansi-bright-green{color:var(--green);filter:brightness(1.15)} .ansi-bright-yellow{color:var(--yellow);filter:brightness(1.15)} .ansi-bright-blue{color:var(--blue);filter:brightness(1.15)} .ansi-bright-magenta{color:var(--mauve,var(--pink));filter:brightness(1.15)} .ansi-bright-cyan{color:var(--teal,var(--blue));filter:brightness(1.15)} .ansi-bright-white{color:var(--foreground0);filter:brightness(1.12)}
+.ansi-bold{font-weight:700} .ansi-dim{opacity:.6}
+.ansi-bg-black{background:color-mix(in srgb,var(--foreground0) 12%,transparent)} .ansi-bg-red{background:color-mix(in srgb,var(--red) 14%,transparent)} .ansi-bg-green{background:color-mix(in srgb,var(--green) 14%,transparent)} .ansi-bg-yellow{background:color-mix(in srgb,var(--yellow) 14%,transparent)} .ansi-bg-blue{background:color-mix(in srgb,var(--blue) 14%,transparent)} .ansi-bg-magenta{background:color-mix(in srgb,var(--mauve,var(--pink)) 14%,transparent)} .ansi-bg-cyan{background:color-mix(in srgb,var(--teal,var(--blue)) 14%,transparent)} .ansi-bg-white{background:color-mix(in srgb,var(--foreground0) 8%,transparent)}
+
 pre.astro-code {
     /* Just enough room that the badge straddling the top edge does not sit
        on the first line of code. 0.5lh was half a blank row top and bottom,
@@ -2038,6 +2046,9 @@ pre.astro-code[data-language='rust'] {
 pre.astro-code[data-language='go'] {
     --lang-badge: var(--material-deep-purple);
     --lang-icon: '\e627';
+}
+pre.astro-code[data-language='ansi'] {
+    --lang-badge: var(--material-green);
 }
 
 /* WebTUI's typography.css sets `content: '- '` on `ul li::before` — a

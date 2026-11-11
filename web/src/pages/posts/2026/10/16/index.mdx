@@ -7,6 +7,8 @@ date-modified: today
 description: 'Submit, monitor, extend, and cancel HPC jobs from anywhere — no SSH session required. A tour of the new ezpz IRI integration: IRI-first auto fallback, rich status tables, and live resource and incident views, all backed by the ALCF IRI API.'
 ---
 
+import RichTable from '@/components/RichTable.astro'
+
 For years the `ezpz` answer to "which machine am I on?" was to figure it out
 at runtime. Launch on Aurora (PBS, Intel XPUs), Polaris (PBS, NVIDIA), Perlmutter
 (SLURM, NVIDIA), Frontier (SLURM, AMD), or a laptop — same command, no per-site
@@ -187,13 +189,29 @@ ezpz status --remote aurora --states queued --limit 5
 ## Rich tables (and the plain-text fallback)
 
 When stdout is a TTY, `ezpz status` renders a
-[Rich](https://github.com/Textualize/rich) table — `qmert`-parity columns,
-colour by state, single-letter `S`:
+[Rich](https://github.com/Textualize/rich) table with square borders, a neutral
+header rule, and color by state. The HTML version below keeps the same table
+structure available to screen readers. Every cell stays at `1rem`.
+
+<RichTable
+    caption="ezpz status --remote aurora"
+    headers={['Host', 'JOBID', 'S', 'QUEUE', 'NODES', 'WALL', 'ELAP', 'JOBNAME', 'NOTE']}
+    stateColumn="S"
+    rows={[
+        ['polaris', '7817021', 'Q', 'small', '18', '03:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
+        ['polaris', '7817022', 'Q', 'medium', '34', '06:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
+        ['polaris', '7817023', 'Q', 'small', '18', '03:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
+        ['polaris', '7817024', 'Q', 'medium', '34', '06:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
+        ['aurora', '9043542', 'Q', 'small', '788', '12:00', '--', 'followup-umbrella-boost-20261020', 'Not enough free nodes available'],
+    ]}
+/>
+
+The same command reported these endpoint warnings:
 
 ```text
- JOBID    S  QUEUE    NODES  WALL  ELAP  JOBNAME            NOTE
- 8986382   Q  large     2078  12:00   --  followup-umbrella…  Not enough free nodes available
- 9014070   R  debug-scaling  4  01:00  00:11 20b512-fixedpos…  Job run at … on (x4502c1s0b0…)
+⚠ warn sophia: unreachable (255)
+⚠ warn sirius: unreachable (255)
+⚠ warn frontier: unreachable (255)
 ```
 
 `Host` leads the fan-out (`ezpz status` with no `--remote`), short numeric
