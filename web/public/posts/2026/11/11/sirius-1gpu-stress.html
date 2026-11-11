@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torch Hammer report -- Sirius — Sirius A100 1-GPU stress (40GB) — compact-full_x3200c0s13b1n0_20261111_191308.csv</title>
+<style>
+
+  :root {
+    --bg: #fafafa; --surface: #ffffff; --surface2: #f5f5f4;
+    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.15);
+    --text: #1a1a18; --muted: #6b6b65; --hint: #9a9a92;
+    --success: #0f6e56; --danger: #b91c1c; --danger-bg: #fef2f2;
+    --warn: #92400e; --warn-bg: #fffbeb;
+    --radius: 8px; --radius-lg: 12px;
+  }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #1a1a18; --surface: #242422; --surface2: #2c2c2a;
+            --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+            --text: #e8e6df; --muted: #9a9a92; --hint: #6b6b65;
+            --success: #5dcaa5; --danger: #f09595; --danger-bg: #451a1a;
+            --warn: #fbbf24; --warn-bg: #422006;
+        }
+    }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6;
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .header { margin-bottom: 2rem; border-bottom: 1px solid var(--border2); padding-bottom: 1.25rem; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .subtitle { font-size: 15px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+  .header .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .header .meta span { margin-right: 1.5rem; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+             gap: 10px; margin-bottom: 2rem; }
+  .metric-card { background: var(--surface2); border-radius: var(--radius); padding: 0.875rem 1rem; }
+  .metric-card .label { font-size: 11px; color: var(--muted); margin-bottom: 2px;
+                        text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-card .value { font-size: 22px; font-weight: 600;
+                        font-family: ui-monospace, "SF Mono", monospace; }
+  .metric-card.ok .value { color: var(--success); }
+  .metric-card.bad .value { color: var(--danger); }
+  .metric-card.warn .value { color: var(--warn); }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 15px; font-weight: 600; margin-bottom: 0.5rem; }
+  .section-title .unit { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .stats-line { font-size: 12px; color: var(--muted); margin-bottom: 0.75rem;
+                font-family: ui-monospace, "SF Mono", monospace; }
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 0.75rem;
+                position: relative; transition: max-width 0.2s ease; }
+  .chart-wrap.chart-zoomed { max-width: 100vw; margin-left: calc(-50vw + 50%);
+                             margin-right: calc(-50vw + 50%); padding: 1.5rem 2rem; }
+  .zoom-btn { position: absolute; top: 8px; right: 10px; background: var(--surface2);
+              border: 1px solid var(--border2); border-radius: 4px; padding: 2px 7px;
+              font-size: 16px; line-height: 1; cursor: pointer; color: var(--muted);
+              z-index: 1; transition: color 0.15s; }
+  .zoom-btn:hover { color: var(--text); border-color: var(--text); }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .chart-svg-wrap svg { width: 100%; height: auto; display: block; }
+  .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.75rem; }
+  .chart-row .chart-panel { min-width: 0; }
+  .chart-secondary { margin-top: 1rem; }
+  .chart-secondary .chart-panel { padding: 0.25rem 0; }
+  .chart-secondary .chart-subtitle { margin-bottom: 0.25rem; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px;
+          font-family: ui-monospace, "SF Mono", monospace; }
+  thead tr { background: var(--surface2); }
+  th { text-align: right; padding: 8px 12px; font-size: 11px; font-weight: 500;
+       letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+       border-bottom: 1px solid var(--border2);
+       font-family: system-ui, -apple-system, sans-serif; }
+  th:first-child { text-align: left; }
+  td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  td:first-child { text-align: left; }
+  td.host { font-weight: 500; }
+  td.warn { color: var(--warn); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .mono { font-family: ui-monospace, "SF Mono", monospace; }
+  .outlier-section { margin-top: 2rem; }
+  .outlier-row { font-size: 13px; padding: 4px 0;
+                 font-family: ui-monospace, "SF Mono", monospace; }
+  .outlier-row .marker { color: var(--danger); font-weight: 600; }
+  .chart-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem;
+                    text-transform: uppercase; letter-spacing: 0.04em; }
+  .separator td { border-bottom: none; }
+  th.sortable { cursor: pointer; user-select: none; position: relative; }
+  th.sortable:hover { color: var(--text); }
+  th.sortable::after { content: ' 95'; font-size: 10px; opacity: 0.5; }
+  th.sortable.asc::after { content: ' 91'; opacity: 0.8; }
+  th.sortable.desc::after { content: ' 93'; opacity: 0.8; }
+  .section-label td { background: var(--surface2); }
+  .show-all-btn { background: var(--surface2); border: 1px solid var(--border2);
+                  border-radius: 4px; padding: 2px 10px; font-size: 11px;
+                  color: var(--muted); cursor: pointer; margin-left: 8px;
+                  font-family: system-ui, -apple-system, sans-serif; }
+  .show-all-btn:hover { color: var(--text); border-color: var(--text); }
+  .inner-expand td { padding: 7px 12px; text-align: right;
+                     border-bottom: 1px solid var(--border); }
+  .inner-expand td:first-child { text-align: left; }
+  footer { margin-top: 3rem; font-size: 11px; color: var(--hint);
+           border-top: 1px solid var(--border); padding-top: 1rem; }
+
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Torch Hammer benchmark report</h1>
+    <div class="subtitle">Sirius — Sirius A100 1-GPU stress (40GB) — compact-full_x3200c0s13b1n0_20261111_191308.csv</div>
+    <div class="meta">
+      <span>source: compact-full_x3200c0s13b1n0_20261111_191308.csv</span>
+      <span>GPU: NVIDIA A100-SXM4-40GB</span>
+      <span>nodes: 1</span>
+      <span>GPUs: 1</span>
+      <span>benchmarks: 8</span>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric-card ok">
+      <div class="label">nodes</div>
+      <div class="value">1</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">GPUs</div>
+      <div class="value">1</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">benchmarks</div>
+      <div class="value">8</div>
+    </div>
+    <div class="metric-card ok">
+      <div class="label">outliers</div>
+      <div class="value">0</div>
+    </div>
+  </div>
+
+  <div class="section">
+  <h2 class="section-title">(a) Batched GEMM (float32)    <span class="unit">[TFLOP/s]</span></h2>
+  <div class="stats-line">fleet mean: 18.9 TFLOP/s | mean power: 323W | max temp: 48 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (TFLOP/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>18.9–19.9 TFLOP/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">19.4</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">TFLOP/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>323–324 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">324</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>48.0–49.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">48.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>22.0–23.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">22.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="18.86">19</td><td class="mono" data-sort="18.86">19</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(b) Convolution (float32)    <span class="unit">[img/s]</span></h2>
+  <div class="stats-line">fleet mean: 9,364,516.4 img/s | mean power: 390W | max temp: 52 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (img/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>9.4M–9.4M img/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">9.4M</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">img/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>390–391 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">390</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>52.0–53.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">52.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>99.0–100 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">99.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>72.0–73.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">72.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,395–1,396 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,396</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="9364516.39">9,364,516</td><td class="mono" data-sort="9364516.39">9,364,516</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(c) Einsum Attention (float32)    <span class="unit">[TFLOP/s]</span></h2>
+  <div class="stats-line">fleet mean: 17.1 TFLOP/s | mean power: 347W | max temp: 52 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (TFLOP/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>17.1–18.1 TFLOP/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.6</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">TFLOP/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>347–348 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">348</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>52.0–53.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">52.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>26.0–27.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">26.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="17.06">17</td><td class="mono" data-sort="17.06">17</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(d) Memory Traffic (float32)    <span class="unit">[GB/s]</span></h2>
+  <div class="stats-line">fleet mean: 29.6 GB/s | mean power: 194W | max temp: 49 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (GB/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>29.6–30.6 GB/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">30.1</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">GB/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>194–194 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">194</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>49.0–50.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">49.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>51.0–52.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">51.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="29.57">30</td><td class="mono" data-sort="29.57">30</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(e) Heat Equation (float32)    <span class="unit">[MLUPS]</span></h2>
+  <div class="stats-line">fleet mean: 15,501.0 MLUPS | mean power: 289W | max temp: 45 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (MLUPS)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>16k–16k MLUPS: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">16k</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MLUPS</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>289–290 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">290</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>45.0–46.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">45.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="15501.05">15,501</td><td class="mono" data-sort="15501.05">15,501</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(f) Schrödinger Equation (float32)    <span class="unit">[iter/s]</span></h2>
+  <div class="stats-line">fleet mean: 58.8 iter/s | mean power: 201W | max temp: 45 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (iter/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>58.8–59.8 iter/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">59.3</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">iter/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>201–202 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">202</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>45.0–46.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">45.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>99.0–100 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">99.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="58.76">59</td><td class="mono" data-sort="58.76">59</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(g) Atomic Contention (float32)    <span class="unit">[Gops/s]</span></h2>
+  <div class="stats-line">fleet mean: 9.2 Gops/s | mean power: 124W | max temp: 41 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (Gops/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>9.2–10.2 Gops/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">9.7</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">Gops/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>124–125 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">125</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>41.0–42.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">41.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>99.0–100 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">99.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>9.0–10.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">9.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="9.18">9</td><td class="mono" data-sort="9.18">9</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(h) Sparse MM (float32)    <span class="unit">[GFLOP/s]</span></h2>
+  <div class="stats-line">fleet mean: 242.7 GFLOP/s | mean power: 221W | max temp: 44 C</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (GFLOP/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="24.0" width="863.0" height="236.0" fill="#0072B2" rx="1"><title>243–244 GFLOP/s: 1 GPUs</title></rect>
+<text x="504.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">243</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">GFLOP/s</text>
+<line x1="72.0" y1="24" x2="72.0" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="72.0" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+<div class="chart-row chart-secondary"><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean power (W)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>221–222 W: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">222</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">W</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU max temperature (°C)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>44.0–45.0 °C: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">44.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">°C</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean SM utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>100–101 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">100</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean memory BW utilization (%)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>5.0–6.0 %: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">5.5</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">%</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div><div class="chart-panel"><div class="chart-subtitle">Fleet distribution of GPU mean GPU clock (MHz)</div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="52" y1="184.0" x2="350" y2="184.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="187.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="101.0" x2="350" y2="101.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="104.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="52" y1="18.0" x2="350" y2="18.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="46" y="21.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">1</text>
+<text x="10" y="101" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,10,101)">GPU count</text>
+<rect x="52.0" y="18.0" width="297.0" height="166.0" fill="#0072B2" rx="1"><title>1,410–1,411 MHz: 1 GPUs</title></rect>
+<text x="201.0" y="200" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1,410</text>
+<text x="201" y="216" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">MHz</text>
+<line x1="52.0" y1="18" x2="52.0" y2="184" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="52.0" y="14" text-anchor="middle" font-size="11" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg></div></div>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th>
+        <th class="sortable" data-col="2">node mean</th>
+        <th class="sortable" data-col="3" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="4" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x3200c0s13b1n0</td><td class="mono" data-sort="242.71">243</td><td class="mono" data-sort="242.71">243</td><td class="mono" data-sort="0.0000">+0.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+
+  <div class="section outlier-section"><h2 class="section-title">Outliers</h2><div style="color:var(--success)">None detected</div></div>
+
+  <footer>generated by torch-hammer-reporter | palette: Okabe-Ito (colorblind-safe)</footer>
+<script>
+(function() {
+  document.querySelectorAll("th.sortable").forEach(th => {
+    th.addEventListener("click", function() {
+      const table = th.closest("table");
+      const tbody = table.querySelector("tbody");
+      const col = parseInt(th.dataset.col);
+      const rows = Array.from(tbody.querySelectorAll("tr:not(.separator):not(.section-label)"));
+      const seps = Array.from(tbody.querySelectorAll("tr.separator, tr.section-label"));
+      const isAsc = th.classList.contains("asc");
+      table.querySelectorAll("th.sortable").forEach(h => h.classList.remove("asc","desc"));
+      th.classList.add(isAsc ? "desc" : "asc");
+      const dir = isAsc ? -1 : 1;
+      rows.sort((a,b) => {
+        const ca = a.children[col]; const cb = b.children[col];
+        const va = ca ? (ca.dataset.sort !== undefined ? parseFloat(ca.dataset.sort) : ca.textContent) : "";
+        const vb = cb ? (cb.dataset.sort !== undefined ? parseFloat(cb.dataset.sort) : cb.textContent) : "";
+        if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+        return String(va).localeCompare(String(vb)) * dir;
+      });
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      rows.forEach(r => tbody.appendChild(r));
+      seps.forEach(r => tbody.appendChild(r));
+    });
+  });
+})();
+</script>
+</div>
+</body>
+</html>

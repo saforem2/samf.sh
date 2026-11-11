@@ -1,0 +1,9 @@
+hostname,gpu,gpu_model,serial,benchmark,dtype,iterations,runtime_s,min,mean,max,unit,power_avg_w,temp_max_c,sm_util_mean,mem_bw_util_mean,gpu_clock_mean,mem_used_gb_mean,throttled
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Batched GEMM,float32,4,4.669,18900.3940,18907.1567,18920.8840,GFLOP/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Convolution,float32,51,4.056,1635518.5565,1640940.0341,1662918.1720,img/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Einsum Attention,float32,43,4.076,13977.1711,14240.0516,16456.4460,GFLOP/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Memory Traffic,float32,2,5.794,27.3301,27.6826,28.0351,GB/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Heat Equation,float32,157,4.001,5606.4204,10612.9916,10719.6009,MLUPS,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Schrödinger Equation,float32,172,4.018,42.7163,43.1665,43.3394,iter/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Atomic Contention,float32,70,4.05,1732.1416,1733.7484,1734.5284,Mops/s,,,,,,,false
+x1921c1s2b0n0,0,Intel(R) Data Center GPU Max 1550,N/A,Sparse MM,float32,78,4.039,2010.1450,2028.1117,2053.7627,GFLOP/s,,,,,,,false
