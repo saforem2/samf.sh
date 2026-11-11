@@ -135,9 +135,19 @@ export function rehypeAnsi() {
             }
             flush()
             code.children = out
-            // Tag the pre so CSS can suppress the numbered gutter on ANSI-colored blocks
+            // Preserve Shiki's astro-code frame (border + language chip) — the
+            // plugin previously overwrote the class list with just 'ansi-block',
+            // which stripped the styling. Append instead.
             node.properties = node.properties ?? {}
-            node.properties.className = [...(node.properties.className ?? []), 'ansi-block']
+            const existing = node.properties.className ?? []
+            const classes = Array.isArray(existing) ? existing : [existing]
+            if (!classes.includes('ansi-block')) classes.push('ansi-block')
+            // Shiki normally adds astro-code; if for any reason it's missing (e.g.
+            // fence declared as ```ansi which is in excludeLangs), add it so the
+            // border/chip CSS applies. The language chip reads data-language which
+            // Shiki already set.
+            if (!classes.includes('astro-code')) classes.push('astro-code')
+            node.properties.className = classes
         })
     }
 }

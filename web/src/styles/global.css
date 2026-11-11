@@ -1670,9 +1670,13 @@ code.language-logs .log-msg {
     color: var(--foreground0);
 }
 
-/* ANSI SGR decoded inside a normal bash block (see rehype-ansi.mjs) */
+/* ANSI SGR decoded inside a normal bash block (see rehype-ansi.mjs).
+   The transform preserves Shiki's `astro-code` class so the border + language
+   chip stay, but suppresses the line-number gutter which has no meaning for
+   a rendered terminal table. */
 .ansi-block .ansi-line { display: block; }
 .ansi-block span.line::before { content: none !important; border-right: none !important; }
+.ansi-block.astro-code { /* ensure border/chip still apply when astro-code was re-added by rehype-ansi */ }
 .ansi-black{color:var(--foreground2)} .ansi-red{color:var(--red)} .ansi-green{color:var(--green)} .ansi-yellow{color:var(--yellow)} .ansi-blue{color:var(--blue)} .ansi-magenta{color:var(--mauve,var(--pink,#c678dd))} .ansi-cyan{color:var(--teal,var(--blue))} .ansi-white{color:var(--foreground0)}
 .ansi-bright-black{color:var(--foreground2);opacity:.85} .ansi-bright-red{color:var(--red);filter:brightness(1.15)} .ansi-bright-green{color:var(--green);filter:brightness(1.15)} .ansi-bright-yellow{color:var(--yellow);filter:brightness(1.15)} .ansi-bright-blue{color:var(--blue);filter:brightness(1.15)} .ansi-bright-magenta{color:var(--mauve,var(--pink));filter:brightness(1.15)} .ansi-bright-cyan{color:var(--teal,var(--blue));filter:brightness(1.15)} .ansi-bright-white{color:var(--foreground0);filter:brightness(1.12)}
 .ansi-bold{font-weight:700} .ansi-dim{opacity:.6}
