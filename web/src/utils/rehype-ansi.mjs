@@ -28,8 +28,27 @@ const BG_CLASS = {
     104: 'ansi-bg-bright-blue', 105: 'ansi-bg-bright-magenta', 106: 'ansi-bg-bright-cyan', 107: 'ansi-bg-bright-white',
 }
 
-const ANSI_RE = /\x1b\[([0-9;]*)m/g
-const ANSI_STRIP = /\x1b\[[0-9;]*m/g
+const ANSI_RE = /\x1b\[([0-9;:]*)m/g
+const ANSI_STRIP = /\x1b\[[0-9;:]*m/g
+
+function parseSgrParams(value) {
+    return value.split(';').flatMap((group) => {
+        const parts = group.split(':')
+        if (parts.length === 1) return parts
+
+        const code = Number(parts[0])
+        const mode = Number(parts[1])
+        if ((code === 38 || code === 48) && mode === 5) {
+            return [parts[0], parts[1], parts[2] ?? '']
+        }
+        if ((code === 38 || code === 48) && mode === 2) {
+            const channels = parts.slice(2).filter((part) => part !== '')
+            if (channels.length === 4) channels.shift() // optional color-space id
+            return [parts[0], parts[1], ...channels.slice(0, 3)]
+        }
+        return parts
+    })
+}
 
 function color256(n) {
     if (n < 16) return null
@@ -89,7 +108,7 @@ function ansiToHast(raw) {
             const text=raw.slice(last,m.index), cls=stateClasses(st), style=stateStyle(st)
             out.push(cls.length||style ? { type:'element', tagName:'span', properties:{ ...(cls.length&&{className:cls}), ...(style&&{style}) }, children:[{type:'text',value:text}] } : {type:'text',value:text})
         }
-        applyParams(m[1].split(';'), st); last=ANSI_RE.lastIndex
+        applyParams(parseSgrParams(m[1]), st); last=ANSI_RE.lastIndex
     }
     if (last<raw.length) {
         const text=raw.slice(last), cls=stateClasses(st), style=stateStyle(st)
@@ -119,21 +138,27 @@ export function rehypeAnsi() {
 
             const decoded = ansiToHast(raw)
             // Wrap each logical line so box-drawing tables don't splay in flex-column
-            const out=[]; let cur=[]
+            const out=[]; let cur=[]; let endedWithBreak=false
             const flush=()=>{ out.push({type:'element',tagName:'span',properties:{className:['ansi-line']},children: cur.length?cur:[{type:'text',value:'\n'}]}); cur=[] }
             for (const n of decoded) {
                 if (n.type==='text') {
                     const parts=n.value.split('\n')
-                    for (let i=0;i<parts.length;i++){ if(i>0)flush(); if(parts[i]) cur.push({type:'text',value:parts[i]}) }
+                    for (let i=0;i<parts.length;i++){
+                        if(i>0){ flush(); endedWithBreak=true }
+                        if(parts[i]){ cur.push({type:'text',value:parts[i]}); endedWithBreak=false }
+                    }
                 } else {
                     const txt=n.children?.[0]?.value??''
                     if (txt.includes('\n')) {
                         const parts=txt.split('\n')
-                        for(let i=0;i<parts.length;i++){ if(i>0)flush(); if(parts[i]) cur.push({type:'element',tagName:'span',properties:{...n.properties},children:[{type:'text',value:parts[i]}]}) }
-                    } else cur.push(n)
+                        for(let i=0;i<parts.length;i++){
+                            if(i>0){ flush(); endedWithBreak=true }
+                            if(parts[i]){ cur.push({type:'element',tagName:'span',properties:{...n.properties},children:[{type:'text',value:parts[i]}]}); endedWithBreak=false }
+                        }
+                    } else { cur.push(n); endedWithBreak=false }
                 }
             }
-            flush()
+            if(cur.length || !endedWithBreak || !out.length) flush()
             code.children = out
             // Relabel as `ansi` in orange so the Rich-table block reads as a
             // terminal dump rather than a code snippet — green `bash` would

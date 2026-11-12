@@ -1280,7 +1280,12 @@ h6::before {
             text-decoration: none;
         }
 
-        :is([tabindex='0']:not(a[href]):not([is-~='badge']), summary)::after {
+        /* Code blocks use ::after for their language chip; their tabindex is
+           for keyboard focus and must not replace that chip with this marker. */
+        :is(
+            [tabindex='0']:not(a[href]):not([is-~='badge']):not(pre.astro-code),
+            summary
+        )::after {
             content: '';
             position: absolute;
             inset-inline-start: -1ch;

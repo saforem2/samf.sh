@@ -19,6 +19,8 @@ interface Props {
     headers?: string[]
     rows: string[][]
     fullIds?: string[]
+    stateColumn?: string
+    title?: string
     caption?: string
 }
 
@@ -26,17 +28,19 @@ const {
     headers = ['Job ID', 'State', 'Queue', 'Exit'],
     rows,
     fullIds,
-    caption = 'Terminal output — colors preserved from the Rich TTY render. When piped, the same data is plain text.',
+    stateColumn = 'State',
+    caption = 'Scheduler status output.',
+    title = caption,
 } = Astro.props as Props
 
-/** Short Rich IDs shown alongside full IDs, if any */
-const ids = fullIds ?? (rows.length ? rows.map((r) => `${r[0]}.aurora-pbs-0001.example.alcf.anl.gov`) : [])
+const ids = fullIds ?? []
+const stateColumnIndex = headers.findIndex((header) => header.toLowerCase() === stateColumn.toLowerCase())
 
 const stateClass = (s: string) => {
     const k = s.toLowerCase().trim()
-    if (k === 'active' || k === 'running') return 'rt-green'
-    if (k === 'queued' || k === 'pending') return 'rt-yellow'
-    if (k === 'held') return 'rt-magenta'
+    if (k === 'active' || k === 'running' || k === 'r') return 'rt-green'
+    if (k === 'queued' || k === 'pending' || k === 'q') return 'rt-yellow'
+    if (k === 'held' || k === 'h') return 'rt-magenta'
     if (k === 'completed') return 'rt-cyan'
     if (k === 'failed' || k === 'canceled' || k === 'cancelled') return 'rt-red'
     if (k === 'new') return 'rt-dim'
@@ -45,9 +49,8 @@ const stateClass = (s: string) => {
 ---
 
 <figure class="rich-table-wrap" role="group" aria-label={caption}>
-    <div class="rich-table-chrome" aria-hidden="true">
-        <span class="rt-dot rt-dot-r"></span><span class="rt-dot rt-dot-y"></span><span class="rt-dot rt-dot-g"></span>
-        <span class="rt-title">ezpz status — Rich TTY</span>
+    <div class="rich-table-chrome">
+        <span class="rt-title">{title}</span>
     </div>
     <div class="rich-table-scroll">
     <table class="rich-table">
@@ -59,10 +62,10 @@ const stateClass = (s: string) => {
         </thead>
         <tbody>
             {
-                rows.map((row, i) => (
+                rows.map((row) => (
                     <tr>
                         {row.map((cell, j) => (
-                            <td class={j === 1 ? stateClass(cell) : undefined}>{cell}</td>
+                            <td class={j === stateColumnIndex ? stateClass(cell) : undefined}>{cell}</td>
                         ))}
                     </tr>
                 ))
@@ -86,32 +89,27 @@ const stateClass = (s: string) => {
             Full job IDs: {ids.join(', ')}
         </div>
     )}
-    <figcaption class="rich-table-caption">{caption} Colors: <span class="rt-legend rt-green">active/running</span> · <span class="rt-legend rt-yellow">queued</span> · <span class="rt-legend rt-magenta">held</span> · <span class="rt-legend rt-cyan">completed</span> · <span class="rt-legend rt-red">failed/canceled</span> · <span class="rt-legend rt-dim">new</span>.</figcaption>
+    <figcaption class="rich-table-caption">Colors: <span class="rt-legend rt-green">active/running</span> · <span class="rt-legend rt-yellow">queued</span> · <span class="rt-legend rt-magenta">held</span> · <span class="rt-legend rt-cyan">completed</span> · <span class="rt-legend rt-red">failed/canceled</span> · <span class="rt-legend rt-dim">new</span>.</figcaption>
 </figure>
 
 <style>
 .rich-table-wrap {
     margin-block: 1lh;
     border: 1px solid color-mix(in srgb, var(--foreground2) 18%, transparent);
-    border-radius: 6px;
+    border-radius: 0;
     overflow: hidden;
     background: var(--background1);
 }
 .rich-table-chrome {
     display: flex;
     align-items: center;
-    gap: 0.6ch;
-    padding: 0.35lh 1ch;
+    padding: 0.5lh 1.2ch;
     background: color-mix(in srgb, var(--background0) 92%, var(--foreground0) 8%);
-    border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 14%, transparent);
-    font-size: 0.85em;
+    border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 18%, transparent);
+    font-size: 1rem;
     color: var(--foreground2);
 }
-.rt-dot { width: 0.9ch; height: 0.9ch; border-radius: 999px; display: inline-block; }
-.rt-dot-r { background: var(--red); }
-.rt-dot-y { background: var(--yellow); }
-.rt-dot-g { background: var(--green); }
-.rt-title { margin-left: 0.6ch; font-family: var(--code-font-family); letter-spacing: 0.02em; }
+.rt-title { font-family: var(--code-font-family); }
 
 .rich-table-scroll { overflow-x: auto; }
 
@@ -119,8 +117,12 @@ const stateClass = (s: string) => {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--code-font-family);
-    font-size: 0.95em;
+    font-size: 1rem;
     line-height: 1.6;
+}
+.rich-table th:not(:last-child),
+.rich-table td:not(:last-child) {
+    border-right: 1px solid color-mix(in srgb, var(--foreground2) 18%, transparent);
 }
 .rich-table th {
     text-align: left;
@@ -144,7 +146,7 @@ const stateClass = (s: string) => {
 }
 .rt-fullid {
     color: var(--foreground2);
-    font-size: 0.9em;
+    font-size: 1rem;
     opacity: 0.95;
     line-height: 1.5;
     white-space: nowrap;
@@ -160,7 +162,7 @@ const stateClass = (s: string) => {
 
 .rich-table-caption {
     padding: 0.5lh 1.2ch;
-    font-size: 0.82em;
+    font-size: 1rem;
     color: var(--foreground2);
     line-height: 1.5;
     border-top: 1px solid color-mix(in srgb, var(--foreground2) 10%, transparent);
