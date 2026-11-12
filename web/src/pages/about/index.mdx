@@ -261,7 +261,7 @@ Pre-Training group] for the [AuroraGPT] project.
 
 ## 📬 Posts
 
-<table id="posts-table" data-table-style="terminal">
+<table id="posts-table">
 <thead><tr><th>Date</th><th>Title</th></tr></thead>
 <tbody>
 {allPosts.map((post) => (
@@ -283,7 +283,7 @@ Pre-Training group] for the [AuroraGPT] project.
 > - HTML: [https://samforeman.me/talks/ai-for-science-2024/](https://samforeman.me/talks/ai-for-science-2024/)
 > - Slides: [https://samforeman.me/talks/ai-for-science-2024/slides](https://samforeman.me/talks/ai-for-science-2024/slides)
 
-<table id="talks-table" data-table-style="terminal">
+<table id="talks-table">
 <thead><tr><th>Date</th><th>Title</th><th>Location</th></tr></thead>
 <tbody>
 {allTalks.map((talk) => (
@@ -862,7 +862,7 @@ Pre-Training group] for the [AuroraGPT] project.
 > [!TIP|inline]
 > For a full list of my publications, see my [Google Scholar](https://scholar.google.com/citations?user=vV_1zDwAAAAJ&hl=en)
 
-<div id="work-table" data-table-style="terminal">
+<div id="work-table">
 
 | Year | Title |
 | ---- | ----- |
@@ -1213,21 +1213,19 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
   #repo-table th[data-sort-dir="asc"] .repo-arrow::before { content: "↑"; }
   #repo-table th[data-sort-dir="desc"] .repo-arrow::before { content: "↓"; }
   #repo-table td { vertical-align: top; }
-  /* Keep column labels on one line — the terminal table style leaves th free
-     to wrap, which broke "Updated" into "Update / d". */
+  /* Keep column labels on one line — the long description column already
+     provides the table's flexible width. */
   #repo-table th { white-space: nowrap; }
   #repo-table td.col-stars,
   #repo-table td.col-updated { white-space: nowrap; }
-  /* Cap the description at ~46ch. It inherits the terminal style's tbody
-     nowrap, so this truncates on one line rather than wrapping: an earlier
-     attempt that let it wrap made row heights ragged (one line vs two) and
-     the table sat narrower than its own content. The full text stays
-     available via the title attribute. */
+  /* Cap the description at ~46ch and keep ellipsis truncation on one line.
+     The full text stays available via the title attribute. */
   #repo-table td.col-desc {
     color: var(--foreground2);
     max-width: 46ch;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
   /* Marks a row that is not a project of my own: a fork, or a repo I only
      landed a merged PR in. Nerd Font has to be named explicitly here; the
@@ -1253,7 +1251,7 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
 `}</style>
 
 <p id="repo-grid-status">Loading repositories from GitHub…</p>
-<table id="repo-table" data-table-style="terminal" hidden>
+<table id="repo-table" hidden>
   <thead>
     <tr>
       <th data-sort="stars"><button type="button" aria-label="Sort by stars">⭐ <span class="repo-arrow"></span></button></th>
