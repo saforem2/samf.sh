@@ -16,7 +16,8 @@ type TocLine = {
     depth: number
     text: string
     slug: string
-    treePrefix: string
+    treeAncestors: boolean[]
+    treeLastSibling: boolean
 }
 const { tocLines = [] } = Astro.props as { tocLines?: TocLine[] }
 // Headings only — drop the depth-1 page-title entry (the active leaf itself
@@ -1156,9 +1157,23 @@ const ICON_ABOUT = '\u{f1028}'
                             data-depth={h.depth}>
                             <span
                                 class="toc-tree-prefix"
-                                aria-hidden="true"
-                                data-prefix={h.treePrefix.trim()}
-                            />
+                                aria-hidden="true">
+                                {h.treeAncestors.map((continues) => (
+                                    <span
+                                        class:list={[
+                                            'toc-rail-segment',
+                                            { continues },
+                                        ]}
+                                    />
+                                ))}
+                                <span
+                                    class:list={[
+                                        'toc-rail-segment',
+                                        'branch',
+                                        { last: h.treeLastSibling },
+                                    ]}
+                                />
+                            </span>
                             <span class="toc-hash" aria-hidden="true">
                                 {'#'.repeat(h.depth)}
                             </span>
@@ -1500,22 +1515,23 @@ const ICON_ABOUT = '\u{f1028}'
     /* ── Tree line characters (vertical bars + connectors) ── */
 
     .tree-line {
-        display: inline-block;
+        display: block;
+        position: relative;
         width: 2ch;
+        height: 1lh;
         flex-shrink: 0;
         color: var(--foreground3);
         user-select: none;
-        text-align: left;
     }
 
     .tree-file > .tree-line::before,
     .tree-folder > summary > .tree-line::before {
-        content: '├─';
-    }
-
-    .tree-file[data-last] > .tree-line::before,
-    .tree-folder[data-last] > summary > .tree-line::before {
-        content: '└─';
+        content: '';
+        position: absolute;
+        inset-inline-start: 0.5ch;
+        inset-block-start: 50%;
+        width: 1.5ch;
+        border-block-start: 0.125ch solid currentColor;
     }
 
     .tree-children {
@@ -1587,33 +1603,60 @@ const ICON_ABOUT = '\u{f1028}'
         padding-inline-start: 2ch;
     }
     .sidebar-toc .toc-tree-prefix {
+        display: flex;
+        align-self: stretch;
         flex-shrink: 0;
         color: var(--foreground3);
-        white-space: pre;
     }
-    .sidebar-toc .toc-tree-prefix::before {
-        content: attr(data-prefix);
+    .sidebar-toc .toc-rail-segment {
+        position: relative;
+        display: block;
+        flex: 0 0 3ch;
+    }
+    .sidebar-toc .toc-rail-segment.continues::before,
+    .sidebar-toc .toc-rail-segment.branch::before {
+        content: '';
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0.5ch;
+        height: 100%;
+        border-inline-start: 0.125ch solid var(--foreground3);
+    }
+    .sidebar-toc .toc-rail-segment.branch.last::before {
+        height: 50%;
+    }
+    .sidebar-toc .toc-rail-segment.branch::after {
+        content: '';
+        position: absolute;
+        inset-block-start: 50%;
+        inset-inline-start: 0.5ch;
+        width: 2.5ch;
+        border-block-start: 0.125ch solid var(--foreground3);
     }
     .sidebar-toc .toc-heading {
         display: flex;
-        align-items: baseline;
+        align-items: stretch;
         gap: 0.75ch;
-        padding-block: 0.05lh;
+        padding-block: 0;
         padding-inline: 0;
         /* One tier dimmer than the post-link leaves (--foreground2) so the
            inline heading outline reads as secondary to the page list. */
         color: var(--foreground3);
         text-decoration: none;
-        line-height: 1.3;
+        line-height: 1lh;
     }
     .sidebar-toc .toc-hash {
+        display: flex;
+        align-items: center;
         flex-shrink: 0;
         color: var(--foreground3);
         font-size: 1rem;
+        line-height: 1lh;
         letter-spacing: -0.05ch;
         opacity: 0.7;
     }
     .sidebar-toc .toc-text {
+        align-self: center;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
