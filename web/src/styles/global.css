@@ -1429,7 +1429,9 @@ html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
 }
 
-html[data-webtui-theme='custom-dark'] .astro-code span:not(.line):not([class*='ansi-']) {
+html[data-webtui-theme='custom-dark']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-custom-dark) !important;
     font-style: var(--shiki-custom-dark-font-style) !important;
     font-weight: var(--shiki-custom-dark-font-weight) !important;
@@ -1438,7 +1440,9 @@ html[data-webtui-theme='custom-dark'] .astro-code span:not(.line):not([class*='a
     background-color: transparent !important;
 }
 
-html[data-webtui-theme='catppuccin'] .astro-code span:not(.line):not([class*='ansi-']) {
+html[data-webtui-theme='catppuccin']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-catppuccin) !important;
     font-style: var(--shiki-catppuccin-font-style) !important;
     font-weight: var(--shiki-catppuccin-font-weight) !important;
@@ -1448,7 +1452,9 @@ html[data-webtui-theme='catppuccin'] .astro-code span:not(.line):not([class*='an
 }
 
 html[data-webtui-theme='catppuccin-latte'] .astro-code,
-html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line):not([class*='ansi-']) {
+html[data-webtui-theme='catppuccin-latte']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-catppuccin-latte) !important;
     font-style: var(--shiki-catppuccin-latte-font-style) !important;
     font-weight: var(--shiki-catppuccin-latte-font-weight) !important;
@@ -1688,18 +1694,130 @@ code.language-logs .log-msg {
    chip stay, but suppresses the line-number gutter which has no meaning for
    a rendered terminal table. ANSI colors use site theme tokens directly, so
    they track light/dark automatically without needing per-theme overrides. */
-.ansi-block .ansi-line { display: block; }
-.ansi-block span.line::before { content: none !important; border-right: none !important; }
-.ansi-block.astro-code { /* ensure border/chip still apply when astro-code was re-added by rehype-ansi */ }
+.ansi-block .ansi-line {
+    display: block;
+}
+.ansi-block span.line::before {
+    content: none !important;
+    border-right: none !important;
+}
+.ansi-block.astro-code {
+    /* ensure border/chip still apply when astro-code was re-added by rehype-ansi */
+}
 /* Base palette: !important so Shiki's --shiki-* token overrides (which fire
    in dark/catppuccin themes via .astro-code span:not(.line) !important) don't
    wash out terminal colors. Bright variants are 15% more luminous, matching
    the terminal's bold+bright semantics at roughly one stop. */
-.ansi-black{color:var(--foreground2) !important} .ansi-red{color:var(--red) !important} .ansi-green{color:var(--green) !important} .ansi-yellow{color:var(--yellow) !important} .ansi-blue{color:var(--blue) !important} .ansi-magenta{color:var(--mauve,var(--pink,#c678dd)) !important} .ansi-cyan{color:var(--teal,var(--blue)) !important} .ansi-white{color:var(--foreground0) !important}
-.ansi-bright-black{color:var(--foreground2) !important;opacity:.85} .ansi-bright-red{color:var(--red) !important;filter:brightness(1.15)} .ansi-bright-green{color:var(--green) !important;filter:brightness(1.15)} .ansi-bright-yellow{color:var(--yellow) !important;filter:brightness(1.15)} .ansi-bright-blue{color:var(--blue) !important;filter:brightness(1.15)} .ansi-bright-magenta{color:var(--mauve,var(--pink)) !important;filter:brightness(1.15)} .ansi-bright-cyan{color:var(--teal,var(--blue)) !important;filter:brightness(1.15)} .ansi-bright-white{color:var(--foreground0) !important;filter:brightness(1.12)}
-.ansi-bold{font-weight:700 !important} .ansi-dim{opacity:.6 !important}
-.ansi-bg-black{background:color-mix(in srgb,var(--foreground0) 12%,transparent)} .ansi-bg-red{background:color-mix(in srgb,var(--red) 14%,transparent)} .ansi-bg-green{background:color-mix(in srgb,var(--green) 14%,transparent)} .ansi-bg-yellow{background:color-mix(in srgb,var(--yellow) 14%,transparent)} .ansi-bg-blue{background:color-mix(in srgb,var(--blue) 14%,transparent)} .ansi-bg-magenta{background:color-mix(in srgb,var(--mauve,var(--pink)) 14%,transparent)} .ansi-bg-cyan{background:color-mix(in srgb,var(--teal,var(--blue)) 14%,transparent)} .ansi-bg-white{background:color-mix(in srgb,var(--foreground0) 8%,transparent)}
-.ansi-bg-bright-black{background:color-mix(in srgb,var(--foreground0) 22%,transparent)} .ansi-bg-bright-red{background:color-mix(in srgb,var(--red) 24%,transparent)} .ansi-bg-bright-green{background:color-mix(in srgb,var(--green) 24%,transparent)} .ansi-bg-bright-yellow{background:color-mix(in srgb,var(--yellow) 24%,transparent)} .ansi-bg-bright-blue{background:color-mix(in srgb,var(--blue) 24%,transparent)} .ansi-bg-bright-magenta{background:color-mix(in srgb,var(--mauve,var(--pink)) 24%,transparent)} .ansi-bg-bright-cyan{background:color-mix(in srgb,var(--teal,var(--blue)) 24%,transparent)} .ansi-bg-bright-white{background:color-mix(in srgb,var(--foreground0) 18%,transparent)}
+.ansi-black {
+    color: var(--foreground2) !important;
+}
+.ansi-red {
+    color: var(--red) !important;
+}
+.ansi-green {
+    color: var(--green) !important;
+}
+.ansi-yellow {
+    color: var(--yellow) !important;
+}
+.ansi-blue {
+    color: var(--blue) !important;
+}
+.ansi-magenta {
+    color: var(--mauve, var(--pink, #c678dd)) !important;
+}
+.ansi-cyan {
+    color: var(--teal, var(--blue)) !important;
+}
+.ansi-white {
+    color: var(--foreground0) !important;
+}
+.ansi-bright-black {
+    color: var(--foreground2) !important;
+    opacity: 0.85;
+}
+.ansi-bright-red {
+    color: var(--red) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-green {
+    color: var(--green) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-yellow {
+    color: var(--yellow) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-blue {
+    color: var(--blue) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-magenta {
+    color: var(--mauve, var(--pink)) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-cyan {
+    color: var(--teal, var(--blue)) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-white {
+    color: var(--foreground0) !important;
+    filter: brightness(1.12);
+}
+.ansi-bold {
+    font-weight: 700 !important;
+}
+.ansi-dim {
+    opacity: 0.6 !important;
+}
+.ansi-bg-black {
+    background: color-mix(in srgb, var(--foreground0) 12%, transparent);
+}
+.ansi-bg-red {
+    background: color-mix(in srgb, var(--red) 14%, transparent);
+}
+.ansi-bg-green {
+    background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.ansi-bg-yellow {
+    background: color-mix(in srgb, var(--yellow) 14%, transparent);
+}
+.ansi-bg-blue {
+    background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.ansi-bg-magenta {
+    background: color-mix(in srgb, var(--mauve, var(--pink)) 14%, transparent);
+}
+.ansi-bg-cyan {
+    background: color-mix(in srgb, var(--teal, var(--blue)) 14%, transparent);
+}
+.ansi-bg-white {
+    background: color-mix(in srgb, var(--foreground0) 8%, transparent);
+}
+.ansi-bg-bright-black {
+    background: color-mix(in srgb, var(--foreground0) 22%, transparent);
+}
+.ansi-bg-bright-red {
+    background: color-mix(in srgb, var(--red) 24%, transparent);
+}
+.ansi-bg-bright-green {
+    background: color-mix(in srgb, var(--green) 24%, transparent);
+}
+.ansi-bg-bright-yellow {
+    background: color-mix(in srgb, var(--yellow) 24%, transparent);
+}
+.ansi-bg-bright-blue {
+    background: color-mix(in srgb, var(--blue) 24%, transparent);
+}
+.ansi-bg-bright-magenta {
+    background: color-mix(in srgb, var(--mauve, var(--pink)) 24%, transparent);
+}
+.ansi-bg-bright-cyan {
+    background: color-mix(in srgb, var(--teal, var(--blue)) 24%, transparent);
+}
+.ansi-bg-bright-white {
+    background: color-mix(in srgb, var(--foreground0) 18%, transparent);
+}
 
 pre.astro-code {
     /* Half a line of air on both sides keeps the first and last rows clear
