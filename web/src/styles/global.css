@@ -3123,12 +3123,12 @@ html[data-webtui-theme='catppuccin-latte'] {
         > :is(td, th):first-child {
         box-shadow: inset 3px 0 0 0 var(--accent, var(--blue));
     }
-    /* Keep first-row padding symmetric with the rest of the table. */
+    /* Keep the first row aligned with the tighter shared cell padding. */
     table:not([data-table-style='terminal']):not([is-~='presentation'] table)
         :first-child
         > tr:first-child
         > :is(td, th) {
-        padding-top: 0.4lh !important;
+        padding-top: 0.15lh !important;
     }
 
     /* ── Terminal table style (`data-table-style="terminal"`) ────────────
