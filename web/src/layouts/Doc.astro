@@ -43,8 +43,7 @@ type DocHeading = {
 }
 
 type TocLine = DocHeading & {
-    treeAncestors: boolean[]
-    treeLastSibling: boolean
+    treePrefix: string
 }
 
 const { frontmatter, headings } = Astro.props as {
@@ -125,17 +124,19 @@ const ancestorHasSibling = new Map<number, boolean>()
 const tocLines: TocLine[] = tocHeadings.map((heading, index) => {
     const isLastSibling = !hasSiblingAfter(tocHeadings, index)
 
-    const treeAncestors: boolean[] = []
+    let ancestorPrefix = ''
     for (let level = 2; level < heading.depth; level += 1) {
-        treeAncestors.push(ancestorHasSibling.get(level) ?? false)
+        ancestorPrefix += ancestorHasSibling.get(level) ? '│  ' : '   '
     }
+
+    const branchPrefix =
+        heading.depth === 1 ? '' : isLastSibling ? '└─ ' : '├─ '
 
     ancestorHasSibling.set(heading.depth, !isLastSibling)
 
     return {
         ...heading,
-        treeAncestors,
-        treeLastSibling: isLastSibling,
+        treePrefix: `${ancestorPrefix}${branchPrefix}`,
     }
 })
 

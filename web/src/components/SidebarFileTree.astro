@@ -16,8 +16,7 @@ type TocLine = {
     depth: number
     text: string
     slug: string
-    treeAncestors: boolean[]
-    treeLastSibling: boolean
+    treePrefix: string
 }
 const { tocLines = [] } = Astro.props as { tocLines?: TocLine[] }
 // Headings only — drop the depth-1 page-title entry (the active leaf itself
@@ -1157,23 +1156,9 @@ const ICON_ABOUT = '\u{f1028}'
                             data-depth={h.depth}>
                             <span
                                 class="toc-tree-prefix"
-                                aria-hidden="true">
-                                {h.treeAncestors.map((continues) => (
-                                    <span
-                                        class:list={[
-                                            'toc-rail-segment',
-                                            { continues },
-                                        ]}
-                                    />
-                                ))}
-                                <span
-                                    class:list={[
-                                        'toc-rail-segment',
-                                        'branch',
-                                        { last: h.treeLastSibling },
-                                    ]}
-                                />
-                            </span>
+                                aria-hidden="true"
+                                data-prefix={h.treePrefix}
+                            />
                             <span class="toc-hash" aria-hidden="true">
                                 {'#'.repeat(h.depth)}
                             </span>
@@ -1516,22 +1501,11 @@ const ICON_ABOUT = '\u{f1028}'
 
     .tree-line {
         display: block;
-        position: relative;
-        width: 2ch;
-        height: 1lh;
+        width: auto;
         flex-shrink: 0;
         color: var(--foreground3);
         user-select: none;
-    }
-
-    .tree-file > .tree-line::before,
-    .tree-folder > summary > .tree-line::before {
-        content: '';
-        position: absolute;
-        inset-inline-start: 0.5ch;
-        inset-block-start: 50%;
-        width: 1.5ch;
-        border-block-start: 0.125ch solid currentColor;
+        white-space: pre;
     }
 
     .tree-children {
@@ -1541,12 +1515,7 @@ const ICON_ABOUT = '\u{f1028}'
     }
 
     .tree-children:not(.sidebar-toc)::before {
-        content: '';
-        position: absolute;
-        inset-block: 0 0.5lh;
-        inset-inline-start: 2.5ch;
-        border-inline-start: 0.125ch solid var(--foreground3);
-        pointer-events: none;
+        content: none;
     }
 
     /* ── Chevron (expand/collapse indicator) ── */
@@ -1603,60 +1572,37 @@ const ICON_ABOUT = '\u{f1028}'
         padding-inline-start: 2ch;
     }
     .sidebar-toc .toc-tree-prefix {
-        display: flex;
-        align-self: stretch;
+        display: block;
         flex-shrink: 0;
         color: var(--foreground3);
+        white-space: pre;
     }
-    .sidebar-toc .toc-rail-segment {
-        position: relative;
-        display: block;
-        flex: 0 0 3ch;
-    }
-    .sidebar-toc .toc-rail-segment.continues::before,
-    .sidebar-toc .toc-rail-segment.branch::before {
-        content: '';
-        position: absolute;
-        inset-block-start: 0;
-        inset-inline-start: 0.5ch;
-        height: 100%;
-        border-inline-start: 0.125ch solid var(--foreground3);
-    }
-    .sidebar-toc .toc-rail-segment.branch.last::before {
-        height: 50%;
-    }
-    .sidebar-toc .toc-rail-segment.branch::after {
-        content: '';
-        position: absolute;
-        inset-block-start: 50%;
-        inset-inline-start: 0.5ch;
-        width: 2.5ch;
-        border-block-start: 0.125ch solid var(--foreground3);
+    .sidebar-toc .toc-tree-prefix::before {
+        content: attr(data-prefix);
+        white-space: pre;
     }
     .sidebar-toc .toc-heading {
         display: flex;
-        align-items: stretch;
-        gap: 0.75ch;
+        align-items: baseline;
+        gap: 0;
         padding-block: 0;
         padding-inline: 0;
         /* One tier dimmer than the post-link leaves (--foreground2) so the
            inline heading outline reads as secondary to the page list. */
         color: var(--foreground3);
         text-decoration: none;
-        line-height: 1lh;
+        line-height: 1;
     }
     .sidebar-toc .toc-hash {
-        display: flex;
-        align-items: center;
         flex-shrink: 0;
+        margin-inline-end: 0.5ch;
         color: var(--foreground3);
         font-size: 1rem;
-        line-height: 1lh;
+        line-height: inherit;
         letter-spacing: -0.05ch;
         opacity: 0.7;
     }
     .sidebar-toc .toc-text {
-        align-self: center;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1821,6 +1767,48 @@ const ICON_ABOUT = '\u{f1028}'
                 p = p.parentElement
             }
         }
+    }
+
+    // Render literal Unicode box-drawing prefixes, like a terminal tree.
+    {
+        const renderTree = (
+            container: HTMLElement,
+            ancestorContinues: boolean[] = [],
+        ) => {
+            const entries = Array.from(container.children).filter(
+                (element): element is HTMLElement =>
+                    element instanceof HTMLElement &&
+                    (element.matches('a.tree-entry') ||
+                        element.matches('details.tree-folder')),
+            )
+
+            entries.forEach((entry, index) => {
+                const isLast = index === entries.length - 1
+                const line = entry.matches('details.tree-folder')
+                    ? entry.querySelector<HTMLElement>(
+                          ':scope > summary > .tree-line',
+                      )
+                    : entry.querySelector<HTMLElement>(':scope > .tree-line')
+
+                if (line) {
+                    line.setAttribute('aria-hidden', 'true')
+                    line.textContent =
+                        ancestorContinues
+                            .map((continues) => (continues ? '│  ' : '   '))
+                            .join('') + (isLast ? '└─ ' : '├─ ')
+                }
+
+                const children = entry.querySelector<HTMLElement>(
+                    ':scope > .tree-children:not(.sidebar-toc)',
+                )
+                if (children) {
+                    renderTree(children, [...ancestorContinues, !isLast])
+                }
+            })
+        }
+
+        const fileTree = document.getElementById('category-list')
+        if (fileTree) renderTree(fileTree)
     }
 
     // Sidebar action buttons
