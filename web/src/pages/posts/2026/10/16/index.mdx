@@ -187,27 +187,30 @@ ezpz status --remote aurora --states queued --limit 5
 ## Rich tables (and the plain-text fallback)
 
 When stdout is a TTY, `ezpz status` renders a
-[Rich](https://github.com/Textualize/rich) table — no box borders, colour by
-state, short job ID in the first column, full ID dimmed below for copy-paste:
+[Rich](https://github.com/Textualize/rich) table — `qmert`-parity columns,
+colour by state, single-letter `S`:
 
 ```text
- Job ID    State      Queue    Exit
- 8936286   completed  prod      0
- 8936102   active     prod      —
- 8935991   queued     debug     —
-  8936286.aurora-pbs-0001.example.alcf.anl.gov
-  8936102.aurora-pbs-0001.example.alcf.anl.gov
-  8935991.aurora-pbs-0001.example.alcf.anl.gov
+ JOBID    S  QUEUE    NODES  WALL  ELAP  JOBNAME            NOTE
+ 8986382   Q  large     2078  12:00   --  followup-umbrella…  Not enough free nodes available
+ 9014070   R  debug-scaling  4  01:00  00:11 20b512-fixedpos…  Job run at … on (x4502c1s0b0…)
 ```
+
+`Host` leads the fan-out (`ezpz status` with no `--remote`), short numeric
+`JOBID` is the primary key, `WALL`/`ELAP` include `hh:mm`, `JOBNAME` is the
+full name, `NOTE` is the scheduler's blocking reason, `NODES` is the node
+count, and running-job nodelists are rendered below the table with width-aware
+wrapping (`…+N more` when wide).
 
 The colour map is small and deliberate — green for `active`/`running`, yellow
 for `queued`, magenta for `held`, cyan for `completed`, red for `failed`/
 `canceled`, dim for `new` — so a scan of ten rows tells you which jobs need
 attention without reading every cell.
 
-When stdout is piped, the same data comes out as fixed-width plain text with a
-header row, so `| grep`, `| awk`, and `| jq` keep working. Pass `--json` for
-the structured form in either mode.
+When stdout is piped, the same columns come out as fixed-width plain text with
+a header row, so `| grep`, `| awk`, and `| jq` keep working. Pass `--json` for
+the structured form in either mode (now with `nodes`/`walltime`/`elapsed`/
+`note`/`name`/`exec_hosts` — the fields IRI omits).
 
 `ezpz resources` and `ezpz incidents` follow the same rule — Rich table on a
 TTY, fixed-width columns otherwise, `--json` on demand.
