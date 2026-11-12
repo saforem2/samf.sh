@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex'
 import remarkSlides from './src/utils/remark-slides.mjs'
 import rehypeTaskListInteractive from './src/utils/rehype-task-list-interactive.mjs'
 import rehypeNotebookCells from './src/utils/rehype-notebook-cells.mjs'
+import { rehypeAnsi } from './src/utils/rehype-ansi.mjs'
 // import rehypeMermaid from 'rehype-mermaid'
 // import Catppuccin from 'tm-themes/themes/catppuccin-mocha'
 // import { getSingletonHighlighter } from 'shiki'
@@ -498,6 +499,7 @@ export default defineConfig({
             rehypeMermaidClientSide,
             rehypeTaskListInteractive,
             rehypeNotebookCells,
+            rehypeAnsi,
         ],
         syntaxHighlight: {
             type: 'shiki',
@@ -532,6 +534,7 @@ export default defineConfig({
                 rehypeMermaidClientSide,
                 rehypeTaskListInteractive,
                 rehypeNotebookCells,
+                rehypeAnsi,
             ],
         }),
         sitemap(),

@@ -1429,7 +1429,9 @@ html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
 }
 
-html[data-webtui-theme='custom-dark'] .astro-code span:not(.line) {
+html[data-webtui-theme='custom-dark']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-custom-dark) !important;
     font-style: var(--shiki-custom-dark-font-style) !important;
     font-weight: var(--shiki-custom-dark-font-weight) !important;
@@ -1438,7 +1440,9 @@ html[data-webtui-theme='custom-dark'] .astro-code span:not(.line) {
     background-color: transparent !important;
 }
 
-html[data-webtui-theme='catppuccin'] .astro-code span:not(.line) {
+html[data-webtui-theme='catppuccin']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-catppuccin) !important;
     font-style: var(--shiki-catppuccin-font-style) !important;
     font-weight: var(--shiki-catppuccin-font-weight) !important;
@@ -1448,13 +1452,28 @@ html[data-webtui-theme='catppuccin'] .astro-code span:not(.line) {
 }
 
 html[data-webtui-theme='catppuccin-latte'] .astro-code,
-html[data-webtui-theme='catppuccin-latte'] .astro-code span:not(.line) {
+html[data-webtui-theme='catppuccin-latte']
+    .astro-code
+    span:not(.line):not([class*='ansi-']) {
     color: var(--shiki-catppuccin-latte) !important;
     font-style: var(--shiki-catppuccin-latte-font-style) !important;
     font-weight: var(--shiki-catppuccin-latte-font-weight) !important;
     text-decoration: var(--shiki-catppuccin-latte-text-decoration) !important;
     --pre-background: oklch(from #e6e9ef l c h);
     background-color: transparent !important;
+}
+
+/* ANSI spans carry their own SGR colors. The Shiki theme rules above leave
+   every `ansi-*` span alone; restore the theme's base foreground on each
+   logical line so uncolored text remains legible in dark themes. */
+html[data-webtui-theme='custom-dark'] .astro-code.ansi-block .ansi-line {
+    color: var(--shiki-custom-dark) !important;
+}
+html[data-webtui-theme='catppuccin'] .astro-code.ansi-block .ansi-line {
+    color: var(--shiki-catppuccin) !important;
+}
+html[data-webtui-theme='catppuccin-latte'] .astro-code.ansi-block .ansi-line {
+    color: var(--shiki-catppuccin-latte) !important;
 }
 
 /* Code-block container: hugs content, no internal padding band.
@@ -1670,11 +1689,140 @@ code.language-logs .log-msg {
     color: var(--foreground0);
 }
 
+/* ANSI SGR decoded inside a normal bash block (see rehype-ansi.mjs).
+   The transform preserves Shiki's `astro-code` class so the border + language
+   chip stay, but suppresses the line-number gutter which has no meaning for
+   a rendered terminal table. ANSI colors use site theme tokens directly, so
+   they track light/dark automatically without needing per-theme overrides. */
+.ansi-block .ansi-line {
+    display: block;
+}
+.ansi-block span.line::before {
+    content: none !important;
+    border-right: none !important;
+}
+.ansi-block.astro-code {
+    /* ensure border/chip still apply when astro-code was re-added by rehype-ansi */
+}
+/* Base palette: !important so Shiki's --shiki-* token overrides (which fire
+   in dark/catppuccin themes via .astro-code span:not(.line) !important) don't
+   wash out terminal colors. Bright variants are 15% more luminous, matching
+   the terminal's bold+bright semantics at roughly one stop. */
+.ansi-black {
+    color: var(--foreground2) !important;
+}
+.ansi-red {
+    color: var(--red) !important;
+}
+.ansi-green {
+    color: var(--green) !important;
+}
+.ansi-yellow {
+    color: var(--yellow) !important;
+}
+.ansi-blue {
+    color: var(--blue) !important;
+}
+.ansi-magenta {
+    color: var(--mauve, var(--pink, #c678dd)) !important;
+}
+.ansi-cyan {
+    color: var(--teal, var(--blue)) !important;
+}
+.ansi-white {
+    color: var(--foreground0) !important;
+}
+.ansi-bright-black {
+    color: var(--foreground2) !important;
+    opacity: 0.85;
+}
+.ansi-bright-red {
+    color: var(--red) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-green {
+    color: var(--green) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-yellow {
+    color: var(--yellow) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-blue {
+    color: var(--blue) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-magenta {
+    color: var(--mauve, var(--pink)) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-cyan {
+    color: var(--teal, var(--blue)) !important;
+    filter: brightness(1.15);
+}
+.ansi-bright-white {
+    color: var(--foreground0) !important;
+    filter: brightness(1.12);
+}
+.ansi-bold {
+    font-weight: 700 !important;
+}
+.ansi-dim {
+    opacity: 0.6 !important;
+}
+.ansi-bg-black {
+    background: color-mix(in srgb, var(--foreground0) 12%, transparent);
+}
+.ansi-bg-red {
+    background: color-mix(in srgb, var(--red) 14%, transparent);
+}
+.ansi-bg-green {
+    background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.ansi-bg-yellow {
+    background: color-mix(in srgb, var(--yellow) 14%, transparent);
+}
+.ansi-bg-blue {
+    background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.ansi-bg-magenta {
+    background: color-mix(in srgb, var(--mauve, var(--pink)) 14%, transparent);
+}
+.ansi-bg-cyan {
+    background: color-mix(in srgb, var(--teal, var(--blue)) 14%, transparent);
+}
+.ansi-bg-white {
+    background: color-mix(in srgb, var(--foreground0) 8%, transparent);
+}
+.ansi-bg-bright-black {
+    background: color-mix(in srgb, var(--foreground0) 22%, transparent);
+}
+.ansi-bg-bright-red {
+    background: color-mix(in srgb, var(--red) 24%, transparent);
+}
+.ansi-bg-bright-green {
+    background: color-mix(in srgb, var(--green) 24%, transparent);
+}
+.ansi-bg-bright-yellow {
+    background: color-mix(in srgb, var(--yellow) 24%, transparent);
+}
+.ansi-bg-bright-blue {
+    background: color-mix(in srgb, var(--blue) 24%, transparent);
+}
+.ansi-bg-bright-magenta {
+    background: color-mix(in srgb, var(--mauve, var(--pink)) 24%, transparent);
+}
+.ansi-bg-bright-cyan {
+    background: color-mix(in srgb, var(--teal, var(--blue)) 24%, transparent);
+}
+.ansi-bg-bright-white {
+    background: color-mix(in srgb, var(--foreground0) 18%, transparent);
+}
+
 pre.astro-code {
-    /* Just enough room that the badge straddling the top edge does not sit
-       on the first line of code. 0.5lh was half a blank row top and bottom,
-       which read as padding rather than as a frame around the code. */
-    padding: 0.25lh 0;
+    /* Half a line of air on both sides keeps the first and last rows clear
+       of the frame while the language badge sits across its top edge. */
+    padding-block: 0.5lh;
     /* Tighter above than below, because a code block is nearly always
        introduced by the line right before it ("Install deps:") and belongs
        with it. The reverse (1lh 0.5lh) put 25px above each block and 12px
@@ -2038,6 +2186,9 @@ pre.astro-code[data-language='rust'] {
 pre.astro-code[data-language='go'] {
     --lang-badge: var(--material-deep-purple);
     --lang-icon: '\e627';
+}
+pre.astro-code[data-language='ansi'] {
+    --lang-badge: var(--material-orange);
 }
 
 /* WebTUI's typography.css sets `content: '- '` on `ul li::before` — a

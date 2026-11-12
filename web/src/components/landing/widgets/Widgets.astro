@@ -183,7 +183,12 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
     #widgets-grid > [tabindex='0'][data-scroll-active='true']::before,
     #widgets-grid > [tabindex='0'][data-vim-focused='true']::before {
         border-color: var(--foreground0);
-        box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--widget-accent, var(--foreground0)) 55%, rgba(0,0,0,0.55));
+        box-shadow: 2px 2px 0 0
+            color-mix(
+                in srgb,
+                var(--widget-accent, var(--foreground0)) 55%,
+                rgba(0, 0, 0, 0.55)
+            );
     }
     #widgets-grid > [tabindex='0'][data-scroll-active='true'],
     #widgets-grid > [tabindex='0'][data-vim-focused='true'] {
@@ -210,15 +215,17 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
             position: static;
             transform: none;
             width: auto;
-            max-width: round(95vw, 1ch);
+            max-width: round(calc(100vw - 2.5ch), 1ch);
             max-height: none;
             min-width: 0;
             min-height: 0;
             height: auto;
             margin-inline: auto;
+            padding-inline: 0.5ch;
             padding-block-end: 2lh;
-            padding-block-start: 0lh;
-            gap: 1ch;
+            padding-block-start: 0.6lh;
+            box-sizing: border-box;
+            gap: 1.4ch;
         }
 
         #widgets-grid.home-grid:not(
@@ -232,14 +239,81 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
             )
             > :global(*) {
             flex-shrink: 0;
-            max-height: none !important;
-            overflow: visible !important;
             min-height: auto !important;
             height: auto !important;
         }
-
-        /* Let list containers auto-size instead of flex-filling
-           (flex:1 + min-height:0 collapses when parent has no definite height) */
+        /* Un-capped widgets (intro/clock/cal) expand naturally */
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(#intro-widget),
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(#clock-widget),
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(.cal-widget) {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        /* Re-cap bounded list panels to ~half viewport so a 22-item list
+           can't push siblings offscreen when the grid has no row-height. */
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(#stats-widget),
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(.posts-widget),
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(.talks-widget) {
+            max-height: min(55vh, 42lh) !important;
+            max-height: min(55dvh, 42lh) !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
         #widgets-grid.home-grid:not(
                 .intro-v15,
                 .intro-v16,
@@ -259,27 +333,7 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
                 .intro-v20,
                 .intro-v21
             )
-            :global(.tw-list) {
-            flex: 0 0 auto !important;
-            overflow: visible !important;
-            min-height: auto !important;
-        }
-
-        #widgets-grid.home-grid:not(
-                .intro-v15,
-                .intro-v16,
-                .intro-v17,
-                .intro-v18,
-                .intro-v19,
-                .intro-v20,
-                .intro-v21
-            )
-            :global(.history-section) {
-            flex: 0 0 auto !important;
-            overflow: visible !important;
-            min-height: auto !important;
-        }
-
+            :global(.tw-list),
         #widgets-grid.home-grid:not(
                 .intro-v15,
                 .intro-v16,
@@ -290,8 +344,25 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
                 .intro-v21
             )
             :global(#up-next) {
-            overflow: visible !important;
-            min-height: auto !important;
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+        }
+        #widgets-grid.home-grid:not(
+                .intro-v15,
+                .intro-v16,
+                .intro-v17,
+                .intro-v18,
+                .intro-v19,
+                .intro-v20,
+                .intro-v21
+            )
+            :global(.history-section) {
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
         }
     }
 

@@ -16,12 +16,20 @@
     overflow: visible !important;
     --code-mask-under: var(--background0);
     --code-mask-bg: transparent;
-    padding: 1.2lh 1.5ch 1lh 1.5ch !important;
+    padding: 1.6lh 1.5ch 0.5lh 1.5ch !important;
     opacity: 1;
-    transition: opacity 150ms linear, border-color 120ms ease-out, box-shadow 120ms ease-out;
+    transition:
+        opacity 150ms linear,
+        border-color 120ms ease-out,
+        box-shadow 120ms ease-out;
     border: 1px solid var(--wbl-border);
     border-radius: 2px;
-    box-shadow: 1px 1px 0 0 color-mix(in srgb, var(--wbl-border, var(--background2)) 65%, transparent);
+    box-shadow: 1px 1px 0 0
+        color-mix(
+            in srgb,
+            var(--wbl-border, var(--background2)) 65%,
+            transparent
+        );
 }
 
 /* Suppress the WebTUI inset box frame — card draws its own real border now */
@@ -53,14 +61,29 @@
 }
 #widgets-grid.home-grid #clock-widget,
 #widgets-grid.home-grid .cal-widget {
-    --wbl-border: color-mix(in srgb, var(--foreground2) 45%, var(--background2));
+    --wbl-border: color-mix(
+        in srgb,
+        var(--foreground2) 45%,
+        var(--background2)
+    );
     --wbl-accent: var(--foreground2);
 }
 
 /* Active border/shadow: hover, focus-within, scroll-active (mobile), vim-focused */
-#widgets-grid.home-grid > [tabindex='0']:is(:hover, :focus-within, [data-scroll-active='true'], [data-vim-focused='true']) {
+#widgets-grid.home-grid
+    > [tabindex='0']:is(
+        :hover,
+        :focus-within,
+        [data-scroll-active='true'],
+        [data-vim-focused='true']
+    ) {
     border-color: var(--wbl-accent, var(--foreground0)) !important;
-    box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--wbl-accent, var(--foreground0)) 55%, rgba(0,0,0,0.55)) !important;
+    box-shadow: 2px 2px 0 0
+        color-mix(
+            in srgb,
+            var(--wbl-accent, var(--foreground0)) 55%,
+            rgba(0, 0, 0, 0.55)
+        ) !important;
 }
 
 /* Dim cycle — mirrors Intro.astro behaviour */
@@ -69,7 +92,15 @@
 #widgets-grid.home-grid[data-wbl-hover='true'] > [tabindex='0'] {
     opacity: 0.35;
 }
-#widgets-grid.home-grid > [tabindex='0']:is(:hover, :focus, :focus-within, [data-vim-focused='true'], [data-scroll-active='true'], :has(:focus)) {
+#widgets-grid.home-grid
+    > [tabindex='0']:is(
+        :hover,
+        :focus,
+        :focus-within,
+        [data-vim-focused='true'],
+        [data-scroll-active='true'],
+        :has(:focus)
+    ) {
     opacity: 1;
     border-color: var(--wbl-accent, var(--foreground0));
     box-shadow: 2px 2px 0 0 var(--wbl-accent, rgba(0, 0, 0, 0.55));
@@ -105,21 +136,41 @@
     font-weight: 700;
     white-space: nowrap;
     text-decoration: none !important;
-    background-color: color-mix(in srgb, var(--background0), var(--foreground0) 5%);
-    background-image: linear-gradient(var(--code-mask-bg, transparent), var(--code-mask-bg, transparent)), var(--code-mask-under, var(--background0));
-    border: 1px solid color-mix(in srgb, var(--background0), var(--foreground0) 18%);
+    background-color: color-mix(
+        in srgb,
+        var(--background0),
+        var(--foreground0) 5%
+    );
+    background-image:
+        linear-gradient(
+            var(--code-mask-bg, transparent),
+            var(--code-mask-bg, transparent)
+        ),
+        var(--code-mask-under, var(--background0));
+    border: 1px solid
+        color-mix(in srgb, var(--background0), var(--foreground0) 18%);
     color: var(--foreground1);
     border-radius: 0;
-    box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--foreground0) 18%, transparent);
+    box-shadow: 2px 2px 0 0
+        color-mix(in srgb, var(--foreground0) 18%, transparent);
     --chip-accent: var(--url, var(--blue));
-    transition: background-color 0.1s linear, color 0.1s linear, border-color 0.1s linear, transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    transition:
+        background-color 0.1s linear,
+        color 0.1s linear,
+        border-color 0.1s linear,
+        transform 0.1s ease-out,
+        box-shadow 0.1s ease-out;
 }
 #widgets-grid.home-grid .wbl-about-chip:hover,
 #widgets-grid.home-grid .wbl-about-chip:focus-visible,
 #widgets-grid.home-grid .wbl-about-chip[data-vim-focused='true'] {
     transform: translate(-1px, -1px);
     box-shadow: 2px 2px 0 0 var(--chip-accent);
-    background-color: color-mix(in srgb, var(--background0), var(--chip-accent) 18%) !important;
+    background-color: color-mix(
+        in srgb,
+        var(--background0),
+        var(--chip-accent) 18%
+    ) !important;
     border-color: var(--chip-accent);
     color: var(--chip-accent) !important;
 }
@@ -146,12 +197,34 @@
     user-select: none;
     pointer-events: auto;
     text-decoration: none;
-    background: linear-gradient(oklch(from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c h / 0.1), oklch(from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c h / 0.1)), linear-gradient(var(--code-mask-bg, transparent), var(--code-mask-bg, transparent)), var(--code-mask-under, var(--background0));
+    background:
+        linear-gradient(
+            oklch(
+                from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c h /
+                    0.1
+            ),
+            oklch(
+                from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c h /
+                    0.1
+            )
+        ),
+        linear-gradient(
+            var(--code-mask-bg, transparent),
+            var(--code-mask-bg, transparent)
+        ),
+        var(--code-mask-under, var(--background0));
     color: var(--wbl-accent);
-    border: 1px solid color-mix(in srgb, var(--background0), var(--foreground0) 18%);
+    border: 1px solid
+        color-mix(in srgb, var(--background0), var(--foreground0) 18%);
     border-radius: 0;
-    box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--wbl-accent) 55%, transparent);
-    transition: background-color 0.1s linear, color 0.1s linear, border-color 0.1s linear, transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    box-shadow: 2px 2px 0 0
+        color-mix(in srgb, var(--wbl-accent) 55%, transparent);
+    transition:
+        background-color 0.1s linear,
+        color 0.1s linear,
+        border-color 0.1s linear,
+        transform 0.1s ease-out,
+        box-shadow 0.1s ease-out;
 }
 #widgets-grid.home-grid .wbl-frame-badge u::before {
     content: '[';
@@ -168,12 +241,16 @@
     left: 1.2ch;
     right: auto;
 }
-#widgets-grid.home-grid > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true']) .wbl-frame-badge {
+#widgets-grid.home-grid
+    > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+    .wbl-frame-badge {
     transform: translate(-1px, -1px);
     box-shadow: 2px 2px 0 0 var(--wbl-accent);
     border-color: var(--wbl-accent);
 }
-#widgets-grid.home-grid > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true']) .wbl-frame-badge:active {
+#widgets-grid.home-grid
+    > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+    .wbl-frame-badge:active {
     transform: translate(0, 0);
     box-shadow: 1px 1px 0 0 var(--wbl-accent);
 }

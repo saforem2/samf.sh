@@ -1,0 +1,253 @@
+---
+/**
+ * RichTable — a pixel-faithful Rich terminal table for prose.
+ *
+ * Rendered as an accessible <table> (not a <pre> screenshot) so the data
+ * stays selectable, copy-pastable, and screen-reader-friendly, while the
+ * cell colors preserve the TTY experience the post describes.
+ *
+ * Colors use the site's own --green/--yellow/--red/--blue/--cyan tokens
+ * (theme-aware via oklch) so they track every theme correctly. The "dim"
+ * full-ID row uses --foreground2.
+ *
+ * Usage in MDX:
+ *   import RichTable from '@/components/RichTable.astro'
+ *   <RichTable rows={[["8936286","completed","prod","0"], ...]} />
+ */
+
+interface Props {
+    headers?: string[]
+    rows: string[][]
+    fullIds?: string[]
+    stateColumn?: string
+    title?: string
+    caption?: string
+}
+
+const {
+    headers = ['Job ID', 'State', 'Queue', 'Exit'],
+    rows,
+    fullIds,
+    stateColumn = 'State',
+    caption = 'Scheduler status output.',
+    title = caption,
+} = Astro.props as Props
+
+const ids = fullIds ?? []
+const stateColumnIndex = headers.findIndex(
+    (header) => header.toLowerCase() === stateColumn.toLowerCase(),
+)
+
+const stateClass = (s: string) => {
+    const k = s.toLowerCase().trim()
+    if (k === 'active' || k === 'running' || k === 'r') return 'rt-green'
+    if (k === 'queued' || k === 'pending' || k === 'q') return 'rt-yellow'
+    if (k === 'held' || k === 'h') return 'rt-magenta'
+    if (k === 'completed') return 'rt-cyan'
+    if (k === 'failed' || k === 'canceled' || k === 'cancelled') return 'rt-red'
+    if (k === 'new') return 'rt-dim'
+    return ''
+}
+---
+
+<figure class="rich-table-wrap" role="group" aria-label={caption}>
+    <div class="rich-table-chrome">
+        <span class="rt-title">{title}</span>
+    </div>
+    <div class="rich-table-scroll">
+        <table class="rich-table">
+            <caption class="sr-only">{caption}</caption>
+            <thead>
+                <tr>
+                    {headers.map((h) => <th scope="col">{h}</th>)}
+                </tr>
+            </thead>
+            <tbody>
+                {
+                    rows.map((row) => (
+                        <tr>
+                            {row.map((cell, j) => (
+                                <td
+                                    class={
+                                        j === stateColumnIndex
+                                            ? stateClass(cell)
+                                            : undefined
+                                    }>
+                                    {cell}
+                                </td>
+                            ))}
+                        </tr>
+                    ))
+                }
+                {
+                    ids.length > 0 && (
+                        <tr class="rt-fullids" aria-hidden="true">
+                            <td colspan={headers.length}>
+                                {ids.map((id) => (
+                                    <div class="rt-fullid">{id}</div>
+                                ))}
+                            </td>
+                        </tr>
+                    )
+                }
+            </tbody>
+        </table>
+    </div>
+    {
+        ids.length > 0 && (
+            <div class="sr-only">Full job IDs: {ids.join(', ')}</div>
+        )
+    }
+    <figcaption class="rich-table-caption"
+        >Colors: <span class="rt-legend rt-green">active/running</span> · <span
+            class="rt-legend rt-yellow">queued</span
+        > · <span class="rt-legend rt-magenta">held</span> · <span
+            class="rt-legend rt-cyan">completed</span
+        > · <span class="rt-legend rt-red">failed/canceled</span> · <span
+            class="rt-legend rt-dim">new</span
+        >.</figcaption
+    >
+</figure>
+
+<style>
+    .rich-table-wrap {
+        margin-block: 1lh;
+        border: 1px solid
+            color-mix(in srgb, var(--foreground2) 18%, transparent);
+        border-radius: 0;
+        overflow: hidden;
+        background: var(--background1);
+    }
+    .rich-table-chrome {
+        display: flex;
+        align-items: center;
+        padding: 0.5lh 1.2ch;
+        background: color-mix(
+            in srgb,
+            var(--background0) 92%,
+            var(--foreground0) 8%
+        );
+        border-bottom: 1px solid
+            color-mix(in srgb, var(--foreground2) 18%, transparent);
+        font-size: 1rem;
+        color: var(--foreground2);
+    }
+    .rt-title {
+        font-family: var(--code-font-family);
+    }
+
+    .rich-table-scroll {
+        overflow-x: auto;
+    }
+
+    .rich-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--code-font-family);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+    .rich-table th:not(:last-child),
+    .rich-table td:not(:last-child) {
+        border-right: 1px solid
+            color-mix(in srgb, var(--foreground2) 18%, transparent);
+    }
+    .rich-table th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--foreground1);
+        border-bottom: 1px solid
+            color-mix(in srgb, var(--foreground2) 18%, transparent);
+        padding: 0.35lh 1.2ch;
+        white-space: nowrap;
+    }
+    .rich-table td {
+        padding: 0.2lh 1.2ch;
+        white-space: nowrap;
+        color: var(--foreground0);
+    }
+    .rich-table tbody tr:not(.rt-fullids) + tr:not(.rt-fullids) td {
+        border-top: 1px solid
+            color-mix(in srgb, var(--foreground2) 10%, transparent);
+    }
+    .rt-fullids td {
+        border-top: 1px solid
+            color-mix(in srgb, var(--foreground2) 14%, transparent);
+        padding-top: 0.4lh;
+    }
+    .rt-fullid {
+        color: var(--foreground2);
+        font-size: 1rem;
+        opacity: 0.95;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+
+    /* State colors — theme-aware via site tokens */
+    .rt-green {
+        color: var(--green) !important;
+        font-weight: 600;
+    }
+    .rt-yellow {
+        color: var(--yellow) !important;
+        font-weight: 600;
+    }
+    .rt-magenta {
+        color: var(--mauve, var(--pink, #c678dd)) !important;
+        font-weight: 600;
+    }
+    .rt-cyan {
+        color: var(--blue, var(--teal, #56b6c2)) !important;
+        font-weight: 600;
+    }
+    .rt-red {
+        color: var(--red) !important;
+        font-weight: 600;
+    }
+    .rt-dim {
+        color: var(--foreground2) !important;
+    }
+
+    .rich-table-caption {
+        padding: 0.5lh 1.2ch;
+        font-size: 1rem;
+        color: var(--foreground2);
+        line-height: 1.5;
+        border-top: 1px solid
+            color-mix(in srgb, var(--foreground2) 10%, transparent);
+    }
+    .rt-legend {
+        font-family: var(--code-font-family);
+        font-weight: 600;
+    }
+    .rt-legend.rt-green {
+        color: var(--green);
+    }
+    .rt-legend.rt-yellow {
+        color: var(--yellow);
+    }
+    .rt-legend.rt-magenta {
+        color: var(--mauve, var(--pink, #c678dd));
+    }
+    .rt-legend.rt-cyan {
+        color: var(--blue, var(--teal, #56b6c2));
+    }
+    .rt-legend.rt-red {
+        color: var(--red);
+    }
+    .rt-legend.rt-dim {
+        color: var(--foreground2);
+    }
+
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+</style>
