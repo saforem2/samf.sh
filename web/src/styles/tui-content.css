@@ -10,13 +10,6 @@
     color: var(--foreground2);
 }
 
-/* Nested lists read as branches of the parent item. The native list markers
-   remain intact; this quiet rail adds hierarchy without drawing a box around
-   every row. */
-#main-content li > :is(ul, ol) {
-    border-inline-start: 0.125ch solid var(--foreground3);
-}
-
 /* Definition lists work well as compact key/value readouts. A narrow label
    column keeps related values easy to scan while allowing long terms and
    descriptions to wrap naturally. */
