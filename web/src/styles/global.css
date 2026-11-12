@@ -3041,9 +3041,9 @@ html[data-webtui-theme='catppuccin-latte'] {
         padding-top: 0 !important;
     }
 
-    /* Default table style: simple 1px borders on every cell, no webtui pseudo
-       borders. Opt out per-table by adding `data-table-style="terminal"` to use
-       the original webtui ascii-box style. */
+    /* Default table style: Rich-like square grid, with roomier cells and a
+       distinct header. Opt out per-table with `data-table-style="terminal"`
+       for the denser variant below. */
     table:not([data-table-style='terminal']) {
         width: max-content;
         border-collapse: collapse;
@@ -3066,13 +3066,12 @@ html[data-webtui-theme='catppuccin-latte'] {
         content: none !important;
     }
     /* Exclude the CodePreview code-table (:has(.line-code)) — it's a
-       borderless line-numbered listing, not a content table, and this
-       1px cell border was drawing a grid across the HTML/CSS panes. */
+       borderless line-numbered listing, not a content table. */
     table:not([data-table-style='terminal']):not(:has(.line-code))
         tr
         :is(td, th) {
         border: 1px solid var(--foreground3);
-        padding: 0 1ch;
+        padding: 0.4lh 1.25ch;
     }
     table:not([data-table-style='terminal']) tr :is(td, th):first-of-type {
         padding-left: 1ch;
@@ -3080,6 +3079,9 @@ html[data-webtui-theme='catppuccin-latte'] {
     table:not([data-table-style='terminal']) thead :is(td, th),
     table:not([data-table-style='terminal']) tr:first-child :is(th) {
         background-color: var(--background1);
+        border-bottom: 1px solid var(--foreground3);
+        color: var(--accent, var(--blue));
+        font-weight: 700;
     }
     /* Zebra striping for body rows. Soft tint = --background1 at low
        opacity so the stripe is "barely there" — visible as a row
@@ -3113,14 +3115,12 @@ html[data-webtui-theme='catppuccin-latte'] {
         > :is(td, th):first-child {
         box-shadow: inset 3px 0 0 0 var(--accent, var(--blue));
     }
-    /* Drop the webtui first-row top-padding (it makes room for the ascii box
-       border, which we don't render in the default style). Slide tables
-       retain their symmetric padding so header text stays centered. */
+    /* Keep first-row padding symmetric with the rest of the table. */
     table:not([data-table-style='terminal']):not([is-~='presentation'] table)
         :first-child
         > tr:first-child
         > :is(td, th) {
-        padding-top: 0 !important;
+        padding-top: 0.4lh !important;
     }
 
     /* ── Terminal table style (`data-table-style="terminal"`) ────────────
