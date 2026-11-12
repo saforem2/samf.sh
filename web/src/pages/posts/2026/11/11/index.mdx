@@ -1,10 +1,10 @@
 ---
 layout: '@/layouts/Doc.astro'
-title: 'Benchmarking 4 ALCF systems with torch-hammer'
+title: 'Benchmarking ALCF systems with torch-hammer'
 date: 2026-11-11
 date-created: 2026-11-11
 date-modified: today
-description: 'Same 9 benchmarks, same tool, 4 machines: Sunspot (PVC Max 1550), Aurora (PVC), Polaris (A100), and Sirius (A100). What it takes to run a fleet-wide baseline and what the numbers say — including the one benchmark where Intel wins 8×.'
+description: 'Same 9 benchmarks, same tool, two completed ALCF systems: Sunspot (PVC Max 1550) and Sirius (A100). Aurora and Polaris remain queued. The results include one benchmark where Intel wins 8×.'
 ---
 
 import ScalingChart from '@/components/ScalingChart.astro'
@@ -39,7 +39,7 @@ Same benchmarks, same flags (`--stress-test`, HBM-scaled), two machines that act
 | System | GPUs | Batched GEMM | Convolution | Einsum | Mem BW | Verdict |
 |--------|------|-------------|-------------|--------|--------|---------|
 | Sunspot | 24 (2×12 tiles) | 18.0 TFLOP/s | 1.49M img/s | 13.9 TFLOP/s | 27.0 GB/s | 2/2 PASS · CV 0.7–5.7% |
-| Sirius | 4 (1×4 A100) | 18.9 TFLOP/s | 9.39M img/s | 17.1 TFLOP/s | 29.6 GB/s | 1/1 PASS · CV ≤0.2% |
+| Sirius | 4 visible (2 allocated) | 18.9 TFLOP/s | 9.39M img/s | 17.1 TFLOP/s | 29.6 GB/s | 1/1 PASS · CV ≤0.2% |
 
 The one surprise is **Sparse MM**: PVC Max 1550 beats A100 by 8.4× on unstructured sparse matmul. Everything else favors A100 or ties — which is the expected story for dense GEMM / attention / atomics.
 
@@ -47,7 +47,7 @@ FFT is missing on both: XPU hits an MKL DFT "unimplemented" for the configured s
 
 ## What was needed per machine
 
-The interesting part is not the fastest GPU — it is what it costs to make one script work on four different systems.
+The interesting part is not the fastest GPU — it is what it costs to make one script work across different ALCF systems.
 
 | | Sunspot | Aurora | Polaris | Sirius |
 |---|---------|--------|---------|--------|
@@ -106,7 +106,7 @@ No power/temp columns — `xpu-smi` / Level Zero telemetry is not yet wired on t
 
 ### Sirius — NVIDIA A100-SXM4-40GB
 
-1 node, 4 A100s exercised (2 allocated, head-node fallback). Job `33426` (retry after `pbsdsh` fix), walltime 00:02:08 / 00:01:14, via `miniconda3/envs/cu122-pt221` (torch 2.2, CUDA 12.1, driver 535).
+1 node, 4 visible A100s (2 allocated; head-node fallback). Job `33426` (retry after `pbsdsh` fix), walltime 00:02:08 / 00:01:14, via `miniconda3/envs/cu122-pt221` (torch 2.2, CUDA 12.1, driver 535).
 
 Single-GPU stress (head GPU):
 
@@ -147,12 +147,12 @@ As infrastructure, the value is the **template**:
 - Four-phase job with isolated report inputs so the fleet verdict is never polluted by a scale mismatch.
 - One `hammer_report.py` invocation per artifact — single-GPU, stress, and fleet — so regressions show up as HTML without needing to parse logs.
 
-The reports and raw data live at `~/fleet-reports-2026-11-11/` on each host and in `public/posts/2026/11/11/` alongside this post. Aurora and Polaris will be added to the same page when they drain.
+Aurora and Polaris remain queued and will be added when they run.
 
 ## Artifacts
 
 - Code: [`saforem2/torch-hammer`](https://github.com/saforem2/torch-hammer) (branch `feature/intel-xpu-support`, includes the XPU backend + `--stress-test` HBM fix)
-- Reports: this post's `public/posts/2026/11/11/` directory (HTML + `csv/` + `json/`)
+- HTML report snapshots: [combined 1-GPU comparison](/posts/2026/11/11/alcf-combined-1gpu.html), [combined stress comparison](/posts/2026/11/11/alcf-combined-stress.html), [Sunspot fleet](/posts/2026/11/11/sunspot-24gpu-fleet.html), [Sirius fleet](/posts/2026/11/11/sirius-4gpu-fleet.html), plus the [Sunspot fleet rollup](/posts/2026/11/11/fleet-report-sunspot.html).
 - Jobs: Sunspot `12483256` (F 00:12:18), Sirius `33426` (E 00:02:08 → R 00:01:14 after fix)
 
 ---
