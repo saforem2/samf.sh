@@ -1938,10 +1938,9 @@ pre.astro-code::after {
        yellow into olive and orange into brown -- a different palette, not a
        dimmer one.
 
-       So the chip carries the hue as a faint wash and the label is set at a
-       FIXED lightness, keeping each language's own hue and chroma. One
-       declaration per theme rather than eleven hand-tuned pairs, and a new
-       language inherits a passing colour automatically.
+       The label is set at a FIXED lightness, keeping each language's own hue
+       and chroma. One declaration per theme rather than eleven hand-tuned
+       pairs, and a new language inherits a passing colour automatically.
 
        0.48 on light / 0.80 on dark: worst case measures 4.94 (json) and
        4.88 (js) respectively, every language clearing AA with margin. The
@@ -1958,19 +1957,10 @@ pre.astro-code::after {
        page-coloured rectangle behind the label. --code-mask-bg is set by any
        container with its own fill (see .callout below); it falls back to the
        page background everywhere else. */
-    /* Three layers, top to bottom: the language wash that makes the chip
-       read as this language, the container tint (see --code-mask-bg on
-       .callout), then the opaque page surface. The bottom layer is what
-       masks the border, so the wash sits ON an opaque base rather than
-       replacing it -- a translucent badge would let the rule show through
-       and lose the notched-frame effect. 16% is a wash, not a fill: the
-       frame still visibly breaks around the chip rather than being covered
-       by a solid block. */
+    /* Use only the block's opaque surface to cut a clean notch in the top
+       rule. No colored chip fill: the language name sits directly in the
+       frame like a titled ASCII box. */
     background:
-        linear-gradient(
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
-        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
@@ -2045,10 +2035,6 @@ pre.astro-code .code-copy-btn::before {
     /* Same border-masking as the language badge above; same reason it must
        follow the container surface rather than the page background. */
     background:
-        linear-gradient(
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
-        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
