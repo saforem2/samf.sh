@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torch Hammer report -- Sunspot — Sunspot XPU 24-GPUs × 4 benches (stress, HBM) — fleet_sunspot_allgpus</title>
+<style>
+
+  :root {
+    --bg: #fafafa; --surface: #ffffff; --surface2: #f5f5f4;
+    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.15);
+    --text: #1a1a18; --muted: #6b6b65; --hint: #9a9a92;
+    --success: #0f6e56; --danger: #b91c1c; --danger-bg: #fef2f2;
+    --warn: #92400e; --warn-bg: #fffbeb;
+    --radius: 8px; --radius-lg: 12px;
+  }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #1a1a18; --surface: #242422; --surface2: #2c2c2a;
+            --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+            --text: #e8e6df; --muted: #9a9a92; --hint: #6b6b65;
+            --success: #5dcaa5; --danger: #f09595; --danger-bg: #451a1a;
+            --warn: #fbbf24; --warn-bg: #422006;
+        }
+    }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6;
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .header { margin-bottom: 2rem; border-bottom: 1px solid var(--border2); padding-bottom: 1.25rem; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .subtitle { font-size: 15px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+  .header .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .header .meta span { margin-right: 1.5rem; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+             gap: 10px; margin-bottom: 2rem; }
+  .metric-card { background: var(--surface2); border-radius: var(--radius); padding: 0.875rem 1rem; }
+  .metric-card .label { font-size: 11px; color: var(--muted); margin-bottom: 2px;
+                        text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric-card .value { font-size: 22px; font-weight: 600;
+                        font-family: ui-monospace, "SF Mono", monospace; }
+  .metric-card.ok .value { color: var(--success); }
+  .metric-card.bad .value { color: var(--danger); }
+  .metric-card.warn .value { color: var(--warn); }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 15px; font-weight: 600; margin-bottom: 0.5rem; }
+  .section-title .unit { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .stats-line { font-size: 12px; color: var(--muted); margin-bottom: 0.75rem;
+                font-family: ui-monospace, "SF Mono", monospace; }
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 0.75rem;
+                position: relative; transition: max-width 0.2s ease; }
+  .chart-wrap.chart-zoomed { max-width: 100vw; margin-left: calc(-50vw + 50%);
+                             margin-right: calc(-50vw + 50%); padding: 1.5rem 2rem; }
+  .zoom-btn { position: absolute; top: 8px; right: 10px; background: var(--surface2);
+              border: 1px solid var(--border2); border-radius: 4px; padding: 2px 7px;
+              font-size: 16px; line-height: 1; cursor: pointer; color: var(--muted);
+              z-index: 1; transition: color 0.15s; }
+  .zoom-btn:hover { color: var(--text); border-color: var(--text); }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+  .chart-svg-wrap svg { width: 100%; height: auto; display: block; }
+  .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.75rem; }
+  .chart-row .chart-panel { min-width: 0; }
+  .chart-secondary { margin-top: 1rem; }
+  .chart-secondary .chart-panel { padding: 0.25rem 0; }
+  .chart-secondary .chart-subtitle { margin-bottom: 0.25rem; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px;
+          font-family: ui-monospace, "SF Mono", monospace; }
+  thead tr { background: var(--surface2); }
+  th { text-align: right; padding: 8px 12px; font-size: 11px; font-weight: 500;
+       letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+       border-bottom: 1px solid var(--border2);
+       font-family: system-ui, -apple-system, sans-serif; }
+  th:first-child { text-align: left; }
+  td { padding: 7px 12px; text-align: right; border-bottom: 1px solid var(--border); }
+  td:first-child { text-align: left; }
+  td.host { font-weight: 500; }
+  td.warn { color: var(--warn); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .mono { font-family: ui-monospace, "SF Mono", monospace; }
+  .outlier-section { margin-top: 2rem; }
+  .outlier-row { font-size: 13px; padding: 4px 0;
+                 font-family: ui-monospace, "SF Mono", monospace; }
+  .outlier-row .marker { color: var(--danger); font-weight: 600; }
+  .chart-subtitle { font-size: 11px; color: var(--muted); margin-bottom: 0.5rem;
+                    text-transform: uppercase; letter-spacing: 0.04em; }
+  .separator td { border-bottom: none; }
+  th.sortable { cursor: pointer; user-select: none; position: relative; }
+  th.sortable:hover { color: var(--text); }
+  th.sortable::after { content: ' 95'; font-size: 10px; opacity: 0.5; }
+  th.sortable.asc::after { content: ' 91'; opacity: 0.8; }
+  th.sortable.desc::after { content: ' 93'; opacity: 0.8; }
+  .section-label td { background: var(--surface2); }
+  .show-all-btn { background: var(--surface2); border: 1px solid var(--border2);
+                  border-radius: 4px; padding: 2px 10px; font-size: 11px;
+                  color: var(--muted); cursor: pointer; margin-left: 8px;
+                  font-family: system-ui, -apple-system, sans-serif; }
+  .show-all-btn:hover { color: var(--text); border-color: var(--text); }
+  .inner-expand td { padding: 7px 12px; text-align: right;
+                     border-bottom: 1px solid var(--border); }
+  .inner-expand td:first-child { text-align: left; }
+  footer { margin-top: 3rem; font-size: 11px; color: var(--hint);
+           border-top: 1px solid var(--border); padding-top: 1rem; }
+
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Torch Hammer benchmark report</h1>
+    <div class="subtitle">Sunspot — Sunspot XPU 24-GPUs × 4 benches (stress, HBM) — fleet_sunspot_allgpus</div>
+    <div class="meta">
+      <span>source: fleet_sunspot_allgpus</span>
+      <span>GPU: Intel(R) Data Center GPU Max 1550</span>
+      <span>nodes: 2</span>
+      <span>GPUs: 24</span>
+      <span>benchmarks: 4</span>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric-card ok">
+      <div class="label">nodes</div>
+      <div class="value">2</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">GPUs</div>
+      <div class="value">24</div>
+    </div>
+    <div class="metric-card">
+      <div class="label">benchmarks</div>
+      <div class="value">4</div>
+    </div>
+    <div class="metric-card ok">
+      <div class="label">outliers</div>
+      <div class="value">0</div>
+    </div>
+  </div>
+
+  <div class="section">
+  <h2 class="section-title">(a) Batched GEMM (float32)    <span class="unit">[TFLOP/s]</span></h2>
+  <div class="stats-line">fleet mean: 18.0 TFLOP/s | CV: 0.9% | median: 18 | p5/p95: 18/18</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (TFLOP/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">2</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">4</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">6</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">8</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>17.7–17.7 TFLOP/s: 4 GPUs</title></rect>
+<rect x="288.0" y="24.0" width="53.0" height="236.0" fill="#0072B2" rx="1"><title>17.8–17.8 TFLOP/s: 8 GPUs</title></rect>
+<rect x="342.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>17.8–17.9 TFLOP/s: 6 GPUs</title></rect>
+<rect x="396.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>17.9–17.9 TFLOP/s: 2 GPUs</title></rect>
+<rect x="450.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>17.9–18.0 TFLOP/s: 4 GPUs</title></rect>
+<rect x="504.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>18.0–18.0 TFLOP/s: 4 GPUs</title></rect>
+<rect x="558.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>18.0–18.0 TFLOP/s: 6 GPUs</title></rect>
+<rect x="612.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>18.0–18.1 TFLOP/s: 2 GPUs</title></rect>
+<rect x="774.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>18.1–18.2 TFLOP/s: 2 GPUs</title></rect>
+<rect x="828.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>18.2–18.2 TFLOP/s: 4 GPUs</title></rect>
+<rect x="882.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>18.2–18.2 TFLOP/s: 6 GPUs</title></rect>
+<text x="99.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.7</text>
+<text x="153.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.7</text>
+<text x="207.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.8</text>
+<text x="261.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.8</text>
+<text x="315.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.8</text>
+<text x="369.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.9</text>
+<text x="423.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.9</text>
+<text x="477.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">17.9</text>
+<text x="531.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.0</text>
+<text x="585.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.0</text>
+<text x="639.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.0</text>
+<text x="693.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.1</text>
+<text x="747.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.1</text>
+<text x="801.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.2</text>
+<text x="855.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.2</text>
+<text x="909.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">18.2</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">TFLOP/s</text>
+<line x1="518.8" y1="24" x2="518.8" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="518.8" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th><th class="sortable" data-col="2">GPU 1</th><th class="sortable" data-col="3">GPU 2</th><th class="sortable" data-col="4">GPU 3</th><th class="sortable" data-col="5">GPU 4</th><th class="sortable" data-col="6">GPU 5</th><th class="sortable" data-col="7">GPU 6</th><th class="sortable" data-col="8">GPU 7</th><th class="sortable" data-col="9">GPU 8</th><th class="sortable" data-col="10">GPU 9</th><th class="sortable" data-col="11">GPU 10</th><th class="sortable" data-col="12">GPU 11</th>
+        <th class="sortable" data-col="13">node mean</th>
+        <th class="sortable" data-col="14" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="15" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x1921c1s2b0n0</td><td class="mono" data-sort="18.15">18</td><td class="mono" data-sort="18.18">18</td><td class="mono" data-sort="18.19">18</td><td class="mono" data-sort="18.24">18</td><td class="mono" data-sort="17.97">18</td><td class="mono" data-sort="18.00">18</td><td class="mono" data-sort="17.85">18</td><td class="mono" data-sort="17.92">18</td><td class="mono" data-sort="17.89">18</td><td class="mono" data-sort="17.94">18</td><td class="mono" data-sort="18.00">18</td><td class="mono" data-sort="18.04">18</td><td class="mono" data-sort="18.03">18</td><td class="mono" data-sort="0.3894">+0.4%</td><td class="mono" data-sort="0"></td></tr>
+<tr><td class="mono host">x1921c1s3b0n0</td><td class="mono" data-sort="17.84">18</td><td class="mono" data-sort="17.82">18</td><td class="mono" data-sort="17.83">18</td><td class="mono" data-sort="17.85">18</td><td class="mono" data-sort="18.21">18</td><td class="mono" data-sort="18.22">18</td><td class="mono" data-sort="17.66">18</td><td class="mono" data-sort="17.68">18</td><td class="mono" data-sort="17.81">18</td><td class="mono" data-sort="17.81">18</td><td class="mono" data-sort="17.96">18</td><td class="mono" data-sort="18.01">18</td><td class="mono" data-sort="17.89">18</td><td class="mono" data-sort="-0.3894">-0.4%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(b) Convolution (float32)    <span class="unit">[img/s]</span></h2>
+  <div class="stats-line">fleet mean: 1,480,298.9 img/s | CV: 1.4% | median: 1,481,538 | p5/p95: 1,448,408/1,509,168</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (img/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">2</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">4</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">6</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">8</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>1.4M–1.5M img/s: 4 GPUs</title></rect>
+<rect x="126.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 2 GPUs</title></rect>
+<rect x="180.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 6 GPUs</title></rect>
+<rect x="288.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 6 GPUs</title></rect>
+<rect x="396.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 4 GPUs</title></rect>
+<rect x="450.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 4 GPUs</title></rect>
+<rect x="504.0" y="24.0" width="53.0" height="236.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 8 GPUs</title></rect>
+<rect x="612.0" y="142.0" width="53.0" height="118.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 4 GPUs</title></rect>
+<rect x="666.0" y="83.0" width="53.0" height="177.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 6 GPUs</title></rect>
+<rect x="774.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 2 GPUs</title></rect>
+<rect x="882.0" y="201.0" width="53.0" height="59.0" fill="#0072B2" rx="1"><title>1.5M–1.5M img/s: 2 GPUs</title></rect>
+<text x="99.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.4M</text>
+<text x="153.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="207.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="261.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="315.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="369.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="423.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="477.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="531.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="585.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="639.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="693.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="747.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="801.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="855.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="909.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">1.5M</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">img/s</text>
+<line x1="452.7" y1="24" x2="452.7" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="452.7" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th><th class="sortable" data-col="2">GPU 1</th><th class="sortable" data-col="3">GPU 2</th><th class="sortable" data-col="4">GPU 3</th><th class="sortable" data-col="5">GPU 4</th><th class="sortable" data-col="6">GPU 5</th><th class="sortable" data-col="7">GPU 6</th><th class="sortable" data-col="8">GPU 7</th><th class="sortable" data-col="9">GPU 8</th><th class="sortable" data-col="10">GPU 9</th><th class="sortable" data-col="11">GPU 10</th><th class="sortable" data-col="12">GPU 11</th>
+        <th class="sortable" data-col="13">node mean</th>
+        <th class="sortable" data-col="14" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="15" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x1921c1s2b0n0</td><td class="mono" data-sort="1495454.45">1,495,454</td><td class="mono" data-sort="1500191.68">1,500,192</td><td class="mono" data-sort="1509167.60">1,509,168</td><td class="mono" data-sort="1523183.64">1,523,184</td><td class="mono" data-sort="1481538.40">1,481,538</td><td class="mono" data-sort="1468566.25">1,468,566</td><td class="mono" data-sort="1479199.62">1,479,200</td><td class="mono" data-sort="1485247.91">1,485,248</td><td class="mono" data-sort="1480894.29">1,480,894</td><td class="mono" data-sort="1478582.96">1,478,583</td><td class="mono" data-sort="1502441.09">1,502,441</td><td class="mono" data-sort="1498683.72">1,498,684</td><td class="mono" data-sort="1491929.30">1,491,929</td><td class="mono" data-sort="0.7857">+0.8%</td><td class="mono" data-sort="0"></td></tr>
+<tr><td class="mono host">x1921c1s3b0n0</td><td class="mono" data-sort="1448407.82">1,448,408</td><td class="mono" data-sort="1456591.68">1,456,592</td><td class="mono" data-sort="1466797.96">1,466,798</td><td class="mono" data-sort="1468754.69">1,468,755</td><td class="mono" data-sort="1488396.14">1,488,396</td><td class="mono" data-sort="1489280.21">1,489,280</td><td class="mono" data-sort="1446519.58">1,446,520</td><td class="mono" data-sort="1457461.97">1,457,462</td><td class="mono" data-sort="1454217.98">1,454,218</td><td class="mono" data-sort="1456595.74">1,456,596</td><td class="mono" data-sort="1488418.79">1,488,419</td><td class="mono" data-sort="1502579.78">1,502,580</td><td class="mono" data-sort="1468668.53">1,468,669</td><td class="mono" data-sort="-0.7857">-0.8%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(c) Einsum Attention (float32)    <span class="unit">[TFLOP/s]</span></h2>
+  <div class="stats-line">fleet mean: 13.1 TFLOP/s | CV: 7.5% | median: 13 | p5/p95: 12/14</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (TFLOP/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="201.0" x2="936" y2="201.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="204.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">2</text>
+<line x1="72" y1="142.0" x2="936" y2="142.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="145.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">5</text>
+<line x1="72" y1="83.0" x2="936" y2="83.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="86.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">7</text>
+<line x1="72" y1="24.0" x2="936" y2="24.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="27.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">10</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="71.2" width="53.0" height="188.8" fill="#0072B2" rx="1"><title>12.0–12.2 TFLOP/s: 8 GPUs</title></rect>
+<rect x="126.0" y="24.0" width="53.0" height="236.0" fill="#0072B2" rx="1"><title>12.2–12.3 TFLOP/s: 10 GPUs</title></rect>
+<rect x="180.0" y="165.6" width="53.0" height="94.4" fill="#0072B2" rx="1"><title>12.3–12.5 TFLOP/s: 4 GPUs</title></rect>
+<rect x="234.0" y="118.4" width="53.0" height="141.6" fill="#0072B2" rx="1"><title>12.5–12.6 TFLOP/s: 6 GPUs</title></rect>
+<rect x="720.0" y="212.8" width="53.0" height="47.2" fill="#0072B2" rx="1"><title>13.9–14.0 TFLOP/s: 2 GPUs</title></rect>
+<rect x="774.0" y="118.4" width="53.0" height="141.6" fill="#0072B2" rx="1"><title>14.0–14.2 TFLOP/s: 6 GPUs</title></rect>
+<rect x="828.0" y="165.6" width="53.0" height="94.4" fill="#0072B2" rx="1"><title>14.2–14.3 TFLOP/s: 4 GPUs</title></rect>
+<rect x="882.0" y="71.2" width="53.0" height="188.8" fill="#0072B2" rx="1"><title>14.3–14.5 TFLOP/s: 8 GPUs</title></rect>
+<text x="99.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.1</text>
+<text x="153.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.2</text>
+<text x="207.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.4</text>
+<text x="261.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.6</text>
+<text x="315.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.7</text>
+<text x="369.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">12.9</text>
+<text x="423.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.0</text>
+<text x="477.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.2</text>
+<text x="531.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.3</text>
+<text x="585.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.5</text>
+<text x="639.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.6</text>
+<text x="693.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.8</text>
+<text x="747.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">13.9</text>
+<text x="801.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">14.1</text>
+<text x="855.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">14.2</text>
+<text x="909.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">14.4</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">TFLOP/s</text>
+<line x1="448.5" y1="24" x2="448.5" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="448.5" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th><th class="sortable" data-col="2">GPU 1</th><th class="sortable" data-col="3">GPU 2</th><th class="sortable" data-col="4">GPU 3</th><th class="sortable" data-col="5">GPU 4</th><th class="sortable" data-col="6">GPU 5</th><th class="sortable" data-col="7">GPU 6</th><th class="sortable" data-col="8">GPU 7</th><th class="sortable" data-col="9">GPU 8</th><th class="sortable" data-col="10">GPU 9</th><th class="sortable" data-col="11">GPU 10</th><th class="sortable" data-col="12">GPU 11</th>
+        <th class="sortable" data-col="13">node mean</th>
+        <th class="sortable" data-col="14" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="15" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x1921c1s2b0n0</td><td class="mono" data-sort="14.32">14</td><td class="mono" data-sort="14.25">14</td><td class="mono" data-sort="14.43">14</td><td class="mono" data-sort="14.39">14</td><td class="mono" data-sort="12.22">12</td><td class="mono" data-sort="12.22">12</td><td class="mono" data-sort="13.88">14</td><td class="mono" data-sort="14.02">14</td><td class="mono" data-sort="14.47">14</td><td class="mono" data-sort="14.06">14</td><td class="mono" data-sort="14.10">14</td><td class="mono" data-sort="14.31">14</td><td class="mono" data-sort="13.89">14</td><td class="mono" data-sort="6.1264">+6.1%</td><td class="mono" data-sort="0"></td></tr>
+<tr><td class="mono host">x1921c1s3b0n0</td><td class="mono" data-sort="12.15">12</td><td class="mono" data-sort="12.15">12</td><td class="mono" data-sort="12.26">12</td><td class="mono" data-sort="12.38">12</td><td class="mono" data-sort="12.53">13</td><td class="mono" data-sort="12.50">13</td><td class="mono" data-sort="12.02">12</td><td class="mono" data-sort="12.06">12</td><td class="mono" data-sort="12.21">12</td><td class="mono" data-sort="12.24">12</td><td class="mono" data-sort="12.44">12</td><td class="mono" data-sort="12.49">12</td><td class="mono" data-sort="12.29">12</td><td class="mono" data-sort="-6.1264">-6.1%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <h2 class="section-title">(d) Memory Traffic (float32)    <span class="unit">[GB/s]</span></h2>
+  <div class="stats-line">fleet mean: 25.7 GB/s | CV: 6.1% | median: 25 | p5/p95: 24/28</div>
+  <div class="chart-wrap">
+    <button class="zoom-btn" onclick="this.parentElement.classList.toggle('chart-zoomed')" title="Toggle full-width view">⤢</button>
+    <div class="chart-subtitle">Fleet distribution of GPU mean performance (GB/s)</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" role="img" style="width:100%;height:auto;display:block;font-family:system-ui,-apple-system,sans-serif">
+<line x1="72" y1="260.0" x2="936" y2="260.0" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="263.0" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">0</text>
+<line x1="72" y1="194.4" x2="936" y2="194.4" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="197.4" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">5</text>
+<line x1="72" y1="128.9" x2="936" y2="128.9" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="131.9" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">10</text>
+<line x1="72" y1="63.3" x2="936" y2="63.3" stroke="rgba(128,128,128,0.12)" stroke-dasharray="2,4"/>
+<text x="66" y="66.3" text-anchor="end" font-size="12" fill="var(--muted,#6b6b65)">15</text>
+<text x="16" y="142" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)" transform="rotate(-90,16,142)">GPU count</text>
+<rect x="72.0" y="181.3" width="53.0" height="78.7" fill="#0072B2" rx="1"><title>23.9–24.1 GB/s: 6 GPUs</title></rect>
+<rect x="126.0" y="181.3" width="53.0" height="78.7" fill="#0072B2" rx="1"><title>24.1–24.4 GB/s: 6 GPUs</title></rect>
+<rect x="180.0" y="128.9" width="53.0" height="131.1" fill="#0072B2" rx="1"><title>24.4–24.6 GB/s: 10 GPUs</title></rect>
+<rect x="234.0" y="233.8" width="53.0" height="26.2" fill="#0072B2" rx="1"><title>24.6–24.8 GB/s: 2 GPUs</title></rect>
+<rect x="288.0" y="233.8" width="53.0" height="26.2" fill="#0072B2" rx="1"><title>24.8–25.1 GB/s: 2 GPUs</title></rect>
+<rect x="342.0" y="233.8" width="53.0" height="26.2" fill="#0072B2" rx="1"><title>25.1–25.3 GB/s: 2 GPUs</title></rect>
+<rect x="828.0" y="233.8" width="53.0" height="26.2" fill="#0072B2" rx="1"><title>27.2–27.4 GB/s: 2 GPUs</title></rect>
+<rect x="882.0" y="24.0" width="53.0" height="236.0" fill="#0072B2" rx="1"><title>27.4–27.6 GB/s: 18 GPUs</title></rect>
+<text x="99.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">24.0</text>
+<text x="153.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">24.2</text>
+<text x="207.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">24.5</text>
+<text x="261.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">24.7</text>
+<text x="315.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">24.9</text>
+<text x="369.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">25.2</text>
+<text x="423.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">25.4</text>
+<text x="477.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">25.6</text>
+<text x="531.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">25.9</text>
+<text x="585.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">26.1</text>
+<text x="639.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">26.4</text>
+<text x="693.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">26.6</text>
+<text x="747.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">26.8</text>
+<text x="801.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">27.1</text>
+<text x="855.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">27.3</text>
+<text x="909.0" y="276" text-anchor="middle" font-size="11" fill="var(--muted,#6b6b65)">27.5</text>
+<text x="504" y="316" text-anchor="middle" font-size="13" fill="var(--muted,#6b6b65)">GB/s</text>
+<line x1="488.3" y1="24" x2="488.3" y2="260" stroke="var(--muted,#9a9a92)" stroke-width="1.5" opacity="0.8"/>
+<text x="488.3" y="20" text-anchor="middle" font-size="10" fill="var(--muted,#9a9a92)" opacity="0.8">mean</text>
+</svg>
+  </div>
+  <div class="table-wrap">
+    <table class="sortable-table">
+      <thead><tr>
+        <th class="sortable" data-col="0">node</th>
+        <th class="sortable" data-col="1">GPU 0</th><th class="sortable" data-col="2">GPU 1</th><th class="sortable" data-col="3">GPU 2</th><th class="sortable" data-col="4">GPU 3</th><th class="sortable" data-col="5">GPU 4</th><th class="sortable" data-col="6">GPU 5</th><th class="sortable" data-col="7">GPU 6</th><th class="sortable" data-col="8">GPU 7</th><th class="sortable" data-col="9">GPU 8</th><th class="sortable" data-col="10">GPU 9</th><th class="sortable" data-col="11">GPU 10</th><th class="sortable" data-col="12">GPU 11</th>
+        <th class="sortable" data-col="13">node mean</th>
+        <th class="sortable" data-col="14" title="% deviation from fleet mean performance">vs fleet</th>
+        <th class="sortable" data-col="15" title="Thermal throttling detected">thrt</th>
+      </tr></thead>
+      <tbody><tr><td class="mono host">x1921c1s2b0n0</td><td class="mono" data-sort="27.64">28</td><td class="mono" data-sort="27.55">28</td><td class="mono" data-sort="27.57">28</td><td class="mono" data-sort="27.46">27</td><td class="mono" data-sort="24.55">25</td><td class="mono" data-sort="24.16">24</td><td class="mono" data-sort="27.39">27</td><td class="mono" data-sort="27.56">28</td><td class="mono" data-sort="27.50">28</td><td class="mono" data-sort="27.44">27</td><td class="mono" data-sort="27.44">27</td><td class="mono" data-sort="27.51">28</td><td class="mono" data-sort="26.98">27</td><td class="mono" data-sort="5.0119">+5.0%</td><td class="mono" data-sort="0"></td></tr>
+<tr><td class="mono host">x1921c1s3b0n0</td><td class="mono" data-sort="23.92">24</td><td class="mono" data-sort="24.46">24</td><td class="mono" data-sort="24.44">24</td><td class="mono" data-sort="24.27">24</td><td class="mono" data-sort="25.10">25</td><td class="mono" data-sort="24.68">25</td><td class="mono" data-sort="23.88">24</td><td class="mono" data-sort="24.10">24</td><td class="mono" data-sort="24.26">24</td><td class="mono" data-sort="24.36">24</td><td class="mono" data-sort="24.56">25</td><td class="mono" data-sort="24.86">25</td><td class="mono" data-sort="24.41">24</td><td class="mono" data-sort="-5.0120">-5.0%</td><td class="mono" data-sort="0"></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+
+  <div class="section outlier-section"><h2 class="section-title">Outliers</h2><div style="color:var(--success)">None detected</div></div>
+
+  <footer>generated by torch-hammer-reporter | palette: Okabe-Ito (colorblind-safe)</footer>
+<script>
+(function() {
+  document.querySelectorAll("th.sortable").forEach(th => {
+    th.addEventListener("click", function() {
+      const table = th.closest("table");
+      const tbody = table.querySelector("tbody");
+      const col = parseInt(th.dataset.col);
+      const rows = Array.from(tbody.querySelectorAll("tr:not(.separator):not(.section-label)"));
+      const seps = Array.from(tbody.querySelectorAll("tr.separator, tr.section-label"));
+      const isAsc = th.classList.contains("asc");
+      table.querySelectorAll("th.sortable").forEach(h => h.classList.remove("asc","desc"));
+      th.classList.add(isAsc ? "desc" : "asc");
+      const dir = isAsc ? -1 : 1;
+      rows.sort((a,b) => {
+        const ca = a.children[col]; const cb = b.children[col];
+        const va = ca ? (ca.dataset.sort !== undefined ? parseFloat(ca.dataset.sort) : ca.textContent) : "";
+        const vb = cb ? (cb.dataset.sort !== undefined ? parseFloat(cb.dataset.sort) : cb.textContent) : "";
+        if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+        return String(va).localeCompare(String(vb)) * dir;
+      });
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      rows.forEach(r => tbody.appendChild(r));
+      seps.forEach(r => tbody.appendChild(r));
+    });
+  });
+})();
+</script>
+</div>
+</body>
+</html>
