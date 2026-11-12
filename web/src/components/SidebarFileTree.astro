@@ -1154,11 +1154,6 @@ const ICON_ABOUT = '\u{f1028}'
                             class:list={['toc-heading', `depth-${h.depth}`]}
                             data-heading-slug={h.slug}
                             data-depth={h.depth}>
-                            <span
-                                class="toc-tree-prefix"
-                                aria-hidden="true"
-                                data-prefix={h.treePrefix.trim()}
-                            />
                             <span class="toc-hash" aria-hidden="true">
                                 {'#'.repeat(h.depth)}
                             </span>
@@ -1221,7 +1216,7 @@ const ICON_ABOUT = '\u{f1028}'
         /* Flush — chip borders touch so the action bar reads as a
            continuous key row, not five separate buttons. */
         gap: 0;
-        font-size: 1rem;
+        font-size: 0.95em;
         position: relative;
         z-index: 10;
         width: fit-content;
@@ -1518,19 +1513,12 @@ const ICON_ABOUT = '\u{f1028}'
         content: '└─';
     }
 
+    /* The ├─ / └─ glyphs in each row already draw the connectors;
+       no CSS border needed on the children wrap. */
     .tree-children {
         position: relative;
         margin-inline-start: 0.4ch;
         padding-inline-start: 2ch;
-    }
-
-    .tree-children:not(.sidebar-toc)::before {
-        content: '';
-        position: absolute;
-        inset-block: 0 0.5lh;
-        inset-inline-start: 2.5ch;
-        border-inline-start: 0.125ch solid var(--foreground3);
-        pointer-events: none;
     }
 
     /* ── Chevron (expand/collapse indicator) ── */
@@ -1580,19 +1568,20 @@ const ICON_ABOUT = '\u{f1028}'
     }
 
     /* ── Inline TOC: the current page's headings, cloned under the active
-       leaf. Each heading uses the precomputed box-drawing tree prefix to show
-       how it branches within the current page. ── */
+       leaf. A clean indented list (no tree connectors — those imply real
+       file-tree structure and read as janky here). Each row is `## label`
+       with an auto-width hash marker so 2- and 3-char markers don't overflow
+       a fixed box and crash into the text. Indent steps per depth. ── */
     .sidebar-toc {
+        /* Override the file-tree .tree-children connector rail + indent so the
+           TOC sits as its own clean block under the active leaf. Indented one
+           tree-level (~2.5ch) deeper than the active page link above it so the
+           heading outline reads as nested *under* that page, not as a sibling
+           sitting flush with it. */
         margin-inline-start: 0;
+        /* Indent the heading hashes a modest step in from the active page
+           link so the outline reads as nested under that page. */
         padding-inline-start: 2ch;
-    }
-    .sidebar-toc .toc-tree-prefix {
-        flex-shrink: 0;
-        color: var(--foreground3);
-        white-space: pre;
-    }
-    .sidebar-toc .toc-tree-prefix::before {
-        content: attr(data-prefix);
     }
     .sidebar-toc .toc-heading {
         display: flex;
@@ -1608,8 +1597,10 @@ const ICON_ABOUT = '\u{f1028}'
     }
     .sidebar-toc .toc-hash {
         flex-shrink: 0;
+        /* auto width — no fixed box to overflow; right-aligned so the deeper
+           markers (##, ###) stay visually anchored to the label. */
         color: var(--foreground3);
-        font-size: 1rem;
+        font-size: 0.8em;
         letter-spacing: -0.05ch;
         opacity: 0.7;
     }
@@ -1619,6 +1610,30 @@ const ICON_ABOUT = '\u{f1028}'
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+    /* Depth indent: each level's `#` marker sits roughly under the first
+       character of its parent's title, so the outline reads like nested
+       markdown:
+
+           ## Heading 2
+           ### Heading 3
+              #### Heading 4
+
+       depth-2 is flush (the row base is 0 inset); each deeper level steps in
+       by ~3ch (one `#` worth of marker + the hash→text gap), growing slightly
+       at the deepest levels since each adds another `#`. */
+    .sidebar-toc .toc-heading.depth-3 {
+        padding-inline-start: 3ch;
+    }
+    .sidebar-toc .toc-heading.depth-4 {
+        padding-inline-start: 6ch;
+    }
+    .sidebar-toc .toc-heading.depth-5 {
+        padding-inline-start: 10ch;
+    }
+    .sidebar-toc .toc-heading.depth-6 {
+        padding-inline-start: 14ch;
+    }
+
     /* Collapse depth-3+ subheadings by default; reveal only the ones whose
        parent H2 section is currently in focus (the scrollspy in Doc.astro
        toggles .toc-section-open on those rows). Keeps the outline compact —
