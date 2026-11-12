@@ -1976,7 +1976,6 @@ pre.astro-code::after {
             var(--code-mask-bg, transparent)
         ),
         var(--code-mask-under, var(--background0));
-    line-height: 1;
     user-select: none;
     pointer-events: none;
     z-index: 2;
