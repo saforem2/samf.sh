@@ -174,13 +174,21 @@ ezpz cancel 8936286 --remote aurora
 # cancelled 8936286 (via iri)
 ```
 
-`ezpz status` reports scheduler state. `ezpz fetch` reads a one-time stdout
-snapshot for a job:
+The same job ID carries through submit, status, and fetch:
 
-```bash
-ezpz fetch 8936286 --remote aurora --lines 80 --no-dedupe
+```console
+$ ezpz submit --remote aurora -N 2 -q debug -A datascience -- python3 hello.py
+8936286.aurora-pbs-0001  (via iri)
+
+$ ezpz status 8936286 --remote aurora
+8936286  completed  queue=debug  exit=0  (via iri)
+
+$ ezpz fetch 8936286 --remote aurora --lines 80 --no-dedupe
+# prints one snapshot of the job's last 80 stdout lines
 ```
 
+`ezpz status` reports scheduler state; `ezpz fetch` reads a one-time stdout
+snapshot for a job.
 `fetch` gets `stdout_path` from IRI when available, otherwise from PBS
 `qstat -xf`. It reads the file over noninteractive SSH; it does not follow new
 output or discover Slurm spool paths. See the
