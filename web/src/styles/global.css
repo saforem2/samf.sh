@@ -291,7 +291,7 @@
         font-family: var(--font-family);
         -webkit-font-smoothing: auto;
         -moz-osx-font-smoothing: auto;
-        --table-border-width: 1pt;
+        --table-border-width: 0.125ch;
         --box-border-color: var(--background3);
         --focus-bg: oklch(
             from var(--accent, var(--red)) calc(l * var(--oklch-scale, 1.15)) c
@@ -3078,7 +3078,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     table:not([data-table-style='terminal']):not(:has(.line-code))
         tr
         :is(td, th) {
-        border: 1px solid var(--foreground3);
+        border: 0.125ch solid var(--foreground3);
         padding: 0.4lh 1.25ch;
     }
     table:not([data-table-style='terminal']) tr :is(td, th):first-of-type {
@@ -3087,7 +3087,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     table:not([data-table-style='terminal']) thead :is(td, th),
     table:not([data-table-style='terminal']) tr:first-child :is(th) {
         background-color: var(--background1);
-        border-bottom: 1px solid var(--foreground3);
+        border-bottom: 0.125ch solid var(--foreground3);
         color: var(--accent, var(--blue));
         font-weight: 700;
     }
@@ -3115,13 +3115,13 @@ html[data-webtui-theme='catppuccin-latte'] {
             background-color 100ms linear,
             box-shadow 120ms ease-out;
     }
-    /* Left-rail accent: 3px colored stripe inset on the first cell of
+    /* Left-rail accent: 0.3ch colored stripe inset on the first cell of
        a hovered row so the eye locks onto where the row starts. */
     table:not([data-table-style='terminal'])
         :is(tbody, :scope)
         > tr:not(:has(th)):hover
         > :is(td, th):first-child {
-        box-shadow: inset 3px 0 0 0 var(--accent, var(--blue));
+        box-shadow: inset 0.3ch 0 0 0 var(--accent, var(--blue));
     }
     /* Keep the first row aligned with the tighter shared cell padding. */
     table:not([data-table-style='terminal']):not([is-~='presentation'] table)
@@ -3132,7 +3132,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     }
 
     /* ── Terminal table style (`data-table-style="terminal"`) ────────────
-       A crisp single-line grid: every cell gets a plain 1px collapsed
+       A crisp single-line grid: every cell gets a plain 0.125ch collapsed
        border, plus a subtle heading band, zebra stripes, and row hover.
        Body cells stay on one line so wide tables scroll horizontally in
        .table-scroll-wrapper instead of folding.
@@ -3154,10 +3154,10 @@ html[data-webtui-theme='catppuccin-latte'] {
         border: none !important;
         content: none !important;
     }
-    /* Plain 1px grid + even cell padding (WebTUI's default is 0 top / 1lh
+    /* Plain 0.125ch grid + even cell padding (WebTUI's default is 0 top / 1lh
        bottom, which reads lopsided without the pseudo-box). */
     table[data-table-style='terminal'] tr :is(td, th) {
-        border: 1px solid var(--foreground3);
+        border: 0.125ch solid var(--foreground3);
         padding: 0.25lh 1ch !important;
     }
     table[data-table-style='terminal'] thead :is(td, th),
@@ -3349,7 +3349,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     #main-content :is(p, blockquote, li, [is-~='typography-block']) code {
         color: var(--code-fg, var(--foreground2));
         background-color: var(--code-bg, var(--background1));
-        border: 1px solid
+        border: 0.125ch solid
             color-mix(in srgb, var(--foreground3) 70%, transparent);
         border-radius: 0;
         padding-inline: 0.25ch;

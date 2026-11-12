@@ -124,7 +124,7 @@ const stateClass = (s: string) => {
 <style>
     .rich-table-wrap {
         margin-block: 1lh;
-        border: 1px solid
+        border: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         border-radius: 0;
         overflow: hidden;
@@ -139,7 +139,7 @@ const stateClass = (s: string) => {
             var(--background0) 92%,
             var(--foreground0) 8%
         );
-        border-bottom: 1px solid
+        border-bottom: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         font-size: 1rem;
         color: var(--foreground2);
@@ -167,14 +167,14 @@ const stateClass = (s: string) => {
     }
     .rich-table th:not(:last-child),
     .rich-table td:not(:last-child) {
-        border-right: 1px solid
+        border-right: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
     }
     .rich-table th {
         text-align: left;
         font-weight: 600;
         color: var(--foreground1);
-        border-bottom: 1px solid
+        border-bottom: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         padding: 0.2lh 0.8ch;
         white-space: nowrap;
@@ -185,11 +185,11 @@ const stateClass = (s: string) => {
         color: var(--foreground0);
     }
     .rich-table tbody tr:not(.rt-fullids) + tr:not(.rt-fullids) td {
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 10%, transparent);
     }
     .rt-fullids td {
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 14%, transparent);
         padding-top: 0.4lh;
     }
@@ -234,7 +234,7 @@ const stateClass = (s: string) => {
         font-size: 1rem;
         color: var(--foreground2);
         line-height: 1.5;
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 10%, transparent);
     }
     .rt-legend {
@@ -262,10 +262,10 @@ const stateClass = (s: string) => {
 
     .sr-only {
         position: absolute;
-        width: 1px;
-        height: 1px;
+        width: 0.125ch;
+        height: 0.125ch;
         padding: 0;
-        margin: -1px;
+        margin: -0.125ch;
         overflow: hidden;
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;
