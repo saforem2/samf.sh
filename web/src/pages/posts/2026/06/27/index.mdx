@@ -99,42 +99,26 @@ uv tool install argo-shim
 tunnel, and prints the token. Each restart **rotates** the token (important
 later).
 
-> [!WARNING]- Once `llm-rosetta` owns `settings.json`, tell `argo-shim` to leave it alone
-> After the next section you will route Claude Code through `llm-rosetta` on
-> `127.0.0.1:8765` — a `route-claude-through-rosetta` helper rewrites
-> `ANTHROPIC_BASE_URL` away from the shim. From that point on every plain
-> `argo-shim` start **overwrites** `~/.claude/settings.json` back to
-> `http://127.0.0.1:25940/argoapi`. That includes `argo-shim --restart` and the
-> remote-host form `CELS_USERNAME=… uvx argo-shim --host compute-01.cels.anl.gov --restart`,
-> which is exactly how this bites: you restart a remote shim for a login-node
-> job and silently break the laptop's gateway routing.
+> [!WARNING]- After restarting `argo-shim`, resync Rosetta's route and token
+> Once Claude Code routes through `llm-rosetta` on `127.0.0.1:8765`, starting
+> `argo-shim` normally resets `ANTHROPIC_BASE_URL` to the shim and writes the
+> new token to `apiKeyHelper`. That includes `argo-shim --restart` and the
+> remote-host form `CELS_USERNAME=… uvx argo-shim --host compute-01.cels.anl.gov --restart`.
+> The `--no-update-settings` option preserves the Rosetta URL, but also leaves
+> `apiKeyHelper` unchanged while the shim has minted a new token. Rosetta then
+> keeps using the old credential and Argo requests fail authentication.
 >
-> The fix is one flag:
+> Start the shim normally, then run the sync helper:
 >
 > ```bash
-> argo-shim --no-update-settings               # local restart
-> argo-shim --host compute-01.cels.anl.gov --no-update-settings --restart  # remote host
+> argo-shim                                         # local start/restart
+> argo-rosetta-sync --with-inference               # refresh token, gateway, and Claude route
+> # For a remote host, use its usual --host invocation, then run the sync locally.
 > ```
 >
-> `llm-rosetta` cannot replace the shim — its `argo` provider still points at
-> `http://127.0.0.1:25940` and expects a running `argo-shim` underneath — but it
-> *does* replace the shim as the owner of `ANTHROPIC_BASE_URL`. Keep it that
-> way. If you want the flag on by default, wrap `argo-shim` in `~/.zshrc`:
->
-> ```zsh
-> argo-shim() {
->   if [[ "$*" == *"--no-update-settings"* ]]; then
->     command uvx --no-cache argo-shim "$@"
->   else
->     command uvx --no-cache argo-shim --no-update-settings "$@"
->   fi
-> }
-> ```
->
-> `argo-rosetta-sync` (in [Token rotation](#token-rotation)) re-applies
-> `route-claude-through-rosetta` after a shim restart, so a missed flag is
-> recoverable — it just costs a second restart of the gateway before the
-> dashboard sees Claude Code traffic again.
+> `argo-rosetta-sync` (in [Token rotation](#token-rotation)) reads the newly
+> written token, restarts Rosetta with it, and restores Claude Code's route.
+> Run it after every shim restart.
 
 Sanity check. The token lives in `~/.claude/settings.json`, so the helper digs
 it out itself. It builds the request body with [`jq`][jq] (`brew install jq`)
@@ -1306,10 +1290,8 @@ argo-rosetta-sync() {
 The startup ritual after a reboot:
 
 ```bash
-argo-shim --no-update-settings  # in a terminal: creates tunnel, rotates token (see box above)
-refresh-argo-token           # sync Argo token into env
-rosetta-gateway-restart      # restart rosetta after config/token changes
-route-claude-through-rosetta # optional: send Claude Code through rosetta too
+argo-shim                              # in a terminal: creates tunnel, rotates token
+argo-rosetta-sync --with-inference     # refresh token, gateway, and Claude route
 # then run `hermes desktop` (or `hermes chat`)
 ```
 
