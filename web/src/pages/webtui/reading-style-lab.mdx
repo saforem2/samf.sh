@@ -1,0 +1,267 @@
+---
+layout: '@/layouts/Doc.astro'
+title: Reading style lab
+description: Side-by-side prototypes for terminal-inspired article components
+---
+
+Compare the current article treatment with a proposed TUI treatment. The proposal
+column is scoped to this page; it does not change the rest of the site.
+
+All examples stay at the site’s standard `1rem` text size.
+
+## Callouts
+
+<div class="lab-compare">
+    <section class="lab-current">
+        <h3>Current</h3>
+        <blockquote>
+            <p>
+                <strong>Note</strong>
+            </p>
+            <p>The fetch command reads one stdout snapshot over SSH.</p>
+        </blockquote>
+    </section>
+    <section class="lab-proposal">
+        <h3>Proposal</h3>
+        <aside class="lab-callout">
+            <div class="lab-callout-label">
+                <span aria-hidden="true">●</span> Note
+            </div>
+            <p>The fetch command reads one stdout snapshot over SSH.</p>
+        </aside>
+    </section>
+</div>
+
+## Quotes
+
+<div class="lab-compare">
+    <section class="lab-current">
+        <h3>Current</h3>
+        <blockquote>
+            <p>
+                Read the scheduler state first. Fetch the output when the job
+                has a stdout file.
+            </p>
+            <p>
+                <cite>Remote job workflow</cite>
+            </p>
+        </blockquote>
+    </section>
+    <section class="lab-proposal">
+        <h3>Proposal</h3>
+        <figure class="lab-quote">
+            <blockquote>
+                Read the scheduler state first. Fetch the output when the job
+                has a stdout file.
+            </blockquote>
+            <figcaption>Remote job workflow</figcaption>
+        </figure>
+    </section>
+</div>
+
+## Links and inline code
+
+<div class="lab-compare">
+    <section class="lab-current">
+        <h3>Current</h3>
+        <p>
+            Run{' '}
+            <a href="https://ezpz.cool/cli/fetch/">
+                <code>ezpz fetch</code>
+            </a>{' '}
+            to read the job output.
+        </p>
+    </section>
+    <section class="lab-proposal">
+        <h3>Proposal</h3>
+        <p>
+            Run{' '}
+            <a href="https://ezpz.cool/cli/fetch/">
+                <code>ezpz fetch</code>
+            </a>{' '}
+            to read the job output.
+        </p>
+    </section>
+</div>
+
+## Figures
+
+<div class="lab-compare">
+    <section class="lab-current">
+        <h3>Current</h3>
+        <figure class="lab-figure-current">
+            <div
+                class="lab-chart"
+                role="img"
+                aria-label="Three horizontal bars showing different job durations">
+                <span style="--bar: 78%"></span>
+                <span style="--bar: 54%"></span>
+                <span style="--bar: 32%"></span>
+            </div>
+            <figcaption>Job duration by host.</figcaption>
+        </figure>
+    </section>
+    <section class="lab-proposal">
+        <h3>Proposal</h3>
+        <figure class="lab-figure">
+            <div class="lab-figure-title">job duration by host</div>
+            <div
+                class="lab-chart"
+                role="img"
+                aria-label="Three horizontal bars showing different job durations">
+                <span style="--bar: 78%"></span>
+                <span style="--bar: 54%"></span>
+                <span style="--bar: 32%"></span>
+            </div>
+            <figcaption>Figure 1. Job duration by host.</figcaption>
+        </figure>
+    </section>
+</div>
+
+## Already implemented on this branch
+
+- Code blocks use square frames, language chips, and the existing ANSI colors.
+- Tables use roomier square cells and neutral header separators; the `ezpz status` snapshot maps host and job states to color.
+- The About page tables use the default table treatment. Nested-list rails are removed; definition lists and the table of contents retain their structural styling.
+- Iosevka25 Condensed is available as an optional code font.
+
+<style>{`
+    .lab-compare {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-block: 0.5lh 1.5lh;
+        border: 1px solid var(--foreground3);
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .lab-compare > section {
+        min-width: 0;
+        padding: 0.65lh 1.5ch;
+    }
+
+    .lab-compare > section + section {
+        border-inline-start: 1px solid var(--foreground3);
+        background: var(--background1);
+    }
+
+    .lab-compare h3 {
+        margin: 0 0 0.5lh;
+        color: var(--foreground2);
+        font-family: var(--code-font-family);
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .lab-compare p {
+        margin-block: 0.5lh;
+        font-size: 1rem;
+    }
+
+    .lab-callout {
+        border: 1px solid var(--foreground3);
+        margin: 0;
+    }
+
+    .lab-callout-label,
+    .lab-figure-title {
+        padding: 0.25lh 1ch;
+        border-bottom: 1px solid var(--foreground3);
+        color: var(--accent, var(--blue));
+        font-family: var(--code-font-family);
+    }
+
+    .lab-callout > p {
+        margin: 0;
+        padding: 0.5lh 1ch;
+    }
+
+    .lab-quote {
+        margin: 0;
+        border: 1px solid var(--foreground3);
+        padding: 0.5lh 1.25ch;
+        background: var(--background0);
+    }
+
+    .lab-quote blockquote {
+        margin: 0;
+        border: 0;
+        padding: 0;
+    }
+
+    .lab-quote figcaption {
+        margin-top: 0.5lh;
+        padding-top: 0.25lh;
+        border-top: 1px solid var(--foreground3);
+        color: var(--foreground2);
+    }
+
+    .lab-proposal a {
+        color: var(--blue);
+        padding-inline: 0.15ch;
+        border-bottom: 1px solid var(--accent, var(--blue));
+        background: var(--background1);
+        text-decoration: none;
+    }
+
+    .lab-proposal a:hover {
+        background: var(--background1);
+    }
+
+    .lab-proposal code {
+        border: 1px solid var(--foreground3);
+        padding-inline: 0.35ch;
+        background: var(--background1);
+        font-size: 1rem;
+    }
+
+    .lab-figure-current,
+    .lab-figure {
+        margin: 0;
+    }
+
+    .lab-chart {
+        display: grid;
+        gap: 0.35lh;
+        min-height: 8lh;
+        align-content: center;
+        padding: 0.75lh 1ch;
+        background: var(--background1);
+    }
+
+    .lab-chart span {
+        display: block;
+        width: var(--bar);
+        height: 0.5lh;
+        background: var(--blue, var(--accent));
+    }
+
+    .lab-figure {
+        border: 1px solid var(--foreground3);
+    }
+
+    .lab-figure .lab-chart {
+        background: var(--background0);
+    }
+
+    .lab-figure figcaption,
+    .lab-figure-current figcaption {
+        color: var(--foreground2);
+        padding: 0.35lh 1ch;
+    }
+
+    .lab-figure figcaption {
+        border-top: 1px solid var(--foreground3);
+    }
+
+    @media (max-width: 60ch) {
+        .lab-compare {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .lab-compare > section + section {
+            border-inline-start: 0;
+            border-top: 1px solid var(--foreground3);
+        }
+    }
+`}</style>

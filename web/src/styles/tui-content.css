@@ -1,6 +1,5 @@
-/* TUI reading styles for semantic list content.
-   Keep list text at the inherited 1rem; use marker color and guide rules to
-   show structure without turning each item into a card. */
+/* TUI reading styles for semantic list content. Keep list text at the
+   inherited 1rem; use marker color and spacing to show structure. */
 
 #main-content ul > li::before {
     color: var(--foreground2);
