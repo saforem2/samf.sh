@@ -2487,7 +2487,7 @@ pre.astro-code span.line.is-line-linked > .code-line-link {
     display: block;
     box-sizing: border-box;
     width: 3ch;
-    height: 1lh;
+    height: 1.5lh;
     padding: 0;
     border: none;
     background: transparent;
@@ -2501,7 +2501,7 @@ pre.astro-code span.line.is-line-linked > .code-line-link {
     color: transparent;
     overflow: hidden;
     white-space: nowrap;
-    line-height: 1;
+    line-height: 1.5;
 }
 
 /* Keyboard users get the same swap as mouse users: the :focus-within rule
