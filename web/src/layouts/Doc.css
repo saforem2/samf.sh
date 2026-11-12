@@ -1348,7 +1348,6 @@ h6::before {
             --box-border-color: currentColor;
             transition:
                 color 120ms ease-out,
-                background-color 120ms ease-out,
                 transform 0.1s ease-out;
             /* The box-shadow lift lives on ::before (the WebTUI frame), so
                animate it there too. */
@@ -1361,7 +1360,7 @@ h6::before {
                 color: var(--url);
             }
             /* Hover/focus: the whole notched chip turns accent — border,
-               badge, title, faint wash — and lifts up-left with a hard TUI
+               badge, title — and lifts up-left with a hard TUI
                shadow. WebTUI draws the frame as a ::before (covering the
                lower half; the badge notches the top), so the shadow rides
                ::before to lift the frame as one unit; recoloring the badge
@@ -1370,7 +1369,6 @@ h6::before {
             &:hover {
                 color: var(--accent);
                 --box-border-color: var(--accent);
-                background-color: oklch(from var(--accent) l c h / 0.08);
                 transform: translate(-2px, -2px);
             }
             &:focus::before,

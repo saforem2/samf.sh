@@ -3298,7 +3298,7 @@ html[data-webtui-theme='catppuccin-latte'] {
             box-shadow 120ms ease-out;
     }
     /* The pagination links (.next/.prev) are box-= boxes too, but they get
-       their own flat-fill hover in Doc.css instead of this tactile lift
+       their own hover treatment in Doc.css instead of this tactile lift
        (the translate + offset shadow read as a clumsy detached shadow on a
        wide block). Exclude them here so Doc.css's hover isn't out-specified
        (this selector carries two IDs via :not(#doc-article)). */
