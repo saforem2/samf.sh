@@ -1,0 +1,58 @@
+/* TUI reading styles for semantic list content.
+   Keep list text at the inherited 1rem; use marker color and guide rules to
+   show structure without turning each item into a card. */
+
+#main-content ul > li::before {
+    color: var(--foreground2);
+}
+
+#main-content ol > li::marker {
+    color: var(--foreground2);
+}
+
+/* Nested lists read as branches of the parent item. The native list markers
+   remain intact; this quiet rail adds hierarchy without drawing a box around
+   every row. */
+#main-content li > :is(ul, ol) {
+    border-inline-start: 0.125ch solid var(--foreground3);
+}
+
+/* Definition lists work well as compact key/value readouts. A narrow label
+   column keeps related values easy to scan while allowing long terms and
+   descriptions to wrap naturally. */
+#main-content dl {
+    display: grid;
+    grid-template-columns: minmax(min-content, 14ch) minmax(0, 1fr);
+    column-gap: 2ch;
+    row-gap: 0.5lh;
+    margin-block: 1lh;
+    min-width: 0;
+}
+
+#main-content dt {
+    color: var(--foreground1);
+    font-weight: 700;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+#main-content dd {
+    border-inline-start: 0.125ch solid var(--foreground3);
+    margin: 0;
+    min-width: 0;
+    padding-inline-start: 1ch;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 60ch) {
+    #main-content dl {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: 0;
+    }
+
+    #main-content dd {
+        margin-block-end: 0.75lh;
+        margin-inline-start: 1ch;
+        padding-inline-start: 1ch;
+    }
+}

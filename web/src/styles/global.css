@@ -475,15 +475,15 @@
        lets the vim-focus indicator be the sole highlight. (Heading text color
        is unchanged.) */
     h1 {
-        font-size: clamp(1.4rem, 1rem + 2vw, 2rem);
+        font-size: 1rem;
         color: oklch(from var(--h1, var(--red)) l c h);
     }
     h2 {
-        font-size: clamp(1.2rem, 0.9rem + 1.5vw, 1.6rem);
+        font-size: 1rem;
         color: oklch(from var(--h2, var(--orange)) l c h);
     }
     h3 {
-        font-size: clamp(1.05rem, 0.8rem + 1vw, 1.35rem);
+        font-size: 1rem;
         color: oklch(from var(--h3, var(--green)) l c h);
     }
     h4 {
@@ -786,7 +786,11 @@
        simple border-left + tinted background. Cleaner, single declaration. */
     blockquote {
         --blockquote-accent: var(--foreground2);
-        border-left: 3px solid var(--blockquote-accent);
+        /* Read a Markdown quote like a Rich Panel: a square frame around the
+           whole renderable, with the quote accent carried on its left edge. */
+        border: 0.125ch solid var(--foreground3);
+        border-left: 0.375ch solid var(--blockquote-accent);
+        border-radius: 0;
         background-color: oklch(
             from var(--blockquote-accent) calc(l * 1.15) c h / 0.08
         );
@@ -809,7 +813,7 @@
         padding-block: 0;
         padding-inline-start: 0;
         background: none;
-        border-left: none;
+        border: none;
     }
 
     .callout p {

@@ -8,6 +8,7 @@ description: 'Submit, monitor, extend, and cancel HPC jobs from anywhere — no 
 ---
 
 import RichTable from '@/components/RichTable.astro'
+import RichStatusDetails from '@/components/RichStatusDetails.astro'
 
 For years the `ezpz` answer to "which machine am I on?" was to figure it out
 at runtime. Launch on Aurora (PBS, Intel XPUs), Polaris (PBS, NVIDIA), Perlmutter
@@ -190,39 +191,69 @@ ezpz status --remote aurora --states queued --limit 5
 
 When stdout is a TTY, `ezpz status` renders a
 [Rich](https://github.com/Textualize/rich) table with square borders, a neutral
-header rule, and color by state. The HTML version below keeps the same table
-structure available to screen readers. Every cell stays at `1rem`.
+header rule, and colors by host and state. This static example snapshot keeps
+the same table structure available to screen readers; it is not a live status
+query. The table uses the site’s standard text size.
 
 <RichTable
-    caption="ezpz status --remote aurora"
-    headers={['Host', 'JOBID', 'S', 'QUEUE', 'NODES', 'WALL', 'ELAP', 'JOBNAME', 'NOTE']}
+    caption="ezpz status"
+    headers={['Host', 'JOBID', 'S', 'QUEUE', 'NODES', 'WALL', 'ELAP', 'JOBNAME']}
     stateColumn="S"
     rows={[
-        ['polaris', '7817021', 'Q', 'small', '18', '03:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
-        ['polaris', '7817022', 'Q', 'medium', '34', '06:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
-        ['polaris', '7817023', 'Q', 'small', '18', '03:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
-        ['polaris', '7817024', 'Q', 'medium', '34', '06:00', '--', 'agpt-olmo3-polaris', 'Not enough free nodes available'],
-        ['aurora', '9043542', 'Q', 'small', '788', '12:00', '--', 'followup-umbrella-boost-20261020', 'Not enough free nodes available'],
+        ['sunspot', '12483402', 'R', 'workq', '1', '23:00', '03:02', 'lw4dvar-ace2-240a'],
+        ['sunspot', '12483437', 'R', 'workq', '4', '02:00', '00:22', 'cpt-fwe-4n'],
+        ['sirius', '33460', 'R', 'workq', '2', '06:00', '00:26', 'agpt-olmo3-sirius'],
+        ['sirius', '33465', 'R', 'workq', '1', '01:30', '00:05', 'core-gate-ut'],
+        ['polaris', '7832130', 'Q', 'small', '18', '03:00', '--', 'agpt-olmo3-polaris'],
+        ['polaris', '7832131', 'Q', 'medium', '34', '06:00', '--', 'agpt-olmo3-polaris'],
+        ['polaris', '7832132', 'Q', 'small', '20', '03:00', '--', 'agpt-olmo3-polaris'],
+        ['polaris', '7832133', 'Q', 'medium', '36', '06:00', '--', 'agpt-olmo3-polaris'],
+        ['aurora', '9076330', 'Q', 'small', '520', '12:00', '--', 'agpt-20b-n512'],
+        ['aurora', '9076346', 'Q', 'small', '260', '12:00', '--', 'agpt-20b-n256'],
+        ['aurora', '9076358', 'Q', 'small', '522', '12:00', '--', 'agpt-v2-4b-n512'],
+        ['aurora', '9076371', 'Q', 'small', '522', '12:00', '--', 'agpt-v2-10b-n512'],
+        ['sunspot', '12483405', 'H', 'workq', '1', '23:00', '--', 'lw4dvar-ace2-240b'],
+        ['sunspot', '12483446', 'H', 'workq', '4', '02:00', '--', 'cpt-fwe-4n'],
     ]}
 />
 
-The same command reported these endpoint warnings:
-
-```text
-⚠ warn sophia: unreachable (255)
-⚠ warn sirius: unreachable (255)
-⚠ warn frontier: unreachable (255)
-```
+<RichStatusDetails
+    notes={[
+        { id: '12483402', state: 'running', text: 'Job run at Thu Nov 12 at 16:21 on (x1921c0s5b0n0:ncpus=208)' },
+        { id: '12483437', state: 'running', text: 'Job run at Thu Nov 12 at 19:00 on (x1921c5s4b0n0:ncpus=208)+(x1921c5s5b0n0:ncpus=208)+(x1921c5s6b0n0:ncpus=208)+(x1921c5s7b0n0:ncpus=208)' },
+        { id: '33460', state: 'running', text: 'Job run at Thu Nov 12 at 18:56 on (x3200c0s13b0n0:ncpus=64)+(x3200c0s13b1n0:ncpus=64)' },
+        { id: '33465', state: 'running', text: 'Job run at Thu Nov 12 at 19:19 on (x3200c0s19b0n0:ncpus=64)' },
+        { id: '7832130', state: 'queued', text: 'Job is requesting an exclusive node and node is in use' },
+        { id: '7832131', state: 'queued', text: 'Job would conflict with reservation or top job' },
+        { id: '7832132', state: 'queued', text: 'Job is requesting an exclusive node and node is in use' },
+        { id: '7832133', state: 'queued', text: 'Job would conflict with reservation or top job' },
+        { id: '9076330', state: 'queued', text: 'Not enough free nodes available' },
+        { id: '9076346', state: 'queued', text: 'Not enough free nodes available' },
+        { id: '9076358', state: 'queued', text: 'Not enough free nodes available' },
+        { id: '9076371', state: 'queued', text: 'Not enough free nodes available' },
+    ]}
+    nodes={[
+        { id: '12483402', state: 'running', text: '(1): x1921c0s5b0n0' },
+        { id: '12483437', state: 'running', text: '(4): x1921c5s4b0n0 x1921c5s5b0n0 x1921c5s6b0n0 x1921c5s7b0n0' },
+        { id: '33460', state: 'running', text: '(2): x3200c0s13b0n0 x3200c0s13b1n0' },
+        { id: '33465', state: 'running', text: '(1): x3200c0s19b0n0' },
+    ]}
+    warnings={[
+        { host: 'sophia', code: '255' },
+        { host: 'frontier', code: '255' },
+        { host: 'crux', code: '255' },
+    ]}
+    runtime="3s"
+/>
 
 `Host` leads the fan-out (`ezpz status` with no `--remote`), short numeric
 `JOBID` is the primary key, `WALL`/`ELAP` include `hh:mm`, `JOBNAME` is the
-full name, `NOTE` is the scheduler's blocking reason, `NODES` is the node
-count, and running-job nodelists are rendered below the table with width-aware
-wrapping (`…+N more` when wide).
+full name, and `NODES` is the node count. Per-job notes and running-job node
+mappings are shown below the table so the compact status columns stay scannable.
 
 The colour map is small and deliberate — green for `active`/`running`, yellow
 for `queued`, magenta for `held`, cyan for `completed`, red for `failed`/
-`canceled`, dim for `new` — so a scan of ten rows tells you which jobs need
+`canceled`, dim for `new` — so a scan of the jobs tells you which ones need
 attention without reading every cell.
 
 When stdout is piped, the same columns come out as fixed-width plain text with
