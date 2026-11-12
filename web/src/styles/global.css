@@ -2991,6 +2991,10 @@ html[data-webtui-theme='catppuccin-latte'] {
         overflow-wrap: anywhere;
         word-break: break-word;
     }
+    #main-content table:not(:has(.line-code)) :is(th, td) {
+        padding: 0.15lh 0.8ch;
+        line-height: 1.4;
+    }
     /* <code> tokens inherit white-space: nowrap from the inline-code
        rule elsewhere; override it inside table cells so the column
        stays within the wrapper's width on mobile. */
@@ -3345,6 +3349,10 @@ html[data-webtui-theme='catppuccin-latte'] {
     #main-content :is(p, blockquote, li, [is-~='typography-block']) code {
         color: var(--code-fg, var(--foreground2));
         background-color: var(--code-bg, var(--background1));
+        border: 1px solid
+            color-mix(in srgb, var(--foreground3) 70%, transparent);
+        border-radius: 0;
+        padding-inline: 0.25ch;
     }
 
     /* Inline `code` wrapped in a link: signal link-ness at rest, and let

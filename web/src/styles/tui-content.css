@@ -1,12 +1,13 @@
 /* TUI reading styles for semantic list content. Keep list text at the
-   inherited 1rem; use marker color and spacing to show structure. */
+   inherited 1rem; use the theme accent on markers and spacing to show
+   structure. */
 
 #main-content ul > li::before {
-    color: var(--foreground2);
+    color: var(--accent, var(--blue));
 }
 
 #main-content ol > li::marker {
-    color: var(--foreground2);
+    color: var(--accent, var(--blue));
 }
 
 /* Definition lists work well as compact key/value readouts. A narrow label
