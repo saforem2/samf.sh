@@ -481,7 +481,6 @@ h6::before {
     white-space: nowrap;
     box-sizing: border-box;
     bottom: 0;
-    left: 0;
     right: 0;
     z-index: 3;
     color: var(--foreground3);

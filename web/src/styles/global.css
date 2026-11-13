@@ -270,19 +270,7 @@
            independent of the body font. Overridden by [data-code-font]. */
         --code-font-family:
             var(--font-stack-miosevka-term), 'Symbols Nerd Font';
-        /* Body text tops out at 17px on wide screens and scales down to
-           16px on narrower ones. Bumped a smidge from the old 15.2–16px
-           band for more comfortable reading; the ch-based layout scales
-           with it cleanly. Mobile (<=480px) keeps its own flat 16px rule
-           below.
-           rem, not px: a px root ignores a raised browser font default
-           outright (15px stays 15px for someone who asked for 20px), which
-           is the accessibility floor that decides this value. 1rem tracks
-           that setting instead — 20px for that user, 16px for everyone else.
-
-           The previous note here warned that a rem clamp compounds to ~18px
-           because the var lands on both `html` and `body`. Measured: it does
-           not; both resolve to the same value. */
+        /* The site's body text follows the reader's browser font size. */
         --font-size: 1rem;
         /* --line-height: 1.5; */
         --line-height: initial;
@@ -2307,7 +2295,7 @@ pre.astro-code .line {
        @layer base — it must carry the code font itself or QP leaks in. */
     font-family:
         var(--code-font-family), 'inline-emoji-shrink', 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Noto Color Emoji';
+        'Segoe UI Emoji', 'Noto Color Emoji', monospace;
 }
 
 /* The line number. Rendered by script as a real <a> so it can be copied,
