@@ -1412,10 +1412,6 @@ h6::before {
             content: none;
         }
 
-        li > :where(* + *):not(ul):not(ol):not(code) {
-            margin-inline-start: var(--li-text-offset, 0ch);
-        }
-
         /* `:not(.astro-code)` — shiki code blocks set their own 0.5lh
            vertical padding (global.css) to keep the language badge off the
            first line of code. This rule was written when those blocks had
@@ -1428,16 +1424,19 @@ h6::before {
             text-indent: 0;
         }
 
-        ul li {
-            /* --li-text-offset: 2ch; */
-            text-indent: 2ch hanging;
+        /* Outside markers reserve a stable gutter for each ordered-list
+           item, so wrapped lines start exactly with the item text. An
+           inside marker plus a hanging text-indent approximated that gutter
+           and drifted by the marker's actual font width. */
+        ol {
+            list-style-position: outside;
         }
         ol li {
-            /* --li-text-offset: 4ch; */
-            text-indent: 3ch hanging;
+            text-indent: 0;
         }
-        ol > li:nth-child(n + 10) {
-            text-indent: 4ch hanging;
+
+        ul li {
+            text-indent: 2ch hanging;
         }
         ol > li::marker {
             content: counter(list-item) '. ';
@@ -1471,11 +1470,11 @@ h6::before {
             padding-inline-start: 2ch;
         }
 
-        /* Nested lists: nudge each list right by the parent's marker width so
-           the nested marker (e.g. `-`) sits roughly under the parent text.
-           Also clear the inherited `text-indent: ...ch hanging` so the
-           nested text doesn't get over-indented. */
-        li > :is(ul, ol) > li {
+        /* Nested unordered lists: nudge the list right by the parent's marker
+           width so its `-` marker sits roughly under the parent text. Keep
+           the hanging indent sized to that marker. Nested ordered lists use
+           outside markers and need no text indent. */
+        li > ul > li {
             text-indent: 1.5ch hanging;
         }
         ul > li > :is(ul, ol) {
