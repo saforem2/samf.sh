@@ -259,6 +259,22 @@ Pre-Training group] for the [AuroraGPT] project.
   }
 `}</style>
 
+## 🔬 Selected Contributions
+
+- **AuroraGPT:** I co-lead the Models & Pre-training team. AuroraGPT-7B reached
+  2T tokens; AuroraGPT-2B reached 7.77T tokens; I also ran a 20B model on 512
+  Aurora nodes. I ported and maintained the Megatron-DeepSpeed path, then
+  migrated pre-training to TorchTitan and built mixture-of-experts, supervised
+  fine-tuning, GRPO, continued pre-training, retry, and asynchronous
+  checkpointing paths.
+- **[`ezpz`]:** I created and maintain this distributed-training toolkit. It
+  supports PBS and Slurm and Intel, NVIDIA, AMD, Apple Silicon, and CPU backends.
+  It has run on Aurora, Polaris, Frontier, Perlmutter, LUMI, and Leonardo.
+- **Lattice QCD:** I developed learned Monte Carlo samplers and
+  [`l2hmc-qcd`], which supports 2D U(1) and 4D SU(3) gauge theories. I am a
+  co-PI on the DOE Genesis Mission Phase II project “Lattice QCD at the
+  Intelligence Frontier,” selected for award negotiation in October 2026.
+
 ## 📬 Posts
 
 <table id="posts-table">
@@ -858,6 +874,7 @@ Pre-Training group] for the [AuroraGPT] project.
 
 | Year | Title |
 | ---- | ----- |
+| 2026 | Pre-Training AuroraGPT on Intel XPUs: A Portable Stack, Silent Failures, and Restart Economics (accepted, 4th TPC Workshop at SC '26) |
 | 2026 | [GLANCED-IO: Taming I/O Optimization for Deep Learning at Scale][glanced-io] |
 | 2026 | [Extending µP: Spectral Conditions for Feature Learning Across Optimizers][extending-mup] |
 | 2026 | [Building an AI-native Research Ecosystem for Experimental Particle Physics: A Community Vision][ai-native-research] |
@@ -894,72 +911,75 @@ Pre-Training group] for the [AuroraGPT] project.
 
 ### Detailed list
 
-1.  [**GLANCED-IO: Taming I/O Optimization for Deep Learning at
+1.  **Pre-Training AuroraGPT on Intel XPUs: A Portable Stack, Silent
+    Failures, and Restart Economics** (Foreman et al. (2026), accepted to
+    the 4th TPC Workshop at SC '26)
+2.  [**GLANCED-IO: Taming I/O Optimization for Deep Learning at
     Scale**][glanced-io] (Sinurat et al. (2026))
-2.  [**Extending µP: Spectral Conditions for Feature Learning Across
+3.  [**Extending µP: Spectral Conditions for Feature Learning Across
     Optimizers**][extending-mup] (Gupta et al. (2026))
-3.  [**Building an AI-native Research Ecosystem for Experimental
+4.  [**Building an AI-native Research Ecosystem for Experimental
     Particle Physics: A Community Vision**][ai-native-research]
     (Aarrestad et al. (2026))
-4.  🌎 [<span class="highlight-green">**AERIS**</span>: **Argonne Earth
+5.  🌎 [<span class="highlight-green">**AERIS**</span>: **Argonne Earth
     Systems Model for Reliable and Skillful
     Predictions**][Argonne Earth Systems Model for Reliable and Skillful Predictions]
     (Hatanpää et al. (2025))
     - ✨ [*2025 ACM Gordon Bell Prize for Climate Modeling Finalist*]
-5.  Aurora: Architecting Argonne’s First Exascale Supercomputer for
+6.  Aurora: Architecting Argonne’s First Exascale Supercomputer for
     Accelerated Scientific Discovery (Allen et al. (2025))
-6.  [HiPerRAG: High-Performance Retrieval Augmented Generation for
+7.  [HiPerRAG: High-Performance Retrieval Augmented Generation for
     Scientific Insights] (Gokdemir et al. (2025))
-7.  [Automated Tuning for HMC Mass Ratios] (Torsiello et al. (2025))
-8.  [MOFA: Discovering Materials for Carbon Capture with a GenAI and
+8.  [Automated Tuning for HMC Mass Ratios] (Torsiello et al. (2025))
+9.  [MOFA: Discovering Materials for Carbon Capture with a GenAI and
     Simulation-Based Workflow] (Yan et al. (2025))
-9.  🧪 [<span class="highlight-pink">**MProt-DPO**</span>: **Breaking
+10. 🧪 [<span class="highlight-pink">**MProt-DPO**</span>: **Breaking
     the ExaFLOPS Barrier for Multimodal Protein Design with DPO**]
     (Dharuman et al. (2024))
     - 🌟 [*2024 ACM Gordon Bell Finalist*]
-10. [Intro to HPC Bootcamp: Engaging New Communities Through Energy
+11. [Intro to HPC Bootcamp: Engaging New Communities Through Energy
     Justice Projects] (<span class="nocase">Leung et al.</span> (2024))
-11. [Thorough Characterization and Analysis of Large Transformer Model
+12. [Thorough Characterization and Analysis of Large Transformer Model
     Training At-Scale] (Cheng et al. (2024))
-12. [MLMC: Machine Learning Monte Carlo for Lattice Gauge Theory]
+13. [MLMC: Machine Learning Monte Carlo for Lattice Gauge Theory]
     (Foreman et al. (2023))
-13. [Protein Generation via Genome-scale Language Models with
+14. [Protein Generation via Genome-scale Language Models with
     Bio-physical Scoring] (<span class="nocase">Dharuman et al.</span>
     (2023))
-14. [DeepSpeed4Science Initiative: Enabling Large-Scale Scientific
+15. [DeepSpeed4Science Initiative: Enabling Large-Scale Scientific
     Discovery] (<span class="nocase">Song et al.</span> (2023))
     - [📰 DeepSpeed4Science.ai Blog Post]
     - [🚂 Loooooooong Sequence Lengths]
-15. [Comprehensive Performance Study of LLMs on Novel AI Accelerators]
+16. [Comprehensive Performance Study of LLMs on Novel AI Accelerators]
     (Emani et al. (2023))
-16. [Exploratory Analysis of Climate Data with
+17. [Exploratory Analysis of Climate Data with
     `ClimRR`][Foundation models for long term climate forecasting],
     [Intro to HPC Bootcamp @ NERSC] (Foreman (2023))
-17. 🧬 [<span class="highlight">**GenSLMs**</span>: **Genome-scale
+18. 🧬 [<span class="highlight">**GenSLMs**</span>: **Genome-scale
     language models reveal SARS-Cov-2 evolutionary dynamics**]
     (<span class="nocase">Zvyagin et al.</span> (2023))
     - Winner of the [🏆 _ACM Gordon Bell Special Prize for High
       Performance Computing-Based COVID-19
       Research_][ACM Gordon Bell Special Prize]
-18. [Lattice QCD and Particle Physics] (<span class="nocase">Kronfeld et
+19. [Lattice QCD and Particle Physics] (<span class="nocase">Kronfeld et
     al.</span> (2022))
-19. [Applications of ML to Lattice QFT] (<span class="nocase">Boyda et
+20. [Applications of ML to Lattice QFT] (<span class="nocase">Boyda et
     al.</span> (2022))
-20. [LeapFrogLayers: Trainable Framework for Effective Sampling]
+21. [LeapFrogLayers: Trainable Framework for Effective Sampling]
     (Foreman, Izubuchi, et al. (2021))
-21. [HMC with Normalizing Flows][] \[[slides]\] (Foreman, Izubuchi, et
+22. [HMC with Normalizing Flows][] \[[slides]\] (Foreman, Izubuchi, et
     al. (2021))
-22. [Deep Learning Hamiltonian Monte Carlo][] \[[+ poster]\] (Foreman,
+23. [Deep Learning Hamiltonian Monte Carlo][] \[[+ poster]\] (Foreman,
     Jin, et al. (2021))
-23. [Machine Learning and Neural Networks for Field Theory] (Foreman et
+24. [Machine Learning and Neural Networks for Field Theory] (Foreman et
     al. (2020))
-24. [Examples of renormalization group transformations for image sets]
+25. [Examples of renormalization group transformations for image sets]
     (Samuel Foreman et al. (2018))
-25. [RG inspired Machine Learning for lattice field theory] (Sam Foreman
+26. [RG inspired Machine Learning for lattice field theory] (Sam Foreman
     et al. (2018))
-26. [Large Energy Density in Three-Plate Nanocapacitors due to Coulomb
+27. [Large Energy Density in Three-Plate Nanocapacitors due to Coulomb
     Blockade] (Hubler et al. (2018))
-27. [Superconductivity of In and Sn Samples] (Deamont and Foreman
+28. [Superconductivity of In and Sn Samples] (Deamont and Foreman
     (2014))
 
 > [!NOTE] 📓 References
@@ -1608,24 +1628,16 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
 - **Assistant Computational Scientist**
     - _Argonne National Laboratory_, Leadership Computing Facility (ALCF)
       Lemont, IL \| 2022–Present
-        - Research lead on scaling large language models (LLMs) and
-          generative AI for science on supercomputers.
-            - Co-lead the Models and Pretraining team of the [AuroraGPT]
-              project
-        - Optimize large-scale training of foundation models and language
-          models for scientific applications.
-        - Collaborate with interdisciplinary teams to enhance simulation
-          efficiency and scalability
-        - Focus on AI and HPC for scientific applications, including:
-            - Training large language models on supercomputers
-            - Genome scale language models (GenSLMs) for studying SARS-CoV-2
-              evolutionary dynamics
-            - Direct Preference Optimization (DPO) for multimodal protein
-              design workflows
-            - Climate modeling and weather forecasting using foundation models
-            - Developing improved sampling algorithms for lattice quantum
-              chromodynamics (QCD)
-        - [https://www.alcf.anl.gov/about/people/sam-foreman](https://www.alcf.anl.gov/about/people/sam-foreman)
+        - Co-lead the Models & Pre-training team for [AuroraGPT].
+        - Lead the production training stack on Intel GPUs, including the
+          migration from Megatron-DeepSpeed to TorchTitan, mixture-of-experts
+          support, post-training pipelines, automatic retry, and asynchronous
+          checkpointing.
+        - Technical lead for the ALCF MORPH LDRD.
+        - [Argonne staff profile](https://www.alcf.anl.gov/about/people/sam-foreman)
+- **CASE Joint Appointment**
+    - _University of Chicago, Consortium for Advanced Science and Engineering_
+      \| 2026–Present
 - **Postdoctoral Researcher**
     - _Argonne National Laboratory_, Leadership Computing Facility (ALCF)
       Lemont, IL \| 2019 – 2022
@@ -1642,14 +1654,28 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
         - Development of [l2hmc-qcd][`l2hmc-qcd`] in collaboration with ALCF
           for my PhD Thesis research
 
+## 🤝 Leadership and Service
+
+- Chair of the ALCF APEX Technical Steering Committee since February 2026.
+  Led technical review of its inaugural solicitation: 45 proposals from 38
+  institutions, with 146 peer reviews; wrote the landscape analysis presented
+  to the DOE Integrated Project Team.
+- ALCF Catalyst and technical liaison to INCITE and ALCC science teams using
+  Aurora and Polaris. DOE Genesis Mission liaison to PROMETHEUS and DeepLynx.
+- Member of the DeepSpeed Technical Steering Committee, ALCF Software
+  Committee, and APS Division of Particles & Fields Coordinating Panel for
+  Software and Computing.
+- Organizer of the SC23–SC26 Workshop on High Performance Python for Science
+  at Scale; co-presenter of the SC25 tutorial on Accelerating and Scaling
+  Python for HPC.
+- Project lead for the DOE Intro to HPC Undergraduate Bootcamp in 2023, 2025,
+  and 2026. Lecturer for ATPESC (2022, 2024, 2026) and the ALCF AI-for-Science
+  training series (2021–2024); mentor at the ALCF INCITE GPU Hackathon
+  (2023, 2024, 2026).
+- Supervised or co-supervised two postdocs and six students, and mentored four
+  additional postdocs.
+
 ## 🏆 Awards and Honors
-
-- Member of the DeepSpeed Technical Steering Commiittee, 2025 – Present
-    - Contributing to the development and direction of the DeepSpeed
-      library for large-scale model training.
-
-- Nominated to serve on the APS [**Coordinating Panel for Software and
-  Computing**] (CPSC).
 
 - **Finalist, ACM Gordon Bell Prize in Climate Modeling**, 2025
     - Recognized for our work on  
@@ -1683,8 +1709,18 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
     - Awarded by the Department of Energy for outstanding research
       contributions during graduate studies.
 
+- **Impact Argonne Awards (team):** Innovation for AERIS (2026); Innovation
+  and Enhancement of Argonne's Reputation for MProt-DPO (2024); Enhancement
+  of Argonne's Reputation for GenSLMs and the AI-for-Science training series
+  (2023); Extraordinary Effort for AuroraGlimmer (2024) and the launch of the
+  training series (2022).
+- Featured in the ALCF 2025 Annual Report staff spotlight. DOE ASCR science
+  highlight for LeapfrogLayers / L2HMC (2022); ALCF operational-assessment
+  highlight for DeepSpeed4Science long-sequence training (2023).
+
 ## 🎪 Events
 
+- Workshop Committee, 4th TPC Workshop at SC26.
 - Organizer for:
     - [SC25 Workshop: High Performance Python for Science at Scale
       (HPPSS)], November 2025
@@ -1838,6 +1874,7 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
 [Models / Pre-Training group]: https://auroragpt.anl.gov/about/#teams
 [AuroraGPT]: https://auroragpt.anl.gov
 [`l2hmc-qcd`]: https://github.com/saforem2/l2hmc-qcd
+[`ezpz`]: https://github.com/saforem2/ezpz
 [glanced-io]: https://doi.org/10.1145/3806645.3807588
 [extending-mup]: https://arxiv.org/abs/2602.20937
 [ai-native-research]: https://arxiv.org/abs/2602.17582
