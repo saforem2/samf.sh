@@ -11,6 +11,128 @@ interface ViewportState {
     ty: number
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg'
+const ALLOWED_SVG_ELEMENTS = new Set([
+    'circle',
+    'clippath',
+    'defs',
+    'desc',
+    'ellipse',
+    'g',
+    'line',
+    'marker',
+    'mask',
+    'path',
+    'polygon',
+    'polyline',
+    'rect',
+    'stop',
+    'svg',
+    'text',
+    'title',
+    'tspan',
+])
+const ALLOWED_SVG_ATTRIBUTES = new Set([
+    'aria-label',
+    'class',
+    'clip-path',
+    'cx',
+    'cy',
+    'd',
+    'data-icon',
+    'data-id',
+    'dominant-baseline',
+    'fill',
+    'fill-opacity',
+    'fill-rule',
+    'font-family',
+    'font-size',
+    'font-style',
+    'font-weight',
+    'height',
+    'id',
+    'mask',
+    'marker-end',
+    'marker-mid',
+    'marker-start',
+    'offset',
+    'opacity',
+    'points',
+    'preserveaspectratio',
+    'r',
+    'role',
+    'rx',
+    'ry',
+    'stop-color',
+    'stop-opacity',
+    'stroke',
+    'stroke-dasharray',
+    'stroke-dashoffset',
+    'stroke-linecap',
+    'stroke-linejoin',
+    'stroke-opacity',
+    'stroke-width',
+    'style',
+    'text-anchor',
+    'transform',
+    'viewbox',
+    'width',
+    'x',
+    'x1',
+    'x2',
+    'xmlns',
+    'xmlns:xlink',
+    'xml:space',
+    'y',
+    'y1',
+    'y2',
+])
+
+function parseSafePeleSvg(markup: string): SVGSVGElement {
+    const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml')
+    const root = parsed.documentElement
+    if (
+        parsed.doctype ||
+        root.localName.toLowerCase() === 'parsererror' ||
+        root.namespaceURI !== SVG_NS ||
+        root.localName.toLowerCase() !== 'svg'
+    ) {
+        throw new Error('Pele returned invalid SVG markup')
+    }
+
+    const elements = [root, ...Array.from(root.querySelectorAll('*'))]
+    for (const element of elements) {
+        const name = element.localName.toLowerCase()
+        if (
+            element.namespaceURI !== SVG_NS ||
+            !ALLOWED_SVG_ELEMENTS.has(name)
+        ) {
+            element.remove()
+            continue
+        }
+
+        for (const attribute of Array.from(element.attributes)) {
+            const attrName = attribute.name.toLowerCase()
+            const value = attribute.value.trim()
+            const hasUnsafeUrl = /url\s*\(\s*['"]?(?!#)/i.test(value)
+            const hasActiveCss = /javascript\s*:|expression\s*\(|@import/i.test(
+                value,
+            )
+            if (
+                !ALLOWED_SVG_ATTRIBUTES.has(attrName) ||
+                ((attrName === 'href' || attrName === 'xlink:href') &&
+                    !value.startsWith('#')) ||
+                hasUnsafeUrl ||
+                hasActiveCss
+            ) {
+                element.removeAttribute(attribute.name)
+            }
+        }
+    }
+
+    return document.importNode(root, true) as SVGSVGElement
+}
+
 function applyTransform(svg: SVGElement, state: ViewportState) {
     svg.style.setProperty(
         'transform',
@@ -595,7 +717,10 @@ export function initMermaid() {
                         autoDirection: true,
                         idPrefix: `pele-${++diagramSequence}`,
                     })
-                    node.innerHTML = result.svg
+                    // Diagram source comes from authored Markdown. Parse the
+                    // renderer output as SVG XML and strip active content and
+                    // non-local references before adding it to the document.
+                    node.replaceChildren(parseSafePeleSvg(result.svg))
                 } catch (error) {
                     const detail =
                         error instanceof PeleError

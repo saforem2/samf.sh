@@ -207,8 +207,8 @@ Pre-Training group] for the [AuroraGPT] project.
     /* The base .table-scroll-wrapper rule sets width: 100%, which left the
        posts box 835px wide around a 626px table: 208px of dead space with the
        scrollbar stranded at the far edge. fit-content shrinks the box to the
-       table while max-width still clamps the wide case (talks is 887px and
-       genuinely scrolls). */
+       table while max-width still clamps it to the available column and the
+       shared 120ch structured-content measure. */
     width: fit-content;
     /* Reserve the scrollbar track so the table does not shift sideways when
        the list is short enough not to need one. */
@@ -222,7 +222,7 @@ Pre-Training group] for the [AuroraGPT] project.
        End side only: a leading margin indented the tables out of line with
        the body text. */
     margin-inline-end: 8ch;
-    max-width: calc(100% - 8ch);
+    max-width: min(calc(100% - 8ch), var(--structured-measure));
   }
   /* No gutter on narrow screens: 8ch costs a third of a 358px column there,
      and touch scrolling does not have the pointer-capture problem the gutter
@@ -233,7 +233,7 @@ Pre-Training group] for the [AuroraGPT] project.
     .table-scroll-wrapper:has(> #repo-table),
     #work-table .table-scroll-wrapper {
       margin-inline-end: 0;
-      max-width: 100%;
+      max-width: min(100%, var(--structured-measure));
     }
   }
   /* Keep the column headers visible while scrolling. WebTUI sets

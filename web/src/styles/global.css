@@ -221,6 +221,9 @@
            Switch the user-visible body font via [data-mono-font]. */
         --font-stack-iosevka:
             'Iosevka Web', 'JetBrains Mono', Menlo, Monaco, monospace;
+        --font-stack-iosevka25-condensed:
+            'Iosevka25 Condensed Web', 'JetBrains Mono', Menlo, Monaco,
+            monospace;
         --font-stack-victor-mono:
             'Victor Mono', 'JetBrains Mono', Menlo, Monaco, monospace;
         /* Personal Iosevka builds from samforeman.me. Term is mono-
@@ -313,16 +316,21 @@
            readability band, a deliberate nudge wider since the monospace
            body font is physically wide per-ch and a left sidebar already
            eats horizontal space (72ch felt cramped against the empty right
-           column on a large display). Code/tables/diagrams ignore this and
-           keep full width. */
+           column on a large display). */
         --prose-measure: 84ch;
+        /* Structured blocks get more room than prose while staying short of
+           the full article width on wide displays. */
+        --structured-measure: 120ch;
     }
-    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 9 fonts.
+    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 10 fonts.
        'Symbols Nerd Font' is appended via --font-family so icons render
        regardless of choice. (Attribute kept named data-mono-font so the
        slides picker + returning visitors' stored key keep working.) */
     :root[data-mono-font='iosevka'] {
         --font-stack: var(--font-stack-iosevka);
+    }
+    :root[data-mono-font='iosevka25-condensed'] {
+        --font-stack: var(--font-stack-iosevka25-condensed);
     }
     :root[data-mono-font='victor-mono'] {
         --font-stack: var(--font-stack-victor-mono);
@@ -1856,13 +1864,14 @@ pre.astro-code {
        in this project's cascade (same quirk documented on the li>details
        margin rule in Doc.css). */
     overflow: visible !important;
-    /* Hug content by default; only grow up to the column width. Long
-       lines are capped at 100% and scroll inside the <code>. `min-width: 0`
+    /* Hug content by default; cap at the structured measure and column width.
+       Long lines are capped at 100% and scroll inside the <code>.
+       `min-width: 0`
        is the magic incantation for flex children — without it, a long-line
        `pre` would expand to its content's max-content width and get
        clipped by #main-content's overflow-x: hidden. */
     min-width: 0;
-    max-width: round(calc(0.98 * 100%), 1ch);
+    max-width: min(var(--structured-measure), 100%);
     width: max-content;
     /* 1ch, not 0: the block is bounded by a border now, so code running
        flush into the right edge reads as a clipping bug. */
@@ -2982,19 +2991,39 @@ html[data-webtui-theme='catppuccin-latte'] {
        - `min-width: 0` so the flex child can shrink below its content's
          natural width (without this, the wrapper expands to fit max-content
          and the parent's `overflow-x: hidden` clips it, no scrollbar shows).
-       - explicit `width: calc(100% - 2ch)` to lock the wrapper to the column
-         width minus the 2ch left indent. */
+       - explicit width plus a max-width cap to lock the wrapper to its
+         column while keeping wide tables scrollable. */
     .table-scroll-wrapper {
         /* Blank line above AND below the table so it reads as a
            discrete block instead of fused to the previous paragraph /
            following content. */
         margin-block: 1lh;
         width: 100%;
+        max-width: var(--structured-measure);
         min-width: 0;
         overflow-x: auto;
     }
     .table-scroll-wrapper > table {
         margin: 0;
+    }
+
+    /* Pin the leading column while wide tables scroll horizontally. Give
+       sticky cells their own surface so the moving columns don't show through;
+       the zebra and hover rules below replace this base color as needed. */
+    .table-scroll-wrapper
+        > :where(table:not(:has(.line-code)))
+        tr
+        > :is(th, td):first-child {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 1;
+    }
+    .table-scroll-wrapper
+        > :where(table:not(:has(.line-code)))
+        tbody
+        tr
+        > td:first-child {
+        background-color: var(--background0);
     }
 
     /* Disable webtui table cell borders on CodePreview line-code rows */
@@ -3342,6 +3371,8 @@ html[data-webtui-theme='catppuccin-latte'] {
         background-color: oklch(
             from var(--url) calc(l * var(--oklch-scale, 0.85)) c h / 0.12
         );
+        border: 0;
+        padding-inline: 0;
         text-decoration: underline dotted;
         text-decoration-color: oklch(from var(--url) l c h / 0.6);
         text-underline-offset: 0.15lh;
