@@ -517,10 +517,9 @@ export function initMermaid() {
     )
     if (mermaidBlocks.length === 0) return
 
-    // Keep default diagrams close to the page surface. The previous
-    // background2/foreground3 mapping made light-theme nodes look like gray
-    // cards with washed-out connectors; use readable neutral strokes while
-    // leaving semantic classes free to use the theme accent and series colors.
+    // Keep default diagrams close to the page surface. Use the theme accent
+    // for node outlines, while keeping connectors neutral and semantic classes
+    // free to use their own accent and series colors.
     const peleTheme = {
         '--pele-bg': 'var(--background0, #ffffff)',
         '--pele-fg': 'var(--foreground0, #1f1f1f)',
@@ -528,7 +527,8 @@ export function initMermaid() {
         '--pele-line': 'var(--foreground2, #6e6e6e)',
         '--pele-surface': 'var(--background0, #ffffff)',
         '--pele-surface-alt': 'var(--background1, #f3f3f3)',
-        '--pele-border': 'var(--foreground1, #8a8a8a)',
+        '--pele-border':
+            'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
         '--pele-accent':
             'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
         '--pele-series-1': 'var(--pt-diagram-accent, var(--blue, #5b7bd5))',
