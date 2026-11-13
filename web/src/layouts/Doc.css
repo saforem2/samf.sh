@@ -1435,8 +1435,18 @@ h6::before {
             text-indent: 0;
         }
 
+        /* The custom marker sits in the existing 2ch gutter, outside the
+           text flow. Wrapped lines therefore align with the first line. */
         ul li {
-            text-indent: 2ch hanging;
+            position: relative;
+            text-indent: 0;
+        }
+        ul li::before {
+            position: absolute;
+            inset-inline-start: -2ch;
+            inset-block-start: 0;
+            inline-size: 2ch;
+            white-space: pre;
         }
         ol > li::marker {
             content: counter(list-item) '. ';
@@ -1470,13 +1480,7 @@ h6::before {
             padding-inline-start: 2ch;
         }
 
-        /* Nested unordered lists: nudge the list right by the parent's marker
-           width so its `-` marker sits roughly under the parent text. Keep
-           the hanging indent sized to that marker. Nested ordered lists use
-           outside markers and need no text indent. */
-        li > ul > li {
-            text-indent: 1.5ch hanging;
-        }
+        /* Nested lists get a fresh marker gutter from their own 2ch padding. */
         ul > li > :is(ul, ol) {
             margin-left: 0;
         }
