@@ -770,22 +770,18 @@
         transform: none;
         box-shadow: none;
     }
-    /* Blockquote styling — replaces upstream WebTUI's ::before bar with a
-       simple border-left + tinted background. Cleaner, single declaration. */
+    /* Keep blockquotes close to terminal prose: italic text with a small
+       hanging inset, without a second panel or rule around the quote. */
     blockquote {
-        --blockquote-accent: var(--foreground2);
-        /* Read a Markdown quote like a Rich Panel: a square frame around the
-           whole renderable, with the quote accent carried on its left edge. */
-        border: 0.125ch solid var(--foreground3);
-        border-left: 0.375ch solid var(--blockquote-accent);
+        border: 0;
         border-radius: 0;
-        background-color: oklch(
-            from var(--blockquote-accent) calc(l * 1.15) c h / 0.08
-        );
-        padding: 0.5lh 1.5ch;
+        background: none;
+        padding: 0;
+        padding-left: 1ch;
+        font-style: italic;
         margin-block: 0.5lh;
     }
-    /* Kill the upstream pseudo bar — we use border-left instead. */
+    /* Suppress WebTUI's decorative quote rail; the text inset is sufficient. */
     blockquote::before {
         display: none !important;
     }
