@@ -2217,7 +2217,9 @@ pre.astro-code > code {
     white-space: pre;
     counter-reset: line;
     line-height: initial;
-    /* background-color: var(--background1, var(--pre-background)) !important; */
+    /* Inline-code styling paints the <code> element; clear that fill in
+       blocks so the outer <pre> frame is the only panel surface. */
+    background-color: transparent !important;
     /* Trailing clearance so the last character of a long line does not kiss
        the block edge when scrolled to the end.
 
