@@ -259,22 +259,6 @@ Pre-Training group] for the [AuroraGPT] project.
   }
 `}</style>
 
-## 🔬 Selected Contributions
-
-- **AuroraGPT:** I co-lead the Models & Pre-training team. AuroraGPT-7B reached
-  2T tokens; AuroraGPT-2B reached 7.77T tokens; I also ran a 20B model on 512
-  Aurora nodes. I ported and maintained the Megatron-DeepSpeed path, then
-  migrated pre-training to TorchTitan and built mixture-of-experts, supervised
-  fine-tuning, GRPO, continued pre-training, retry, and asynchronous
-  checkpointing paths.
-- **[`ezpz`]:** I created and maintain this distributed-training toolkit. It
-  supports PBS and Slurm and Intel, NVIDIA, AMD, Apple Silicon, and CPU backends.
-  It has run on Aurora, Polaris, Frontier, Perlmutter, LUMI, and Leonardo.
-- **Lattice QCD:** I developed learned Monte Carlo samplers and
-  [`l2hmc-qcd`], which supports 2D U(1) and 4D SU(3) gauge theories. I am a
-  co-PI on the DOE Genesis Mission Phase II project “Lattice QCD at the
-  Intelligence Frontier,” selected for award negotiation in October 2026.
-
 ## 📬 Posts
 
 <table id="posts-table">
@@ -1190,6 +1174,11 @@ Pre-Training group] for the [AuroraGPT] project.
 
 ## 📂 Projects
 
+I created and maintain [`ezpz`](https://github.com/saforem2/ezpz), a portable
+distributed-training toolkit for PBS and Slurm. It supports Intel, NVIDIA, and
+AMD GPUs, Apple Silicon, and CPU, and has run on Aurora, Polaris, Frontier,
+Perlmutter, LUMI, and Leonardo. Documentation: [ezpz.cool](https://ezpz.cool).
+
 <a href="https://github.com/saforem2/"><code>saforem2</code></a>'s 25 most recently
 pushed-to repositories, including forks and other people's projects I've landed
 merged PRs in. Click any column header to re-sort. Full list at [/projects](/projects).
@@ -1629,11 +1618,16 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
     - _Argonne National Laboratory_, Leadership Computing Facility (ALCF)
       Lemont, IL \| 2022–Present
         - Co-lead the Models & Pre-training team for [AuroraGPT].
-        - Lead the production training stack on Intel GPUs, including the
-          migration from Megatron-DeepSpeed to TorchTitan, mixture-of-experts
-          support, post-training pipelines, automatic retry, and asynchronous
-          checkpointing.
+        - AuroraGPT-7B reached 2T tokens; AuroraGPT-2B reached 7.77T. I also
+          ran a 20B model on 512 Aurora nodes.
+        - Ported and maintained the Megatron-DeepSpeed training path on Intel
+          GPUs, then migrated pre-training to TorchTitan. Built mixture-of-
+          experts support, post-training pipelines, automatic retry, and
+          asynchronous checkpointing.
         - Technical lead for the ALCF MORPH LDRD.
+        - Co-PI on the DOE Genesis Mission Phase II project “Lattice QCD at the
+          Intelligence Frontier,” selected for award negotiation in October
+          2026.
         - [Argonne staff profile](https://www.alcf.anl.gov/about/people/sam-foreman)
 - **CASE Joint Appointment**
     - _University of Chicago, Consortium for Advanced Science and Engineering_
@@ -1643,8 +1637,9 @@ merged PRs in. Click any column header to re-sort. Full list at [/projects](/pro
       Lemont, IL \| 2019 – 2022
         - Applied deep learning to lattice gauge theory and quantum field
           simulations.
-        - Developed ML-enhanced Monte Carlo methods for QCD
-          ([l2hmc-qcd][`l2hmc-qcd`]).
+        - Developed learned Monte Carlo samplers for lattice gauge theory,
+          including [l2hmc-qcd][`l2hmc-qcd`] for 2D U(1) and 4D SU(3) gauge
+          theories.
         - Engaged in AI-for-Science collaborations with national labs and
           university partners.
 - **Graduate Researcher (DOE SCGSR Fellowship)**
