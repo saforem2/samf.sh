@@ -3319,7 +3319,10 @@ html[data-webtui-theme='catppuccin-latte'] {
     }
 
     /* Inline `code` color in body text — also previously theme-scoped. */
-    #main-content :is(p, blockquote, li, [is-~='typography-block']) code {
+    #main-content
+        :is(p, blockquote, li, [is-~='typography-block'])
+        :not(pre)
+        > code {
         color: var(--code-fg, var(--foreground2));
         background-color: var(--code-bg, var(--background1));
         border: 0.125ch solid

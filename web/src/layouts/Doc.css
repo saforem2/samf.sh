@@ -747,20 +747,16 @@ h6::before {
 }
 
 /* When a <details> (accordion or callout) is nested as a direct child
-   of an <li>, align it with the list-item text (after the bullet) —
-   not with the bullet itself. Without this the details renders flush
-   at the bullet's x position, looking like an orphan sibling of the
-   list rather than a child of the item. 2ch matches the bullet+space
-   width used elsewhere (cf. li > pre.astro-code's `margin-left: 2ch`).
+   of an <li>, align it with the text above. The list marker is already
+   outside the li content edge, so adding a left margin here double-indents
+   the callout.
    `!important` because the webtui base.css ships a global
    `*{margin:0}` reset inside @layer base that, due to a quirk in how
    Astro/Lightning CSS resolve unlayered rules in this project, beats
-   even high-specificity unlayered rules on margin (verified in browser
-   — width: calc(100% - 2ch) on the same rule WORKS, only margin loses
-   to the * reset). */
+   even high-specificity unlayered rules on margin. */
 #main-content li > details:not(.footnote-popover) {
-    margin-left: 2ch !important;
-    width: calc(100% - 2ch);
+    margin-left: 0 !important;
+    width: 100%;
     /* The `*` reset zeroes every margin, and nothing else targets a
        <details> nested in a list item — so a collapsed disclosure (the
        "+ Output" toggles) sat flush against the code block above it and
