@@ -1,0 +1,165 @@
+---
+layout: '@/layouts/Doc.astro'
+title: '♟️ AI Agent Arcade — LLMs play chess, a referee keeps score'
+date: 2026-11-14
+date-created: 2026-11-14
+date-modified: today
+description: 'Language models play chess against each other in one terminal window. No engine, no hints — just SAN, FEN, and a replay-verifying referee. Here is how it works and what 250+ games look like.'
+---
+
+Language models play chess against each other in one terminal window.
+
+No engine. No hints. Each model receives the move history, the current FEN, and the legal SAN moves, picks one, and a referee applies it. The result is an inspectable archive per game.
+
+[ai-agent-arcade] is on PyPI (`pip install ai-agent-arcade`), runs from a checkout with `uv`, and authenticates to ALCF inference through [`alcf-tokens`][alcf-tokens] — the same cached Globus token that backs [`alcf-ai`][alcf-ai]. No Herdr, no tmux, no local gateway.
+
+[ai-agent-arcade]: https://github.com/saforem2/ai-agent-arcade
+[alcf-tokens]: https://pypi.org/project/alcf-tokens/
+[alcf-ai]: https://pypi.org/project/alcf-ai/
+
+## The TUI
+
+One Textual screen, four regions: the board, the match panel, the scrollable decision history, and the series log.
+
+| Key | Action |
+| --- | ------ |
+| `b` | Switch board style |
+| `r` | Replay the current game with move animations |
+| `R` | Reset — abandon the live game and start a new one |
+| `y` | Retry the last abandoned game in the series |
+| `j` / `k` | Scroll decisions down / up |
+| `g` / `G` | Jump to newest / oldest decision |
+| `p` / `c` | Pause / continue the runner |
+| `q` | Quit, leaving a live match resumable |
+
+`uvx ai-agent-arcade --games 20` starts a 20-game series with alternating colors. `Ctrl-C` stops cleanly, running it again resumes the interrupted game.
+
+```bash
+pip install ai-agent-arcade
+uvx ai-agent-arcade --games 20
+
+# any two OpenAI-compatible endpoints
+uvx ai-agent-arcade --config matchup.toml --games 10
+
+# override reasoning effort for one run
+uvx ai-agent-arcade --config matchup.toml --games 10 --effort medium
+```
+
+Headless, same thing:
+
+```bash
+export ARCADE_LIVE=/tmp/alcf-chess-20
+uv run python -m arcade_cli.series --games 20 --live-dir "$ARCADE_LIVE"
+```
+
+## How a move works
+
+```text
+model A ─┐
+         ├─> SAN move ─> pending.txt ─> referee ─> moves.txt + fen.txt
+model B ─┘                                         └─> archived evidence
+```
+
+The referee is `engine/ref.py`. `moves.txt` is the single append-only source of truth. Every `move` replays the full log from the start and checks it against `fen.txt` — tampering with `fen.txt` does not change the game, it halts the game. Moves staged through `game.sh` are signed (`<name>\t<san>` in `pending.txt`) and the referee refuses a move from the wrong seat. `resign`, `offer-draw`, and `accept-draw` are the three non-SAN tokens, same staging path.
+
+Verification is one command against any archive:
+
+```bash
+ARCADE_LIVE=games/chess/match-009 \
+  uv run --quiet --with chess python engine/ref.py verify
+```
+
+```text
+OK verified 11 plies | r1bqkb1r/pppppQp1/2n4p/6N1/8/8/PPPP1KPP/RNB2B1R b kq - 0 6
+```
+
+Each move also records a decision row in `decision_log.jsonl`: chosen SAN, up to three candidates, one sentence of self-reported rationale, expected reply, and token counts. This is the model's own summary, not a provider's hidden chain-of-thought.
+
+## What the series runner does
+
+`cli/src/arcade_cli/series.py` loops `game_index` from `start_index` to `games`. Colors alternate every game. Each `play_one` call:
+
+1. `start_match` — allocates `match-NNN`, deploys the engine runtime into `live_dir`, writes `names.txt` / `series.txt`.
+2. Up to 300 plies — `ask` the player on move, `apply_move` through the referee, time the turn.
+3. `verify` — replay from the start, compare FEN.
+4. `archive_match` — copy the transcript into `games/chess/match-NNN/`.
+
+A live game is resumable. `--resume-live` re-attaches `series.txt` → `match-NNN` and replays `moves.txt` to recover ply and board. `--start-index` picks up mid-series by replaying `existing_series_rows` for standings.
+
+Transient 502s and `OSError`s retry with backoff inside `ask`. When retries are exhausted, `GameFailed` fires: the series flips that `match.json` to `abandoned`, copies the partial transcript to `abandoned/<timestamp>/`, and continues to the next game. That is PR [#1][pr1] — one bad ply fails one game, not the whole series.
+
+[pr1]: https://github.com/saforem2/ai-agent-arcade/pull/1
+
+`--reset` and `R` do the same abandon-and-clear for a live game the user wants to throw away. The new `y` ([PR #2][pr2]) goes the other way: it scans `series-runner.log` for the most recent `GAME N/M match-NNN ABANDONED` line and re-runs that index from the opening with the same seat order, then continues `N+1…M`.
+
+[pr2]: https://github.com/saforem2/ai-agent-arcade/pull/2
+
+## Themes and board styles
+
+Four Textual themes ship with the app (`pbs-dark`, `pbs-light`, `ansi-dark`, `ansi-light`), auto-detected from `COLORFGBG` and OSC 11. `Ctrl-P` switches at runtime. The board repaints with the theme — `ansi-light` gets its own light dot-field palette instead of staying black.
+
+Two board styles: `original` is the animated dot field (braille density + drift between two frames, same engine as `engine/tui_dots.py`), `compact` is a dense glyph grid for small terminals. `b` toggles, `--board-style` sets the default.
+
+The showcase GIF on the [repo README][readme-gif] is the real app replaying `match-171` (`MISTRAL-LARGE-4-NVFP4 0-1 MUSE-SPARK-BF16`, 80 plies: Fried Liver → queen sac → promotion → `Qe5#`), captured frame-by-frame through `App.export_screenshot()` → `rsvg-convert` → GIF.
+
+[readme-gif]: https://github.com/saforem2/ai-agent-arcade#ai-agent-arcade
+
+## Results so far
+
+250+ archived games under `games/chess/match-NNN/`, each with `match.json`, `moves.txt`, `decision_log.jsonl`, `fen.txt`, and `result.txt`. Early series pitted `GPT-OSS-120B` (Metis) against `INKLING-BF16` (Minerva); recent ones use `MISTRAL-LARGE-4-NVFP4` vs `MUSE-SPARK-BF16`. A representative game:
+
+`match-009`: `GPT-OSS-120B 1-0 INKLING-BF16`, 11 plies. `match-171`: `MISTRAL-LARGE-4-NVFP4 0-1 MUSE-SPARK-BF16`, 80 plies.
+
+`series-summary.json` and `series-runner.log` track standings across games:
+
+```text
+STANDINGS
+INKLING-BF16 won 6/10 games!!! (1 draw)
+```
+
+```text
+Dead even: GPT-OSS-120B 3 — 3 INKLING-BF16 across 6 games (+2 draws)
+```
+
+```text
+All 10 games drawn — dead even
+```
+
+Same line goes to `standings` in `series-summary.json`, `STANDINGS: …` in the log, and stdout from the headless runner. The TUI grows a `STANDINGS` block when the series ends.
+
+## Configure another matchup
+
+Any two OpenAI-compatible endpoints via a versioned TOML:
+
+```toml
+version = 1
+
+[players.one]
+name = "MODEL-A"
+harness = "openai"
+base_url = "http://localhost:8000/v1"
+model = "model-a"
+effort = "medium"
+api_key_env = "MODEL_A_API_KEY"
+
+[players.two]
+name = "MODEL-B"
+harness = "openai"
+base_url = "http://localhost:9000/v1"
+model = "model-b"
+```
+
+`harness = "alcf"` resolves the cached inference token automatically. `base_url` can be the API root (`…/v1`) or the full `/chat/completions` URL.
+
+## Artifacts
+
+- Code: [`saforem2/ai-agent-arcade`][ai-agent-arcade] · PyPI [`ai-agent-arcade`][pypi]
+- Engine: `engine/ref.py` (referee), `engine/game.sh` + `game_cli.py` (staging), `engine/tui_dots.py` (dot field)
+- Runner: `cli/src/arcade_cli/series.py` + `arcade_app.py` (TUI)
+- Archives: `games/chess/match-NNN/` — 250+ games, each verifiable with `ref.py verify`
+
+[pypi]: https://pypi.org/project/ai-agent-arcade/
+
+---
+
+*Two models, one board, one log file. Everything else is just making that reproducible.*
