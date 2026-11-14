@@ -430,10 +430,9 @@ const fontFaceCss = [
                 position: absolute;
                 bottom: 1ch;
                 right: 1ch;
-                display: flex;
-                flex-direction: column;
-                gap: 0.25ch;
-                padding: 0.25ch;
+                display: grid;
+                gap: 0.5ch;
+                padding: 0.5ch;
                 background-color: var(--background0);
                 border: 0.125ch solid var(--accent, var(--blue));
                 z-index: 1;
@@ -453,8 +452,8 @@ const fontFaceCss = [
             }
             .mermaid-pad {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                grid-template-rows: repeat(3, 1fr);
+                grid-template-columns: repeat(3, 4ch);
+                grid-template-rows: repeat(3, 2lh);
                 gap: 0.125ch;
             }
             .mermaid-pad .mc-up {
@@ -478,9 +477,15 @@ const fontFaceCss = [
                 grid-row: 3;
             }
             .mermaid-zoom {
-                display: flex;
+                display: grid;
+                grid-template-columns: repeat(3, 4ch);
                 gap: 0.125ch;
-                justify-content: center;
+            }
+            .mermaid-zoom .mc-zoom-in {
+                grid-column: 1;
+            }
+            .mermaid-zoom .mc-zoom-out {
+                grid-column: 3;
             }
             .mermaid-ctrl {
                 appearance: none;
@@ -488,8 +493,8 @@ const fontFaceCss = [
                 color: var(--foreground1);
                 border: 0.125ch solid var(--background2);
                 border-radius: 0;
-                width: 2.5ch;
-                height: 1.25lh;
+                width: 4ch;
+                height: 2lh;
                 font-family: inherit;
                 font-size: 1rem;
                 line-height: 1;
@@ -499,9 +504,15 @@ const fontFaceCss = [
                 justify-content: center;
                 padding: 0;
             }
-            .mermaid-ctrl:hover {
-                background: var(--blue);
+            .mermaid-ctrl.mc-reset {
+                background: var(--accent, var(--blue));
                 color: var(--background0);
+                border-color: var(--accent, var(--blue));
+            }
+            .mermaid-ctrl:hover {
+                background: var(--accent, var(--blue));
+                color: var(--background0);
+                border-color: var(--accent, var(--blue));
             }
             .mermaid-ctrl:focus-visible {
                 outline: 0.125ch solid var(--accent, var(--blue));
@@ -528,6 +539,7 @@ const fontFaceCss = [
             }
             .mermaid-actions .mermaid-ctrl {
                 width: 3ch;
+                height: 1.5lh;
                 background: var(--background0);
             }
             .mermaid-modal {
