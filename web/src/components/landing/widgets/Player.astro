@@ -59,7 +59,8 @@
     // getElementById returns the first DOM match and the duplicate stays on
     // "Loading…".
     const statsRoot = document.getElementById('stats-widget')
-    const getInStats = (id) => statsRoot?.querySelector(`#${id}`) ?? document.getElementById(id)
+    const getInStats = (id) =>
+        statsRoot?.querySelector(`#${id}`) ?? document.getElementById(id)
     const trackTitle = getInStats('track-title')
     const trackAlbum = getInStats('track-album')
     const trackArtist = getInStats('track-artist')
@@ -529,8 +530,11 @@
         min-width: 0;
         box-sizing: border-box;
         scrollbar-gutter: stable;
-        border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 12%, transparent);
-        span span { color: var(--widget-accent, var(--red)); }
+        border-bottom: 1px solid
+            color-mix(in srgb, var(--foreground2) 12%, transparent);
+        span span {
+            color: var(--widget-accent, var(--red));
+        }
     }
     :global(.history-head > span) {
         display: inline-flex;
@@ -586,7 +590,14 @@
     :global(a.song:hover) {
         color: var(--background0);
         background: var(--widget-accent, var(--accent));
-        :global(.author), :global(.album) { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent, var(--accent))); }
+        :global(.author),
+        :global(.album) {
+            color: color-mix(
+                in srgb,
+                var(--background0) 65%,
+                var(--widget-accent, var(--accent))
+            );
+        }
     }
 
     :global(.np-link) {

@@ -28,34 +28,60 @@ const stateClass = (state?: DetailLine['state']) => {
 }
 ---
 
-<div class="rich-status-details" role="group" aria-label="Status notes from this snapshot">
+<div
+    class="rich-status-details"
+    role="group"
+    aria-label="Status notes from this snapshot">
     <section aria-labelledby="status-notes-heading">
-        <div id="status-notes-heading" class="status-heading" role="heading" aria-level="3">notes:</div>
-        {notes.map((line) => (
-            <p class="status-line">
-                <span class:list={['status-id', stateClass(line.state)]}>{line.id}</span>
-                <span>{line.text}</span>
-            </p>
-        ))}
+        <div
+            id="status-notes-heading"
+            class="status-heading"
+            role="heading"
+            aria-level="3">notes:</div
+        >
+        {
+            notes.map((line) => (
+                <p class="status-line">
+                    <span class:list={['status-id', stateClass(line.state)]}>
+                        {line.id}
+                    </span>
+                    <span>{line.text}</span>
+                </p>
+            ))
+        }
     </section>
 
     <section aria-labelledby="status-nodes-heading">
-        <div id="status-nodes-heading" class="status-heading" role="heading" aria-level="3">running job nodes:</div>
-        {nodes.map((line) => (
-            <p class="status-line">
-                <span class:list={['status-id', stateClass(line.state)]}>{line.id}</span>
-                <span>{line.text}</span>
-            </p>
-        ))}
+        <div
+            id="status-nodes-heading"
+            class="status-heading"
+            role="heading"
+            aria-level="3">running job nodes:</div
+        >
+        {
+            nodes.map((line) => (
+                <p class="status-line">
+                    <span class:list={['status-id', stateClass(line.state)]}>
+                        {line.id}
+                    </span>
+                    <span>{line.text}</span>
+                </p>
+            ))
+        }
     </section>
 
     <section aria-label="Endpoint warnings">
-        {warnings.map((line) => (
-            <p class="status-line">
-                <span class="status-warning">[⚠️ warn]</span>
-                <span>{line.host}: unreachable (<span class="warning-code">{line.code}</span>)</span>
-            </p>
-        ))}
+        {
+            warnings.map((line) => (
+                <p class="status-line">
+                    <span class="status-warning">[⚠️ warn]</span>
+                    <span>
+                        {line.host}: unreachable (
+                        <span class="warning-code">{line.code}</span>)
+                    </span>
+                </p>
+            ))
+        }
     </section>
 
     <p class="status-line status-runtime">Execution time: {runtime}</p>

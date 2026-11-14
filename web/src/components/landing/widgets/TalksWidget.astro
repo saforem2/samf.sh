@@ -20,12 +20,7 @@ function formatDate(date: Date): string {
 }
 ---
 
-<column
-    box-="square"
-    pad-="2 1"
-    gap-="0"
-    class="talks-widget"
-    tabindex="0">
+<column box-="square" pad-="2 1" gap-="0" class="talks-widget" tabindex="0">
     <span is-="badge" variant-="orange" class="tw-title"
         >&#xf19d; <a href="/talks" class="widget-link"><u>t</u>alks</a></span
     >
@@ -104,7 +99,13 @@ function formatDate(date: Date): string {
         &:hover {
             color: var(--background0);
             background: var(--widget-accent) !important;
-            .tw-date { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent)); }
+            .tw-date {
+                color: color-mix(
+                    in srgb,
+                    var(--background0) 65%,
+                    var(--widget-accent)
+                );
+            }
         }
 
         &:nth-child(even) {
@@ -136,4 +137,3 @@ function formatDate(date: Date): string {
         text-overflow: ellipsis;
     }
 </style>
-

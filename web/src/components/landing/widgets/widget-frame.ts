@@ -29,7 +29,10 @@ function mountFrameBadges(root: Element) {
         if (src && hasInnerAnchor) {
             let html = ''
             src.childNodes.forEach((n) => {
-                if (n.nodeType === Node.ELEMENT_NODE && (n as Element).tagName === 'A') {
+                if (
+                    n.nodeType === Node.ELEMENT_NODE &&
+                    (n as Element).tagName === 'A'
+                ) {
                     html += (n as HTMLElement).innerHTML.trim()
                 } else if (n.nodeType === Node.ELEMENT_NODE) {
                     html += (n as HTMLElement).outerHTML
@@ -40,7 +43,8 @@ function mountFrameBadges(root: Element) {
             })
             html = html.replace(/<\/u>\s+/g, '</u>')
             badge.innerHTML = html.trim()
-            if (!badge.innerHTML) badge.textContent = label.replace(/\s+/g, ' ').trim()
+            if (!badge.innerHTML)
+                badge.textContent = label.replace(/\s+/g, ' ').trim()
         } else if (src?.querySelector('u')) {
             badge.innerHTML = src.innerHTML.replace(/<\/u>\s+/g, '</u>')
         } else if (label) {
@@ -48,7 +52,8 @@ function mountFrameBadges(root: Element) {
         } else if (src) {
             let html = ''
             src.childNodes.forEach((n) => {
-                if (n.nodeType === Node.ELEMENT_NODE) html += (n as HTMLElement).outerHTML
+                if (n.nodeType === Node.ELEMENT_NODE)
+                    html += (n as HTMLElement).outerHTML
                 else if (n.nodeType === Node.TEXT_NODE) {
                     const t = (n.textContent ?? '').replace(/\s+/g, ' ')
                     if (t.trim()) html += t
@@ -58,13 +63,18 @@ function mountFrameBadges(root: Element) {
         }
         card.prepend(badge)
 
-        if (card.id === 'intro-widget' && !card.querySelector(':scope > .wbl-about-chip')) {
+        if (
+            card.id === 'intro-widget' &&
+            !card.querySelector(':scope > .wbl-about-chip')
+        ) {
             const cta = card.querySelector<HTMLAnchorElement>('.iw-title-about')
             if (cta?.href) {
                 const chip = document.createElement('a')
                 chip.className = 'wbl-about-chip'
                 chip.href = cta.getAttribute('href') ?? '/about'
-                chip.textContent = (cta.textContent ?? '[a]bout →').trim().replace(/\s+/g, ' ')
+                chip.textContent = (cta.textContent ?? '[a]bout →')
+                    .trim()
+                    .replace(/\s+/g, ' ')
                 card.prepend(chip)
             }
         }
@@ -74,7 +84,9 @@ function mountFrameBadges(root: Element) {
 function wireHoverDim(grid: HTMLElement) {
     if (grid.dataset.wblHoverDim === 'true') return
     grid.dataset.wblHoverDim = 'true'
-    const cards = Array.from(grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'))
+    const cards = Array.from(
+        grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'),
+    )
     const update = () => {
         const vimActive = grid.querySelector('[data-vim-focused="true"]')
         if (vimActive) {
@@ -101,7 +113,9 @@ export function initWidgetFrame() {
 // Auto-init on import (Widgets.astro imports this module)
 initWidgetFrame()
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initWidgetFrame, { once: true })
+    document.addEventListener('DOMContentLoaded', initWidgetFrame, {
+        once: true,
+    })
 }
 document.addEventListener('astro:page-load', initWidgetFrame)
 document.addEventListener('astro:after-swap', initWidgetFrame)
