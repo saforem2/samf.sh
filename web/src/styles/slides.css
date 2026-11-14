@@ -2018,7 +2018,7 @@ html[data-webtui-theme='doe'] [is-~='slide'][data-variant='dark'] {
     background: var(--background0) url('/doe-template/contents-lines.webp')
         center / cover no-repeat;
 }
-/* Code on the black slides: every token already carries the one-dark-pro
+/* Code on the black slides: every token already carries the Vim/Kitty dark
    colours as --shiki-custom-dark, so switch to those. No extra HTML. */
 html[data-webtui-theme='doe']
     :is(#title-slide, [data-variant='dark'])
@@ -2574,7 +2574,7 @@ html[data-webtui-theme='alcf'] #title-slide :is(em, i) {
     font-style: normal;
 }
 /* Code on the navy slides: every token already carries the
-   one-dark-pro colours as --shiki-custom-dark, so switch to those.
+   Vim/Kitty dark colours as --shiki-custom-dark, so switch to those.
    No extra HTML. */
 html[data-webtui-theme='alcf']
     :is(#title-slide, [data-variant='dark'])
