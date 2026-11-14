@@ -45,16 +45,11 @@ import { rehypeAnsi } from './src/utils/rehype-ansi.mjs'
 
 import { createHighlighter } from 'shiki'
 import { createCssVariablesTheme } from 'shiki'
+import { customDarkTheme, customLightTheme } from './src/shiki-themes.mjs'
 
-// Four themes: min-light, one-dark-pro and the two catppuccins.
-//
-// Six in-house ones were removed — sam-light/sam-dark generated from the
-// project palette, and four Neovim mirrors (onelight / cyberdream, each in
-// "role" and "hue" palette-swap variants from scripts/gen-nvim-themes.mjs).
-// Shiki emits a CSS variable per token PER REGISTERED THEME, so each extra
-// theme multiplies across every token on the site: those six accounted for
-// 31% of all HTML (101MB -> 69MB across 151 pages, and 933KB -> 600KB on the
-// argo post). Anything added back here costs the same way.
+// The default light/dark slots use the site's Vim/Kitty palette-matched
+// themes. They replace min-light and one-dark-pro in place, so the number of
+// registered themes (and per-token CSS variables) stays the same.
 
 const oneLight = createCssVariablesTheme({
     name: 'one-light',
@@ -509,8 +504,8 @@ export default defineConfig({
             // theme: 'one-dark-pro',
             defaultColor: 'custom-light',
             themes: {
-                'custom-light': 'min-light',
-                'custom-dark': 'one-dark-pro',
+                'custom-light': customLightTheme,
+                'custom-dark': customDarkTheme,
                 catppuccin: 'catppuccin-mocha',
                 'catppuccin-latte': 'catppuccin-latte',
             },

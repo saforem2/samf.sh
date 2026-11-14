@@ -1405,21 +1405,14 @@ html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
     background-color: transparent !important;
 }
 
-/* Darken min-light's near-white comment color (#C2C3C5) so it reads on the
-   pale code background. Targeting the inline shiki style is the safest hook
-   that survives token-class changes. */
-html[data-webtui-theme='custom-light'] .astro-code span[style*='#C2C3C5'],
+/* Darken min-light's near-white comment color (#C2C3C5) in the DOE and ALCF
+   code themes so it reads on the pale code background. */
 html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'],
 html[data-webtui-theme='alcf'] .astro-code span[style*='#C2C3C5'] {
     color: #6a6e76 !important;
 }
 
-/* Recolor min-light's amber #FF9800 (function params / variables — n_steps,
-   start, end, kind, …) to the warmer red-orange #FF5722, matching the site
-   palette's --orange. Same inline-style hook as the comment override above;
-   shikiConfig.colorReplacements wasn't honored for the bundled min-light
-   theme, so this CSS hook is the reliable route. */
-html[data-webtui-theme='custom-light'] .astro-code span[style*='#FF9800'],
+/* Recolor min-light's amber #FF9800 to the DOE and ALCF palette's orange. */
 html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'],
 html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
