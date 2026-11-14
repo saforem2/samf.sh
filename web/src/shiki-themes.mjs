@@ -42,6 +42,9 @@ export const customLightTheme = withOverrides(nvimLightRole, {
         // Onelight/auto-dark-mode.lua explicit Tree-sitter highlight colors.
         [['variable', 'variable.other.readwrite'], '#444444'],
         [['variable.other.member', 'variable.other.property'], '#EA76CB'],
+        // Bash grammars scope bare command arguments as strings; keep them
+        // at the normal foreground so whole shell commands don't turn orange.
+        [['string.unquoted.argument.shell'], '#6A6A6A'],
         [['string'], '#FD971F'],
         [['support.function.builtin'], '#1DA912'],
         [['constant.language.python', 'constant.other.python'], '#F92672'],
@@ -59,6 +62,7 @@ export const customDarkTheme = withOverrides(nvimDarkRole, {
     rules: [
         // cyberdream.lua / auto-dark-mode.lua explicit highlight overrides.
         [['comment', 'punctuation.definition.comment'], '#5F6972'],
+        [['string.unquoted.argument.shell'], '#B3B3B3'],
         [['string'], '#99FFA2'],
         [['keyword'], '#00CCFF'],
         [['keyword.control.import', 'keyword.control.from'], '#D3FF3B'],
