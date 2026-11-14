@@ -221,6 +221,9 @@
            Switch the user-visible body font via [data-mono-font]. */
         --font-stack-iosevka:
             'Iosevka Web', 'JetBrains Mono', Menlo, Monaco, monospace;
+        --font-stack-iosevka25-condensed:
+            'Iosevka25 Condensed Web', 'JetBrains Mono', Menlo, Monaco,
+            monospace;
         --font-stack-victor-mono:
             'Victor Mono', 'JetBrains Mono', Menlo, Monaco, monospace;
         /* Personal Iosevka builds from samforeman.me. Term is mono-
@@ -270,19 +273,7 @@
            independent of the body font. Overridden by [data-code-font]. */
         --code-font-family:
             var(--font-stack-miosevka-term), 'Symbols Nerd Font';
-        /* Body text tops out at 17px on wide screens and scales down to
-           16px on narrower ones. Bumped a smidge from the old 15.2–16px
-           band for more comfortable reading; the ch-based layout scales
-           with it cleanly. Mobile (<=480px) keeps its own flat 16px rule
-           below.
-           rem, not px: a px root ignores a raised browser font default
-           outright (15px stays 15px for someone who asked for 20px), which
-           is the accessibility floor that decides this value. 1rem tracks
-           that setting instead — 20px for that user, 16px for everyone else.
-
-           The previous note here warned that a rem clamp compounds to ~18px
-           because the var lands on both `html` and `body`. Measured: it does
-           not; both resolve to the same value. */
+        /* The site's body text follows the reader's browser font size. */
         --font-size: 1rem;
         /* --line-height: 1.5; */
         --line-height: initial;
@@ -291,7 +282,7 @@
         font-family: var(--font-family);
         -webkit-font-smoothing: auto;
         -moz-osx-font-smoothing: auto;
-        --table-border-width: 1pt;
+        --table-border-width: 0.125ch;
         --box-border-color: var(--background3);
         --focus-bg: oklch(
             from var(--accent, var(--red)) calc(l * var(--oklch-scale, 1.15)) c
@@ -325,16 +316,21 @@
            readability band, a deliberate nudge wider since the monospace
            body font is physically wide per-ch and a left sidebar already
            eats horizontal space (72ch felt cramped against the empty right
-           column on a large display). Code/tables/diagrams ignore this and
-           keep full width. */
+           column on a large display). */
         --prose-measure: 84ch;
+        /* Structured blocks get more room than prose while staying short of
+           the full article width on wide displays. */
+        --structured-measure: 145ch;
     }
-    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 9 fonts.
+    /* ── BODY font axis — [data-mono-font] sets --font-stack. All 10 fonts.
        'Symbols Nerd Font' is appended via --font-family so icons render
        regardless of choice. (Attribute kept named data-mono-font so the
        slides picker + returning visitors' stored key keep working.) */
     :root[data-mono-font='iosevka'] {
         --font-stack: var(--font-stack-iosevka);
+    }
+    :root[data-mono-font='iosevka25-condensed'] {
+        --font-stack: var(--font-stack-iosevka25-condensed);
     }
     :root[data-mono-font='victor-mono'] {
         --font-stack: var(--font-stack-victor-mono);
@@ -475,15 +471,15 @@
        lets the vim-focus indicator be the sole highlight. (Heading text color
        is unchanged.) */
     h1 {
-        font-size: clamp(1.4rem, 1rem + 2vw, 2rem);
+        font-size: 1rem;
         color: oklch(from var(--h1, var(--red)) l c h);
     }
     h2 {
-        font-size: clamp(1.2rem, 0.9rem + 1.5vw, 1.6rem);
+        font-size: 1rem;
         color: oklch(from var(--h2, var(--orange)) l c h);
     }
     h3 {
-        font-size: clamp(1.05rem, 0.8rem + 1vw, 1.35rem);
+        font-size: 1rem;
         color: oklch(from var(--h3, var(--green)) l c h);
     }
     h4 {
@@ -782,18 +778,18 @@
         transform: none;
         box-shadow: none;
     }
-    /* Blockquote styling — replaces upstream WebTUI's ::before bar with a
-       simple border-left + tinted background. Cleaner, single declaration. */
+    /* Keep blockquotes close to terminal prose: italic text with a small
+       hanging inset, without a second panel or rule around the quote. */
     blockquote {
-        --blockquote-accent: var(--foreground2);
-        border-left: 3px solid var(--blockquote-accent);
-        background-color: oklch(
-            from var(--blockquote-accent) calc(l * 1.15) c h / 0.08
-        );
-        padding: 0.5lh 1.5ch;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        padding: 0;
+        padding-left: 1ch;
+        font-style: italic;
         margin-block: 0.5lh;
     }
-    /* Kill the upstream pseudo bar — we use border-left instead. */
+    /* Suppress WebTUI's decorative quote rail; the text inset is sufficient. */
     blockquote::before {
         display: none !important;
     }
@@ -809,7 +805,7 @@
         padding-block: 0;
         padding-inline-start: 0;
         background: none;
-        border-left: none;
+        border: none;
     }
 
     .callout p {
@@ -1409,21 +1405,14 @@ html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
     background-color: transparent !important;
 }
 
-/* Darken min-light's near-white comment color (#C2C3C5) so it reads on the
-   pale code background. Targeting the inline shiki style is the safest hook
-   that survives token-class changes. */
-html[data-webtui-theme='custom-light'] .astro-code span[style*='#C2C3C5'],
+/* Darken min-light's near-white comment color (#C2C3C5) in the DOE and ALCF
+   code themes so it reads on the pale code background. */
 html[data-webtui-theme='doe'] .astro-code span[style*='#C2C3C5'],
 html[data-webtui-theme='alcf'] .astro-code span[style*='#C2C3C5'] {
     color: #6a6e76 !important;
 }
 
-/* Recolor min-light's amber #FF9800 (function params / variables — n_steps,
-   start, end, kind, …) to the warmer red-orange #FF5722, matching the site
-   palette's --orange. Same inline-style hook as the comment override above;
-   shikiConfig.colorReplacements wasn't honored for the bundled min-light
-   theme, so this CSS hook is the reliable route. */
-html[data-webtui-theme='custom-light'] .astro-code span[style*='#FF9800'],
+/* Recolor min-light's amber #FF9800 to the DOE and ALCF palette's orange. */
 html[data-webtui-theme='doe'] .astro-code span[style*='#FF9800'],
 html[data-webtui-theme='alcf'] .astro-code span[style*='#FF9800'] {
     color: #ff5722 !important;
@@ -1868,13 +1857,14 @@ pre.astro-code {
        in this project's cascade (same quirk documented on the li>details
        margin rule in Doc.css). */
     overflow: visible !important;
-    /* Hug content by default; only grow up to the column width. Long
-       lines are capped at 100% and scroll inside the <code>. `min-width: 0`
+    /* Hug content by default; cap at the structured measure and column width.
+       Long lines are capped at 100% and scroll inside the <code>.
+       `min-width: 0`
        is the magic incantation for flex children — without it, a long-line
        `pre` would expand to its content's max-content width and get
        clipped by #main-content's overflow-x: hidden. */
     min-width: 0;
-    max-width: round(calc(0.98 * 100%), 1ch);
+    max-width: min(var(--structured-measure), 100%);
     width: max-content;
     /* 1ch, not 0: the block is bounded by a border now, so code running
        flush into the right edge reads as a clipping bug. */
@@ -1934,10 +1924,9 @@ pre.astro-code::after {
        yellow into olive and orange into brown -- a different palette, not a
        dimmer one.
 
-       So the chip carries the hue as a faint wash and the label is set at a
-       FIXED lightness, keeping each language's own hue and chroma. One
-       declaration per theme rather than eleven hand-tuned pairs, and a new
-       language inherits a passing colour automatically.
+       The label is set at a FIXED lightness, keeping each language's own hue
+       and chroma. One declaration per theme rather than eleven hand-tuned
+       pairs, and a new language inherits a passing colour automatically.
 
        0.48 on light / 0.80 on dark: worst case measures 4.94 (json) and
        4.88 (js) respectively, every language clearing AA with margin. The
@@ -1954,25 +1943,15 @@ pre.astro-code::after {
        page-coloured rectangle behind the label. --code-mask-bg is set by any
        container with its own fill (see .callout below); it falls back to the
        page background everywhere else. */
-    /* Three layers, top to bottom: the language wash that makes the chip
-       read as this language, the container tint (see --code-mask-bg on
-       .callout), then the opaque page surface. The bottom layer is what
-       masks the border, so the wash sits ON an opaque base rather than
-       replacing it -- a translucent badge would let the rule show through
-       and lose the notched-frame effect. 16% is a wash, not a fill: the
-       frame still visibly breaks around the chip rather than being covered
-       by a solid block. */
+    /* Use only the block's opaque surface to cut a clean notch in the top
+       rule. No colored chip fill: the language name sits directly in the
+       frame like a titled ASCII box. */
     background:
-        linear-gradient(
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
-        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
         ),
         var(--code-mask-under, var(--background0));
-    line-height: 1;
     user-select: none;
     pointer-events: none;
     z-index: 2;
@@ -2042,10 +2021,6 @@ pre.astro-code .code-copy-btn::before {
     /* Same border-masking as the language badge above; same reason it must
        follow the container surface rather than the page background. */
     background:
-        linear-gradient(
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16),
-            oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.16)
-        ),
         linear-gradient(
             var(--code-mask-bg, transparent),
             var(--code-mask-bg, transparent)
@@ -2240,7 +2215,9 @@ pre.astro-code > code {
     white-space: pre;
     counter-reset: line;
     line-height: initial;
-    /* background-color: var(--background1, var(--pre-background)) !important; */
+    /* Inline-code styling paints the <code> element; clear that fill in
+       blocks so the outer <pre> frame is the only panel surface. */
+    background-color: transparent !important;
     /* Trailing clearance so the last character of a long line does not kiss
        the block edge when scrolled to the end.
 
@@ -2318,7 +2295,7 @@ pre.astro-code .line {
        @layer base — it must carry the code font itself or QP leaks in. */
     font-family:
         var(--code-font-family), 'inline-emoji-shrink', 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Noto Color Emoji';
+        'Segoe UI Emoji', 'Noto Color Emoji', monospace;
 }
 
 /* The line number. Rendered by script as a real <a> so it can be copied,
@@ -2483,7 +2460,7 @@ pre.astro-code span.line.is-line-linked > .code-line-link {
     display: block;
     box-sizing: border-box;
     width: 3ch;
-    height: 1lh;
+    height: 1.5lh;
     padding: 0;
     border: none;
     background: transparent;
@@ -2497,7 +2474,7 @@ pre.astro-code span.line.is-line-linked > .code-line-link {
     color: transparent;
     overflow: hidden;
     white-space: nowrap;
-    line-height: 1;
+    line-height: 1.5;
 }
 
 /* Keyboard users get the same swap as mouse users: the :focus-within rule
@@ -2987,6 +2964,10 @@ html[data-webtui-theme='catppuccin-latte'] {
         overflow-wrap: anywhere;
         word-break: break-word;
     }
+    #main-content table:not(:has(.line-code)) :is(th, td) {
+        padding: 0.15lh 0.8ch;
+        line-height: 1.4;
+    }
     /* <code> tokens inherit white-space: nowrap from the inline-code
        rule elsewhere; override it inside table cells so the column
        stays within the wrapper's width on mobile. */
@@ -3003,19 +2984,31 @@ html[data-webtui-theme='catppuccin-latte'] {
        - `min-width: 0` so the flex child can shrink below its content's
          natural width (without this, the wrapper expands to fit max-content
          and the parent's `overflow-x: hidden` clips it, no scrollbar shows).
-       - explicit `width: calc(100% - 2ch)` to lock the wrapper to the column
-         width minus the 2ch left indent. */
+       - explicit width plus a max-width cap to lock the wrapper to its
+         column while keeping wide tables scrollable. */
     .table-scroll-wrapper {
         /* Blank line above AND below the table so it reads as a
            discrete block instead of fused to the previous paragraph /
            following content. */
         margin-block: 1lh;
         width: 100%;
+        max-width: var(--structured-measure);
         min-width: 0;
         overflow-x: auto;
     }
     .table-scroll-wrapper > table {
         margin: 0;
+    }
+
+    /* Pin the leading column while wide tables scroll horizontally. Keep it
+       above moving cells; sticky header cells get a higher layer below. */
+    .table-scroll-wrapper
+        > :where(table:not(:has(.line-code)))
+        tr
+        > :is(th, td):first-child {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 2;
     }
 
     /* Disable webtui table cell borders on CodePreview line-code rows */
@@ -3070,7 +3063,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     table:not([data-table-style='terminal']):not(:has(.line-code))
         tr
         :is(td, th) {
-        border: 1px solid var(--foreground3);
+        border: 0.125ch solid var(--foreground3);
         padding: 0.4lh 1.25ch;
     }
     table:not([data-table-style='terminal']) tr :is(td, th):first-of-type {
@@ -3079,7 +3072,7 @@ html[data-webtui-theme='catppuccin-latte'] {
     table:not([data-table-style='terminal']) thead :is(td, th),
     table:not([data-table-style='terminal']) tr:first-child :is(th) {
         background-color: var(--background1);
-        border-bottom: 1px solid var(--foreground3);
+        border-bottom: 0.125ch solid var(--foreground3);
         color: var(--accent, var(--blue));
         font-weight: 700;
     }
@@ -3107,24 +3100,24 @@ html[data-webtui-theme='catppuccin-latte'] {
             background-color 100ms linear,
             box-shadow 120ms ease-out;
     }
-    /* Left-rail accent: 3px colored stripe inset on the first cell of
+    /* Left-rail accent: 0.3ch colored stripe inset on the first cell of
        a hovered row so the eye locks onto where the row starts. */
     table:not([data-table-style='terminal'])
         :is(tbody, :scope)
         > tr:not(:has(th)):hover
         > :is(td, th):first-child {
-        box-shadow: inset 3px 0 0 0 var(--accent, var(--blue));
+        box-shadow: inset 0.3ch 0 0 0 var(--accent, var(--blue));
     }
-    /* Keep first-row padding symmetric with the rest of the table. */
+    /* Keep the first row aligned with the tighter shared cell padding. */
     table:not([data-table-style='terminal']):not([is-~='presentation'] table)
         :first-child
         > tr:first-child
         > :is(td, th) {
-        padding-top: 0.4lh !important;
+        padding-top: 0.15lh !important;
     }
 
     /* ── Terminal table style (`data-table-style="terminal"`) ────────────
-       A crisp single-line grid: every cell gets a plain 1px collapsed
+       A crisp single-line grid: every cell gets a plain 0.125ch collapsed
        border, plus a subtle heading band, zebra stripes, and row hover.
        Body cells stay on one line so wide tables scroll horizontally in
        .table-scroll-wrapper instead of folding.
@@ -3146,10 +3139,10 @@ html[data-webtui-theme='catppuccin-latte'] {
         border: none !important;
         content: none !important;
     }
-    /* Plain 1px grid + even cell padding (WebTUI's default is 0 top / 1lh
+    /* Plain 0.125ch grid + even cell padding (WebTUI's default is 0 top / 1lh
        bottom, which reads lopsided without the pseudo-box). */
     table[data-table-style='terminal'] tr :is(td, th) {
-        border: 1px solid var(--foreground3);
+        border: 0.125ch solid var(--foreground3);
         padding: 0.25lh 1ch !important;
     }
     table[data-table-style='terminal'] thead :is(td, th),
@@ -3184,6 +3177,68 @@ html[data-webtui-theme='catppuccin-latte'] {
     }
     .table-scroll-wrapper > table[data-table-style='terminal'] tbody td {
         white-space: nowrap;
+    }
+
+    /* Sticky cells need opaque fills. The general zebra and hover colors use
+       alpha, which lets horizontally scrolling text show through the pinned
+       first column. Mix each tint with the page surface for this column only. */
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        tbody
+        > tr
+        > td:first-child {
+        background-color: var(--background0);
+    }
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        :is(tbody, :scope)
+        > tr:nth-child(even):not(:has(th))
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 60%,
+            var(--background1)
+        );
+    }
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        :is(tbody, :scope)
+        > tr:not(:has(th)):hover
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 88%,
+            var(--accent, var(--blue)) 12%
+        );
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        tbody
+        > tr
+        > td:first-child {
+        background-color: var(--background0);
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        :is(tbody, :scope)
+        > tr:nth-child(even):not(:has(th))
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 55%,
+            var(--background2)
+        );
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        :is(tbody, :scope)
+        > tr:not(:has(th)):hover
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 86%,
+            var(--accent, var(--blue)) 14%
+        );
     }
 
     /* Link styling — applies to all themes (was previously scoped to
@@ -3290,7 +3345,7 @@ html[data-webtui-theme='catppuccin-latte'] {
             box-shadow 120ms ease-out;
     }
     /* The pagination links (.next/.prev) are box-= boxes too, but they get
-       their own flat-fill hover in Doc.css instead of this tactile lift
+       their own hover treatment in Doc.css instead of this tactile lift
        (the translate + offset shadow read as a clumsy detached shadow on a
        wide block). Exclude them here so Doc.css's hover isn't out-specified
        (this selector carries two IDs via :not(#doc-article)). */
@@ -3338,9 +3393,16 @@ html[data-webtui-theme='catppuccin-latte'] {
     }
 
     /* Inline `code` color in body text — also previously theme-scoped. */
-    #main-content :is(p, blockquote, li, [is-~='typography-block']) code {
+    #main-content
+        :is(p, blockquote, li, [is-~='typography-block'])
+        :not(pre)
+        > code {
         color: var(--code-fg, var(--foreground2));
         background-color: var(--code-bg, var(--background1));
+        border: 0.125ch solid
+            color-mix(in srgb, var(--foreground3) 70%, transparent);
+        border-radius: 0;
+        padding-inline: 0.25ch;
     }
 
     /* Inline `code` wrapped in a link: signal link-ness at rest, and let
@@ -3356,6 +3418,8 @@ html[data-webtui-theme='catppuccin-latte'] {
         background-color: oklch(
             from var(--url) calc(l * var(--oklch-scale, 0.85)) c h / 0.12
         );
+        border: 0;
+        padding-inline: 0;
         text-decoration: underline dotted;
         text-decoration-color: oklch(from var(--url) l c h / 0.6);
         text-underline-offset: 0.15lh;

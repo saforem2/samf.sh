@@ -422,6 +422,7 @@ const articleSchema =
        statusline + Doc.css stay here. */
     @import '@/styles/statusline.css';
     @import './Doc.css';
+    @import '@/styles/tui-content.css';
 </style>
 
 <Layout
@@ -1730,10 +1731,17 @@ const articleSchema =
                         ) as HTMLElement | null
                     }
 
-                    // Show in border when we've scrolled past the top
-                    const hasScrolled = mainEl.scrollTop > 50
+                    // Keep the pinned label out of the way while its source
+                    // heading is still visible. This mirrors Treesitter
+                    // Context: a heading moves into the context line only
+                    // after it has scrolled above the article viewport.
+                    const scrollerTop =
+                        mainEl.getBoundingClientRect().top + mainEl.clientTop
+                    const headingHasScrolledPast =
+                        target !== null &&
+                        target.getBoundingClientRect().bottom <= scrollerTop
 
-                    if (hasScrolled && target) {
+                    if (headingHasScrolledPast && target) {
                         const level = parseInt(target.tagName[1])
                         const prefix = '#'.repeat(level)
                         const colorVar = `var(--h${level})`

@@ -37,6 +37,12 @@ const ids = fullIds ?? []
 const stateColumnIndex = headers.findIndex(
     (header) => header.toLowerCase() === stateColumn.toLowerCase(),
 )
+const hostColumnIndex = headers.findIndex(
+    (header) => header.toLowerCase() === 'host',
+)
+const jobIdColumnIndex = headers.findIndex(
+    (header) => header.toLowerCase() === 'jobid',
+)
 
 const stateClass = (s: string) => {
     const k = s.toLowerCase().trim()
@@ -54,44 +60,50 @@ const stateClass = (s: string) => {
     <div class="rich-table-chrome">
         <span class="rt-title">{title}</span>
     </div>
-    <div class="rich-table-scroll">
-        <table class="rich-table">
-            <caption class="sr-only">{caption}</caption>
-            <thead>
-                <tr>
-                    {headers.map((h) => <th scope="col">{h}</th>)}
-                </tr>
-            </thead>
-            <tbody>
-                {
-                    rows.map((row) => (
-                        <tr>
-                            {row.map((cell, j) => (
-                                <td
-                                    class={
-                                        j === stateColumnIndex
-                                            ? stateClass(cell)
-                                            : undefined
-                                    }>
-                                    {cell}
-                                </td>
-                            ))}
-                        </tr>
-                    ))
-                }
-                {
-                    ids.length > 0 && (
-                        <tr class="rt-fullids" aria-hidden="true">
-                            <td colspan={headers.length}>
-                                {ids.map((id) => (
-                                    <div class="rt-fullid">{id}</div>
+    <div class="rich-table-scroll" tabindex="0">
+        <div class="rich-table-content">
+            <table class="rich-table">
+                <caption class="sr-only">{caption}</caption>
+                <thead>
+                    <tr>
+                        {headers.map((h) => <th scope="col">{h}</th>)}
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        rows.map((row) => (
+                            <tr>
+                                {row.map((cell, j) => (
+                                    <td
+                                        class={
+                                            j === hostColumnIndex
+                                                ? 'rt-host'
+                                                : j === jobIdColumnIndex
+                                                  ? 'rt-dim'
+                                                  : j === stateColumnIndex
+                                                    ? stateClass(cell)
+                                                    : undefined
+                                        }>
+                                        {cell}
+                                    </td>
                                 ))}
-                            </td>
-                        </tr>
-                    )
-                }
-            </tbody>
-        </table>
+                            </tr>
+                        ))
+                    }
+                    {
+                        ids.length > 0 && (
+                            <tr class="rt-fullids" aria-hidden="true">
+                                <td colspan={headers.length}>
+                                    {ids.map((id) => (
+                                        <div class="rt-fullid">{id}</div>
+                                    ))}
+                                </td>
+                            </tr>
+                        )
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
     {
         ids.length > 0 && (
@@ -112,7 +124,7 @@ const stateClass = (s: string) => {
 <style>
     .rich-table-wrap {
         margin-block: 1lh;
-        border: 1px solid
+        border: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         border-radius: 0;
         overflow: hidden;
@@ -127,7 +139,7 @@ const stateClass = (s: string) => {
             var(--background0) 92%,
             var(--foreground0) 8%
         );
-        border-bottom: 1px solid
+        border-bottom: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         font-size: 1rem;
         color: var(--foreground2);
@@ -140,38 +152,44 @@ const stateClass = (s: string) => {
         overflow-x: auto;
     }
 
+    .rich-table-content {
+        width: max-content;
+        min-width: 100%;
+    }
+
     .rich-table {
         width: 100%;
+        min-width: max-content;
         border-collapse: collapse;
         font-family: var(--code-font-family);
         font-size: 1rem;
-        line-height: 1.6;
+        line-height: 1.5;
     }
     .rich-table th:not(:last-child),
     .rich-table td:not(:last-child) {
-        border-right: 1px solid
+        border-right: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
     }
     .rich-table th {
         text-align: left;
         font-weight: 600;
         color: var(--foreground1);
-        border-bottom: 1px solid
+        border-bottom: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
-        padding: 0.35lh 1.2ch;
+        padding: 0.2lh 0.8ch;
         white-space: nowrap;
     }
     .rich-table td {
-        padding: 0.2lh 1.2ch;
+        padding: 0.1lh 0.8ch;
         white-space: nowrap;
         color: var(--foreground0);
     }
     .rich-table tbody tr:not(.rt-fullids) + tr:not(.rt-fullids) td {
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 10%, transparent);
     }
     .rt-fullids td {
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 14%, transparent);
         padding-top: 0.4lh;
     }
@@ -200,6 +218,9 @@ const stateClass = (s: string) => {
         color: var(--blue, var(--teal, #56b6c2)) !important;
         font-weight: 600;
     }
+    .rt-host {
+        color: var(--cyan, var(--teal, #56b6c2)) !important;
+    }
     .rt-red {
         color: var(--red) !important;
         font-weight: 600;
@@ -213,7 +234,7 @@ const stateClass = (s: string) => {
         font-size: 1rem;
         color: var(--foreground2);
         line-height: 1.5;
-        border-top: 1px solid
+        border-top: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 10%, transparent);
     }
     .rt-legend {
@@ -241,10 +262,10 @@ const stateClass = (s: string) => {
 
     .sr-only {
         position: absolute;
-        width: 1px;
-        height: 1px;
+        width: 0.125ch;
+        height: 0.125ch;
         padding: 0;
-        margin: -1px;
+        margin: -0.125ch;
         overflow: hidden;
         clip: rect(0, 0, 0, 0);
         white-space: nowrap;

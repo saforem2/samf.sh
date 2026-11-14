@@ -1,4 +1,4 @@
-import mermaid from 'mermaid'
+import { PeleError, renderAsync as renderPele } from 'pele/lazy'
 
 const PAN_STEP = 40
 const ZOOM_STEP = 1.2
@@ -9,6 +9,128 @@ interface ViewportState {
     scale: number
     tx: number
     ty: number
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+const ALLOWED_SVG_ELEMENTS = new Set([
+    'circle',
+    'clippath',
+    'defs',
+    'desc',
+    'ellipse',
+    'g',
+    'line',
+    'marker',
+    'mask',
+    'path',
+    'polygon',
+    'polyline',
+    'rect',
+    'stop',
+    'svg',
+    'text',
+    'title',
+    'tspan',
+])
+const ALLOWED_SVG_ATTRIBUTES = new Set([
+    'aria-label',
+    'class',
+    'clip-path',
+    'cx',
+    'cy',
+    'd',
+    'data-icon',
+    'data-id',
+    'dominant-baseline',
+    'fill',
+    'fill-opacity',
+    'fill-rule',
+    'font-family',
+    'font-size',
+    'font-style',
+    'font-weight',
+    'height',
+    'id',
+    'mask',
+    'marker-end',
+    'marker-mid',
+    'marker-start',
+    'offset',
+    'opacity',
+    'points',
+    'preserveaspectratio',
+    'r',
+    'role',
+    'rx',
+    'ry',
+    'stop-color',
+    'stop-opacity',
+    'stroke',
+    'stroke-dasharray',
+    'stroke-dashoffset',
+    'stroke-linecap',
+    'stroke-linejoin',
+    'stroke-opacity',
+    'stroke-width',
+    'style',
+    'text-anchor',
+    'transform',
+    'viewbox',
+    'width',
+    'x',
+    'x1',
+    'x2',
+    'xmlns',
+    'xmlns:xlink',
+    'xml:space',
+    'y',
+    'y1',
+    'y2',
+])
+
+function parseSafePeleSvg(markup: string): SVGSVGElement {
+    const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml')
+    const root = parsed.documentElement
+    if (
+        parsed.doctype ||
+        root.localName.toLowerCase() === 'parsererror' ||
+        root.namespaceURI !== SVG_NS ||
+        root.localName.toLowerCase() !== 'svg'
+    ) {
+        throw new Error('Pele returned invalid SVG markup')
+    }
+
+    const elements = [root, ...Array.from(root.querySelectorAll('*'))]
+    for (const element of elements) {
+        const name = element.localName.toLowerCase()
+        if (
+            element.namespaceURI !== SVG_NS ||
+            !ALLOWED_SVG_ELEMENTS.has(name)
+        ) {
+            element.remove()
+            continue
+        }
+
+        for (const attribute of Array.from(element.attributes)) {
+            const attrName = attribute.name.toLowerCase()
+            const value = attribute.value.trim()
+            const hasUnsafeUrl = /url\s*\(\s*['"]?(?!#)/i.test(value)
+            const hasActiveCss = /javascript\s*:|expression\s*\(|@import/i.test(
+                value,
+            )
+            if (
+                !ALLOWED_SVG_ATTRIBUTES.has(attrName) ||
+                ((attrName === 'href' || attrName === 'xlink:href') &&
+                    !value.startsWith('#')) ||
+                hasUnsafeUrl ||
+                hasActiveCss
+            ) {
+                element.removeAttribute(attribute.name)
+            }
+        }
+    }
+
+    return document.importNode(root, true) as SVGSVGElement
 }
 
 function applyTransform(svg: SVGElement, state: ViewportState) {
@@ -57,9 +179,41 @@ function openExpandedView(svg: SVGElement, source: string) {
     closeBtn.className = 'mermaid-modal-close'
     closeBtn.setAttribute('aria-label', 'Close')
     closeBtn.title = 'Close (Esc)'
+    closeBtn.textContent = '×'
 
     const svgClone = svg.cloneNode(true) as SVGElement
-    svgClone.removeAttribute('style')
+    svgClone.style.removeProperty('transform')
+    svgClone.style.removeProperty('transform-origin')
+    svgClone.style.removeProperty('cursor')
+    svgClone.style.removeProperty('transition')
+    const diagram = svg.closest<HTMLElement>('.mermaid')
+    if (diagram) {
+        const computedStyle = getComputedStyle(diagram)
+        for (const name of [
+            '--pele-bg',
+            '--pele-fg',
+            '--pele-muted',
+            '--pele-line',
+            '--pele-surface',
+            '--pele-surface-alt',
+            '--pele-border',
+            '--pele-accent',
+            '--pele-series-1',
+            '--pele-series-2',
+            '--pele-series-3',
+            '--pele-series-4',
+            '--pele-series-5',
+            '--pele-series-6',
+            '--pele-series-7',
+            '--pele-series-8',
+            '--pele-font',
+            '--pele-font-mono',
+            '--pele-radius',
+        ]) {
+            const value = computedStyle.getPropertyValue(name).trim()
+            if (value) svgClone.style.setProperty(name, value)
+        }
+    }
     svgClone.style.setProperty('width', '100%', 'important')
     svgClone.style.setProperty('height', '100%', 'important')
     svgClone.style.setProperty('max-width', 'none', 'important')
@@ -101,7 +255,7 @@ function openExpandedView(svg: SVGElement, source: string) {
 function setupInteractiveViewport(block: HTMLElement) {
     if (block.dataset.interactive === 'true') return
 
-    const svg = block.querySelector('svg[id^="mermaid-"]')
+    const svg = block.querySelector('svg:not(.pele-icon)')
     if (!(svg instanceof SVGElement)) return
 
     block.dataset.interactive = 'true'
@@ -221,6 +375,7 @@ function setupInteractiveViewport(block: HTMLElement) {
     // Build controls
     const controls = document.createElement('div')
     controls.className = 'mermaid-controls'
+    controls.setAttribute('role', 'group')
     controls.setAttribute('aria-label', 'Diagram controls')
 
     const makeButton = (
@@ -292,15 +447,17 @@ function setupInteractiveViewport(block: HTMLElement) {
     // Top-right cluster: expand + copy
     const topActions = document.createElement('div')
     topActions.className = 'mermaid-actions'
+    topActions.setAttribute('role', 'group')
+    topActions.setAttribute('aria-label', 'Diagram actions')
 
     const expandBtn = makeButton(
-        '',
+        '⤢',
         'Expand diagram',
         () => openExpandedView(svg, block.dataset.mermaid ?? ''),
         'mc-expand',
     )
     const copyBtn = makeButton(
-        '',
+        '⧉',
         'Copy diagram source',
         () => copyMermaidSource(copyBtn, block.dataset.mermaid ?? ''),
         'mc-copy',
@@ -344,7 +501,9 @@ function setupInteractiveViewport(block: HTMLElement) {
 }
 
 function stabilizeMermaidSvgLayout() {
-    const mermaidSvgs = document.querySelectorAll('svg[id^="mermaid-"]')
+    const mermaidSvgs = document.querySelectorAll(
+        '.mermaid svg:not(.pele-icon)',
+    )
 
     mermaidSvgs.forEach((node) => {
         if (!(node instanceof SVGElement)) return
@@ -479,249 +638,146 @@ function stabilizeMermaidSvgLayout() {
 }
 
 export function initMermaid() {
-    const mermaidBlocks = document.querySelectorAll('.mermaid')
+    const mermaidBlocks = Array.from(
+        document.querySelectorAll<HTMLElement>('.mermaid'),
+    )
     if (mermaidBlocks.length === 0) return
 
-    const cssVar = (name: string, fallback = '') => {
-        const value = getComputedStyle(document.documentElement)
-            .getPropertyValue(name)
-            .trim()
-        return value || fallback
-    }
+    // Keep default diagrams close to the page surface. Use the theme accent
+    // for node outlines, while keeping connectors neutral and semantic classes
+    // free to use their own accent and series colors.
+    const peleTheme = {
+        '--pele-bg': 'var(--background0, #ffffff)',
+        '--pele-fg': 'var(--foreground0, #1f1f1f)',
+        '--pele-muted': 'var(--foreground2, #6e6e6e)',
+        '--pele-line': 'var(--foreground2, #6e6e6e)',
+        '--pele-surface': 'var(--background0, #ffffff)',
+        '--pele-surface-alt': 'var(--background1, #f3f3f3)',
+        '--pele-border':
+            'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
+        '--pele-accent':
+            'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
+        '--pele-series-1': 'var(--pt-diagram-accent, var(--blue, #5b7bd5))',
+        '--pele-series-2': 'var(--green, #4f9d69)',
+        '--pele-series-3': 'var(--orange, #ee8f24)',
+        '--pele-series-4': 'var(--pink, #ea76cb)',
+        '--pele-series-5': 'var(--purple, #9b72cf)',
+        '--pele-series-6': 'var(--cyan, #118cc2)',
+        '--pele-series-7': 'var(--yellow, #d7a500)',
+        '--pele-series-8': 'var(--red, #ee4c2c)',
+        '--pele-font': 'var(--font-family, sans-serif)',
+        '--pele-font-mono': 'var(--code-font-family, monospace)',
+        '--pele-radius': '0',
+    } as const
 
-    /** Resolve a CSS variable (which may contain oklch(from ...) /
-     *  color-mix() / etc.) into a #rrggbb string the mermaid color parser
-     *  can handle. Uses a canvas to coerce any CSS color into sRGB hex. */
-    const colorProbe = document.createElement('div')
-    colorProbe.style.cssText =
-        'position:absolute;width:0;height:0;visibility:hidden'
-    document.body.appendChild(colorProbe)
-    const colorCanvas = document.createElement('canvas')
-    colorCanvas.width = colorCanvas.height = 1
-    const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true })
-    const toHex = (cssColor: string, fallback: string) => {
-        if (!colorCtx) return fallback
-        try {
-            colorCtx.clearRect(0, 0, 1, 1)
-            colorCtx.fillStyle = '#000'
-            colorCtx.fillStyle = cssColor
-            colorCtx.fillRect(0, 0, 1, 1)
-            const [r, g, b] = colorCtx.getImageData(0, 0, 1, 1).data
-            return `#${[r, g, b]
-                .map((v) => v.toString(16).padStart(2, '0'))
-                .join('')}`
-        } catch {
-            return fallback
-        }
-    }
-    const resolveColor = (varName: string, fallback: string) => {
-        colorProbe.style.color = ''
-        colorProbe.style.color = `var(${varName})`
-        const resolved = getComputedStyle(colorProbe).color
-        if (!resolved || resolved === 'rgba(0, 0, 0, 0)') return fallback
-        return toHex(resolved, fallback)
-    }
-
-    const resolveMermaidFontFamily = () => cssVar('--font-family', 'monospace')
-    const resolveMermaidFontSize = () => cssVar('--font-size', '16px')
-
-    /** Build a mermaid themeVariables object from the site's CSS palette.
-     *  Uses just the neutral background/foreground ramp so diagrams look
-     *  like the surrounding UI; pink stays as the one accent for callouts. */
-    const resolveThemeVariables = () => {
-        const fg2 = resolveColor('--foreground2', '#888888')
-        const fg3 = resolveColor('--foreground3', '#cccccc')
-        const bg1 = resolveColor('--background1', '#f5f5f5')
-        const bg2 = resolveColor('--background2', '#e5e5e5')
-        const bg3 = resolveColor('--background3', '#cccccc')
-        const pink = resolveColor('--pink', '#ea76cb')
-        if (document.documentElement.dataset.webtuiTheme === 'pytorch') {
-            const accent = resolveColor('--pt-diagram-accent', '#ee4c2c')
-            const ink = resolveColor('--foreground0', '#181716')
-            return {
-                background: '#ffffff',
-                mainBkg: '#ffffff',
-                primaryColor: '#ffffff',
-                primaryBorderColor: accent,
-                primaryTextColor: ink,
-                secondaryColor: '#ffffff',
-                secondaryBorderColor: accent,
-                secondaryTextColor: ink,
-                tertiaryColor: '#fafafa',
-                tertiaryBorderColor: ink,
-                tertiaryTextColor: ink,
-                lineColor: accent,
-                textColor: ink,
-                clusterBkg: '#fafafa',
-                clusterBorder: ink,
-                nodeTextColor: ink,
-                nodeBorder: accent,
-                edgeLabelBackground: '#ffffff',
-                cScale0: accent,
-                cScale1: '#181716',
-                cScale2: '#ffffff',
-                noteBkgColor: '#ffffff',
-                noteBorderColor: accent,
-                noteTextColor: ink,
-            }
-        }
-        return {
-            background: bg1,
-            mainBkg: bg2,
-            primaryColor: bg2,
-            primaryBorderColor: fg3,
-            primaryTextColor: fg2,
-            secondaryColor: bg3,
-            secondaryBorderColor: fg3,
-            secondaryTextColor: fg2,
-            tertiaryColor: bg1,
-            tertiaryBorderColor: fg3,
-            tertiaryTextColor: fg2,
-            lineColor: fg3,
-            textColor: fg2,
-            // Cluster (subgraph) styling
-            clusterBkg: bg1,
-            clusterBorder: fg3,
-            // Node text
-            nodeTextColor: fg2,
-            nodeBorder: fg3,
-            // Edges
-            edgeLabelBackground: bg1,
-            // Accent (only one — keep it simple)
-            cScale0: pink,
-            cScale1: bg3,
-            cScale2: bg2,
-            // Notes
-            noteBkgColor: bg2,
-            noteBorderColor: fg3,
-            noteTextColor: fg2,
-        }
-    }
+    let diagramSequence = 0
+    const observedWidths = new WeakMap<HTMLElement, number>()
+    let renderQueued = false
+    let rendering = false
+    let rerenderAfterCurrent = false
 
     const render = async () => {
-        const fontFamily = resolveMermaidFontFamily()
-        await Promise.all(
-            ['16px', 'bold 16px', 'italic 16px'].map((size) =>
-                document.fonts.load(`${size} ${fontFamily}`),
-            ),
-        )
-        await document.fonts.ready
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: 'base',
-            themeVariables: resolveThemeVariables(),
-            fontFamily,
-            fontSize: resolveMermaidFontSize(),
-            flowchart: {
-                padding: 16,
-            },
-        })
-
-        // Filter to visible blocks only. Hidden .mermaid blocks
-        // (e.g. .cascade-mobile / .cascade-desktop CSS-toggled
-        // variants) measure as 0×0 inside display:none parents,
-        // which makes mermaid's layout pass produce a 0-height SVG
-        // and trips the post-render stabilize → setupInteractiveViewport
-        // chain (the SVG never gets its proper dimensions, controls
-        // never attach). Skip them; they'll render on viewport
-        // crossing the breakpoint when the resize listener fires.
-        const allNodes = Array.from(
-            document.querySelectorAll<HTMLElement>('.mermaid'),
-        )
-        const nodes = allNodes.filter(
-            (n) => n.offsetParent !== null || n === document.body,
-        )
-        nodes.forEach((node) => {
-            const source = node.dataset.mermaid
-            if (!source) return
-            // Re-render: drop interactive flag and existing wrapper/controls
-            node.dataset.interactive = 'false'
-            node.classList.remove('mermaid-interactive')
-            node.removeAttribute('data-processed')
-            node.textContent = source
-        })
-
-        // Wait for the body font to actually load before measuring.
-        // Mermaid sizes each node's box from the text's measured width;
-        // without this await, the first paint runs with the fallback
-        // metrics and any subsequent swap-in of Iosevka (wider glyphs)
-        // overflows the box (clipped text inside Aurora/Polaris/etc.).
-        // document.fonts.ready resolves once *all* declared @font-face
-        // resources finish loading, so this also covers later additions.
+        if (rendering) {
+            rerenderAfterCurrent = true
+            return
+        }
+        rendering = true
         try {
-            if (
-                document.fonts &&
-                typeof document.fonts.ready?.then === 'function'
-            ) {
-                await document.fonts.ready
-            }
-        } catch {
-            // FontFaceSet missing or rejected — render anyway.
-        }
-
-        // Render each node independently so one failure doesn't poison
-        // the batch — if e.g. stateDiagram-v2 dynamic-chunk fetch fails
-        // (vite "Outdated Optimize Dep" in dev), the flowcharts on the
-        // same page still render *and* get their post-process pass.
-        const logError = (error: unknown, node: HTMLElement) => {
-            const err = error as { message?: string; str?: string } | undefined
-            const detail =
-                err?.message ??
-                err?.str ??
-                (typeof error === 'string' ? error : '') ??
-                ''
-            const fallback = (() => {
-                try {
-                    return JSON.stringify(error)
-                } catch {
-                    return String(error)
+            const allNodes = Array.from(
+                document.querySelectorAll<HTMLElement>('.mermaid'),
+            )
+            const nodes = allNodes.filter((node) => node.offsetParent !== null)
+            nodes.forEach((node) => {
+                const source = node.dataset.mermaid ?? node.textContent ?? ''
+                if (!source.trim()) return
+                node.dataset.mermaid = source
+                node.dataset.interactive = 'false'
+                node.classList.remove('mermaid-interactive')
+                node.textContent = source
+                observedWidths.set(node, node.clientWidth)
+                for (const [name, value] of Object.entries(peleTheme)) {
+                    node.style.setProperty(name, value)
                 }
-            })()
-            console.error('Mermaid rendering failed:', detail || fallback, {
-                node,
-                error,
             })
-        }
-        // Serial, not parallel — mermaid 11.x generates SVG IDs from a
-        // per-run() counter snapshotted at call start. Two parallel run()s
-        // grab the same counter value and emit colliding SVG ids, which
-        // breaks downstream querySelector('svg[id^="mermaid-"]') lookups
-        // (only the first match wins, the rest never get viewport/controls).
-        // Let the deck clear any screen fit first, so labels are measured
-        // at their final size (Presentation.astro: fitScreenSlide).
-        window.dispatchEvent(new CustomEvent('mermaid:render-start'))
-        for (const node of nodes) {
+
             try {
-                await mermaid.run({ nodes: [node] })
-            } catch (error) {
-                logError(error, node)
+                await document.fonts.ready
+            } catch {
+                // FontFaceSet missing or rejected — render with fallback metrics.
+            }
+
+            window.dispatchEvent(new CustomEvent('mermaid:render-start'))
+            for (const node of nodes) {
+                const source = node.dataset.mermaid ?? ''
+                if (!source.trim()) continue
+                const computedStyle = getComputedStyle(node)
+                try {
+                    const result = await renderPele(source, {
+                        fontFamily: computedStyle.fontFamily,
+                        fontFamilyMono: computedStyle.fontFamily,
+                        fontSize:
+                            Number.parseFloat(computedStyle.fontSize) || 16,
+                        maxWidth: Math.max(node.clientWidth, 1),
+                        autoDirection: true,
+                        idPrefix: `pele-${++diagramSequence}`,
+                    })
+                    // Diagram source comes from authored Markdown. Parse the
+                    // renderer output as SVG XML and strip active content and
+                    // non-local references before adding it to the document.
+                    node.replaceChildren(parseSafePeleSvg(result.svg))
+                } catch (error) {
+                    const detail =
+                        error instanceof PeleError
+                            ? error.message
+                            : error instanceof Error
+                              ? error.message
+                              : String(error)
+                    console.error('Pele rendering failed:', detail, {
+                        node,
+                        error,
+                    })
+                    node.textContent = `Diagram could not be rendered: ${detail}`
+                }
+            }
+            stabilizeMermaidSvgLayout()
+            window.dispatchEvent(new CustomEvent('mermaid:rendered'))
+        } finally {
+            rendering = false
+            if (rerenderAfterCurrent) {
+                rerenderAfterCurrent = false
+                scheduleRender()
             }
         }
-        // Always run the post-render pass — partial successes still need
-        // their inline-style overrides and interactive viewport wiring.
-        stabilizeMermaidSvgLayout()
-        window.dispatchEvent(new CustomEvent('mermaid:rendered'))
     }
 
-    render()
+    const scheduleRender = () => {
+        if (renderQueued) return
+        renderQueued = true
+        requestAnimationFrame(() => {
+            renderQueued = false
+            void render()
+        })
+    }
 
-    new MutationObserver(() => {
-        render()
-    }).observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['data-webtui-theme'],
+    const resizeObserver = new ResizeObserver((entries) => {
+        const changed = entries.some(({ target }) => {
+            if (!(target instanceof HTMLElement)) return false
+            const width = target.clientWidth
+            const previous = observedWidths.get(target)
+            observedWidths.set(target, width)
+            return previous !== undefined && Math.abs(width - previous) > 1
+        })
+        if (changed) scheduleRender()
     })
+    mermaidBlocks.forEach((block) => resizeObserver.observe(block))
 
-    // Re-render when the mobile breakpoint is crossed (e.g. user
-    // resizes window or rotates device) — the previously-hidden
-    // variant needs its layout pass now that it's visible.
-    const mq = window.matchMedia('(max-width: 768px)')
-    const onBreakpoint = () => render()
-    if (typeof mq.addEventListener === 'function') {
-        mq.addEventListener('change', onBreakpoint)
-    } else {
-        // Safari < 14 fallback
-        // @ts-expect-error deprecated API
-        mq.addListener(onBreakpoint)
-    }
+    void render()
+
+    new MutationObserver(() => scheduleRender()).observe(
+        document.documentElement,
+        {
+            attributes: true,
+            attributeFilter: ['data-webtui-theme', 'data-code-font'],
+        },
+    )
 }

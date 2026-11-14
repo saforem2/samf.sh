@@ -481,7 +481,6 @@ h6::before {
     white-space: nowrap;
     box-sizing: border-box;
     bottom: 0;
-    left: 0;
     right: 0;
     z-index: 3;
     color: var(--foreground3);
@@ -748,20 +747,16 @@ h6::before {
 }
 
 /* When a <details> (accordion or callout) is nested as a direct child
-   of an <li>, align it with the list-item text (after the bullet) —
-   not with the bullet itself. Without this the details renders flush
-   at the bullet's x position, looking like an orphan sibling of the
-   list rather than a child of the item. 2ch matches the bullet+space
-   width used elsewhere (cf. li > pre.astro-code's `margin-left: 2ch`).
+   of an <li>, align it with the text above. The list marker is already
+   outside the li content edge, so adding a left margin here double-indents
+   the callout.
    `!important` because the webtui base.css ships a global
    `*{margin:0}` reset inside @layer base that, due to a quirk in how
    Astro/Lightning CSS resolve unlayered rules in this project, beats
-   even high-specificity unlayered rules on margin (verified in browser
-   — width: calc(100% - 2ch) on the same rule WORKS, only margin loses
-   to the * reset). */
+   even high-specificity unlayered rules on margin. */
 #main-content li > details:not(.footnote-popover) {
-    margin-left: 2ch !important;
-    width: calc(100% - 2ch);
+    margin-left: 0 !important;
+    width: 100%;
     /* The `*` reset zeroes every margin, and nothing else targets a
        <details> nested in a list item — so a collapsed disclosure (the
        "+ Output" toggles) sat flush against the code block above it and
@@ -991,6 +986,46 @@ h6::before {
     padding-inline-start: 8ch;
 }
 
+/* Nested TOC rows use quiet square connector rails, like a compact tree
+   navigator. Each deeper level keeps its ancestor rails and adds one branch;
+   the guides sit behind the label and stay neutral in both themes. */
+#toc-list a:is(.depth-3, .depth-4, .depth-5, .depth-6) {
+    background-image: repeating-linear-gradient(
+        to right,
+        var(--foreground3) 0 0.125ch,
+        transparent 0.125ch 2ch
+    );
+    background-size: var(--toc-guide-width) 100%;
+    background-position: 0.5ch 0;
+    background-repeat: no-repeat;
+}
+
+#toc-list a.depth-3 {
+    --toc-guide-width: 2ch;
+    --toc-branch-x: 0.5ch;
+}
+#toc-list a.depth-4 {
+    --toc-guide-width: 4ch;
+    --toc-branch-x: 2.5ch;
+}
+#toc-list a.depth-5 {
+    --toc-guide-width: 6ch;
+    --toc-branch-x: 4.5ch;
+}
+#toc-list a.depth-6 {
+    --toc-guide-width: 8ch;
+    --toc-branch-x: 6.5ch;
+}
+
+#toc-list a:is(.depth-3, .depth-4, .depth-5, .depth-6)::after {
+    content: '';
+    position: absolute;
+    inset-inline-start: var(--toc-branch-x);
+    top: 50%;
+    width: 1ch;
+    border-top: 0.125ch solid var(--foreground3);
+}
+
 #toc-list a .toc-tree-prefix {
     display: none;
 }
@@ -1001,6 +1036,7 @@ h6::before {
         from var(--background1, var(--foreground, #838383))
             calc(l * var(--oklch-scale, 0.85)) c h / 0.1
     );
+    box-shadow: inset 0.125ch 0 0 currentColor;
 }
 
 #toc-list a.depth-1.active {
@@ -1155,9 +1191,9 @@ h6::before {
            chore to read (the eye loses the next line on the return sweep).
            The cap itself is --prose-measure (set in global.css :root, single
            source of truth shared with the callout / collapsed-heading caps).
-           Only prose-bearing elements are capped; code blocks, tables,
-           diagrams and figure rows deliberately keep full width since they
-           benefit from it. Left-aligned: max-width leaves the slack on the
+           Prose uses --prose-measure; code blocks and tables use the wider
+           --structured-measure cap. Diagrams and figure rows remain full
+           width. Left-aligned: max-width leaves the slack on the
            right (margin-inline stays 0), so the column stays anchored to the
            sidebar rather than floating centered.
            NB: most prose is nested inside .heading-collapse <details>, so
@@ -1177,18 +1213,17 @@ h6::before {
            `:not(.heading-collapse)` is the important exclusion: the
            heading-section wrappers are structural, not content. They contain
            the capped prose tags above and must stay full-column, or every
-           code block and table on the site would inherit an 84ch ceiling from
-           its enclosing section.
+           code block and table on the site would inherit the prose ceiling
+           from its enclosing section.
 
-           Only the box is capped. Anything inside that deliberately runs wide
-           (code blocks, tables) is unaffected, matching how the prose cap
-           already treats them. */
+           Only the box is capped. Code blocks and tables keep their wider
+           structured-content measure. */
         details[is-~='accordion']:not(.heading-collapse) {
             max-width: var(--prose-measure);
         }
 
         /* …except that capping `ul, ol` also caps everything inside a list
-           item, so a code block nested in a list inherited the 84ch prose
+           item, so a code block nested in a list inherited the prose
            ceiling and got clipped (measured: 1651px of content squeezed
            into 663px). Let the list grow to the full column when it
            contains a code block, and let that block use the room.
@@ -1202,7 +1237,7 @@ h6::before {
             max-width: 100%;
         }
         li > pre.astro-code {
-            max-width: 100%;
+            max-width: min(var(--structured-measure), 100%);
         }
         /* Keep the list's own prose at the readable measure even though the
            list box is now wider than it.
@@ -1307,7 +1342,6 @@ h6::before {
             --box-border-color: currentColor;
             transition:
                 color 120ms ease-out,
-                background-color 120ms ease-out,
                 transform 0.1s ease-out;
             /* The box-shadow lift lives on ::before (the WebTUI frame), so
                animate it there too. */
@@ -1320,7 +1354,7 @@ h6::before {
                 color: var(--url);
             }
             /* Hover/focus: the whole notched chip turns accent — border,
-               badge, title, faint wash — and lifts up-left with a hard TUI
+               badge, title — and lifts up-left with a hard TUI
                shadow. WebTUI draws the frame as a ::before (covering the
                lower half; the badge notches the top), so the shadow rides
                ::before to lift the frame as one unit; recoloring the badge
@@ -1329,7 +1363,6 @@ h6::before {
             &:hover {
                 color: var(--accent);
                 --box-border-color: var(--accent);
-                background-color: oklch(from var(--accent) l c h / 0.08);
                 transform: translate(-2px, -2px);
             }
             &:focus::before,
@@ -1373,10 +1406,6 @@ h6::before {
             content: none;
         }
 
-        li > :where(* + *):not(ul):not(ol):not(code) {
-            margin-inline-start: var(--li-text-offset, 0ch);
-        }
-
         /* `:not(.astro-code)` — shiki code blocks set their own 0.5lh
            vertical padding (global.css) to keep the language badge off the
            first line of code. This rule was written when those blocks had
@@ -1389,16 +1418,29 @@ h6::before {
             text-indent: 0;
         }
 
-        ul li {
-            /* --li-text-offset: 2ch; */
-            text-indent: 2ch hanging;
+        /* Outside markers reserve a stable gutter for each ordered-list
+           item, so wrapped lines start exactly with the item text. An
+           inside marker plus a hanging text-indent approximated that gutter
+           and drifted by the marker's actual font width. */
+        ol {
+            list-style-position: outside;
         }
         ol li {
-            /* --li-text-offset: 4ch; */
-            text-indent: 3ch hanging;
+            text-indent: 0;
         }
-        ol > li:nth-child(n + 10) {
-            text-indent: 4ch hanging;
+
+        /* The custom marker sits in the existing 2ch gutter, outside the
+           text flow. Wrapped lines therefore align with the first line. */
+        ul li {
+            position: relative;
+            text-indent: 0;
+        }
+        ul li::before {
+            position: absolute;
+            inset-inline-start: -2ch;
+            inset-block-start: 0;
+            inline-size: 2ch;
+            white-space: pre;
         }
         ol > li::marker {
             content: counter(list-item) '. ';
@@ -1432,13 +1474,7 @@ h6::before {
             padding-inline-start: 2ch;
         }
 
-        /* Nested lists: nudge each list right by the parent's marker width so
-           the nested marker (e.g. `-`) sits roughly under the parent text.
-           Also clear the inherited `text-indent: ...ch hanging` so the
-           nested text doesn't get over-indented. */
-        li > :is(ul, ol) > li {
-            text-indent: 1.5ch hanging;
-        }
+        /* Nested lists get a fresh marker gutter from their own 2ch padding. */
         ul > li > :is(ul, ol) {
             margin-left: 0;
         }

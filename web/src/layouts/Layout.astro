@@ -58,6 +58,7 @@ import { join } from 'node:path'
 const fontFaceCss = [
     'miosevka-qp/miosevka-qp.css',
     'miosevka-term/miosevka-term.css',
+    'iosevka25-condensed/iosevka25-condensed.css',
     'iosevka/iosevka.css',
     'victor-mono/victor-mono.css',
     'figtree/figtree.css',
@@ -393,21 +394,16 @@ const fontFaceCss = [
              preloaded above. -->
         <style is:inline set:html={fontFaceCss}></style>
         <style is:inline>
-            svg[id^='mermaid-'] {
+            .mermaid svg {
                 display: block;
                 width: 100%;
                 max-width: 100%;
                 height: auto !important;
                 min-height: 0;
             }
-            svg[id^='mermaid-'] foreignObject * {
-                margin: 0 !important;
-                padding: 0 !important;
-                line-height: normal !important;
-            }
             .mermaid.mermaid-interactive {
                 background-color: var(--background0);
-                border: 1px solid var(--background2);
+                border: 0.125ch solid var(--background2);
                 /* Breathing room above and below the figure so it doesn't
                    crowd the surrounding text. */
                 margin-block: 1lh;
@@ -422,8 +418,8 @@ const fontFaceCss = [
                 margin-block: 0;
             }
             .mermaid.mermaid-interactive:focus-visible {
-                outline: 1px solid var(--blue);
-                outline-offset: -1px;
+                outline: 0.125ch solid var(--accent, var(--blue));
+                outline-offset: -0.125ch;
             }
             .mermaid-viewport {
                 position: relative;
@@ -432,14 +428,15 @@ const fontFaceCss = [
             }
             .mermaid-controls {
                 position: absolute;
-                bottom: 0.5ch;
-                right: 0.5ch;
-                display: flex;
-                flex-direction: column;
-                gap: 0.25ch;
-                padding: 0.25ch;
-                background-color: var(--background1);
-                border: 1px solid var(--background2);
+                bottom: 1ch;
+                right: 1ch;
+                display: grid;
+                gap: 0.5ch;
+                padding: 0.5ch;
+                font-size: 1rem;
+                line-height: 1.25;
+                background-color: var(--background0);
+                border: 0.125ch solid var(--accent, var(--blue));
                 z-index: 1;
                 user-select: none;
                 opacity: 0;
@@ -449,11 +446,17 @@ const fontFaceCss = [
             .mermaid-viewport:focus-within .mermaid-controls {
                 opacity: 1;
             }
+            @media (hover: none), (pointer: coarse) {
+                .mermaid-controls,
+                .mermaid-actions {
+                    opacity: 1;
+                }
+            }
             .mermaid-pad {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                grid-template-rows: repeat(3, 1fr);
-                gap: 0;
+                grid-template-columns: repeat(3, 4ch);
+                grid-template-rows: repeat(3, 2lh);
+                gap: 0.125ch;
             }
             .mermaid-pad .mc-up {
                 grid-column: 2;
@@ -476,36 +479,46 @@ const fontFaceCss = [
                 grid-row: 3;
             }
             .mermaid-zoom {
-                display: flex;
-                gap: 0;
-                justify-content: center;
+                display: grid;
+                grid-template-columns: repeat(3, 4ch);
+                gap: 0.125ch;
+            }
+            .mermaid-zoom .mc-zoom-in {
+                grid-column: 1;
+            }
+            .mermaid-zoom .mc-zoom-out {
+                grid-column: 3;
             }
             .mermaid-ctrl {
                 appearance: none;
-                background: var(--background2);
+                background: var(--background1);
                 color: var(--foreground1);
-                border: none;
-                width: 1.6ch;
-                height: 0.85lh;
+                border: 0.125ch solid var(--background2);
+                border-radius: 0;
+                width: 4ch;
+                height: 2lh;
                 font-family: inherit;
-                font-size: 0.7em;
-                line-height: 1;
+                font-size: 1rem;
+                line-height: 1.25;
                 cursor: pointer;
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
                 padding: 0;
             }
-            .mermaid-ctrl:hover {
-                background: var(--blue);
+            .mermaid-ctrl.mc-reset {
+                background: var(--accent, var(--blue));
                 color: var(--background0);
+                border-color: var(--accent, var(--blue));
+            }
+            .mermaid-ctrl:hover {
+                background: var(--accent, var(--blue));
+                color: var(--background0);
+                border-color: var(--accent, var(--blue));
             }
             .mermaid-ctrl:focus-visible {
-                outline: 1px solid var(--blue);
-                outline-offset: -1px;
-            }
-            .mermaid-ctrl.mc-reset:hover {
-                background: var(--orange);
+                outline: 0.125ch solid var(--accent, var(--blue));
+                outline-offset: 0.125ch;
             }
             .mermaid-ctrl.mc-success {
                 background: var(--green);
@@ -516,7 +529,9 @@ const fontFaceCss = [
                 top: 1ch;
                 right: 1ch;
                 display: flex;
-                gap: 0;
+                gap: 0.125ch;
+                font-size: 1rem;
+                line-height: 1.25;
                 z-index: 1;
                 user-select: none;
                 opacity: 0;
@@ -528,11 +543,8 @@ const fontFaceCss = [
             }
             .mermaid-actions .mermaid-ctrl {
                 width: 3ch;
-                background: var(--background1);
-                border: 1px solid var(--background2);
-            }
-            .mermaid-actions .mermaid-ctrl + .mermaid-ctrl {
-                border-left: none;
+                height: 1.5lh;
+                background: var(--background0);
             }
             .mermaid-modal {
                 position: fixed;
@@ -549,7 +561,7 @@ const fontFaceCss = [
                 width: 100%;
                 height: 100%;
                 background-color: var(--background0);
-                border: 1px solid var(--background2);
+                border: 0.125ch solid var(--accent, var(--blue));
                 padding: 2lh 2ch 1lh;
                 display: flex;
                 align-items: center;
@@ -563,71 +575,19 @@ const fontFaceCss = [
                 width: auto !important;
                 height: auto !important;
             }
-            /* Descender clip fix for cloned SVG in the popout.
-               Same rule we apply in-deck (see #restart-cascade in
-               talks/2026-06-03/index.mdx). The popout clones the
-               SVG outside that scope, so we need a global rule too. */
-            .mermaid-modal-inner svg g.node foreignObject {
-                overflow: visible;
-            }
-            .mermaid-modal-inner svg g.node p {
-                line-height: 1.35;
-                padding-bottom: 0.1em;
-            }
-            /* Per-cluster text colors for restart-cascade clones.
-               classDef colors get serialized into the cluster <g>
-               class list (jobC/nodeC/procC/jobTxt/nodeTxt/procTxt),
-               so we can match on those even after the SVG is
-               cloned outside the talk's scoped <style> block. Keep
-               in sync with the in-deck rules. */
-            .mermaid-modal-inner svg g.node.jobTxt .nodeLabel,
-            .mermaid-modal-inner svg g.node.jobTxt span,
-            .mermaid-modal-inner svg g.node.jobTxt p {
-                color: #118cc2 !important;
-            }
-            .mermaid-modal-inner svg g.node.nodeTxt .nodeLabel,
-            .mermaid-modal-inner svg g.node.nodeTxt span,
-            .mermaid-modal-inner svg g.node.nodeTxt p {
-                color: #ee8f24 !important;
-            }
-            .mermaid-modal-inner svg g.node.procTxt .nodeLabel,
-            .mermaid-modal-inner svg g.node.procTxt span,
-            .mermaid-modal-inner svg g.node.procTxt p {
-                color: #1da811 !important;
-            }
-            /* Cluster-title chip badges + their per-cluster bg
-               tints. Same selectors as in-deck, just no
-               #restart-cascade prefix since the modal is outside it. */
-            .mermaid-modal-inner svg .cluster .cluster-label foreignObject {
-                overflow: visible;
-            }
-            .mermaid-modal-inner svg .cluster .cluster-label span {
-                display: inline-block;
-                padding: 0 1ch;
-                color: var(--foreground0, #222) !important;
-                font-weight: 600;
-            }
-            .mermaid-modal-inner svg .cluster.jobC .cluster-label span {
-                background: #118cc218;
-            }
-            .mermaid-modal-inner svg .cluster.nodeC .cluster-label span {
-                background: #ee8f2418;
-            }
-            .mermaid-modal-inner svg .cluster.procC .cluster-label span {
-                background: #1da81118;
-            }
             .mermaid-modal-close {
                 position: absolute;
                 top: 1ch;
                 right: 1ch;
                 appearance: none;
-                background: var(--background1);
+                background: var(--background0);
                 color: var(--foreground1);
-                border: 1px solid var(--background2);
+                border: 0.125ch solid var(--background2);
+                border-radius: 0;
                 width: 3ch;
-                height: 1lh;
+                height: 1.25lh;
                 font-family: inherit;
-                font-size: 0.95em;
+                font-size: 1rem;
                 line-height: 1;
                 cursor: pointer;
                 display: inline-flex;
@@ -635,68 +595,15 @@ const fontFaceCss = [
                 justify-content: center;
                 padding: 0;
             }
-            .mermaid-modal-close::before {
-                content: '\f00d';
-            }
             .mermaid-modal-close:hover {
                 background: var(--red);
                 color: var(--background0);
             }
+            .mermaid-modal-close:focus-visible {
+                outline: 0.125ch solid var(--accent, var(--blue));
+                outline-offset: 0.125ch;
+            }
         </style>
-        <script is:inline>
-            const normalizeMermaidSvgSize = () => {
-                const mermaidSvgs = document.querySelectorAll(
-                    "svg[id^='mermaid-']",
-                )
-
-                mermaidSvgs.forEach((node) => {
-                    const viewBox = node.getAttribute('viewBox')
-                    if (!viewBox) return
-
-                    const parts = viewBox
-                        .trim()
-                        .split(/\s+/)
-                        .map((value) => Number(value))
-                    if (parts.length !== 4) return
-
-                    const width = parts[2]
-                    const height = parts[3]
-                    if (!Number.isFinite(width) || !Number.isFinite(height))
-                        return
-                    if (width <= 0 || height <= 0) return
-
-                    // Set explicit aspect ratio and let CSS handle sizing
-                    node.style.setProperty(
-                        'aspect-ratio',
-                        `${width} / ${height}`,
-                        'important',
-                    )
-                    node.style.setProperty('width', '100%', 'important')
-                    node.style.setProperty('max-width', '100%', 'important')
-                    node.style.setProperty('height', 'auto', 'important')
-                    node.style.setProperty('display', 'block', 'important')
-                })
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener(
-                    'DOMContentLoaded',
-                    normalizeMermaidSvgSize,
-                    {
-                        once: true,
-                    },
-                )
-            } else {
-                normalizeMermaidSvgSize()
-            }
-
-            window.addEventListener('load', normalizeMermaidSvgSize, {
-                once: true,
-            })
-            setTimeout(normalizeMermaidSvgSize, 0)
-            setTimeout(normalizeMermaidSvgSize, 50)
-            setTimeout(normalizeMermaidSvgSize, 250)
-        </script>
         <!-- <link rel="preconnect" href="https://fonts.googleapis.com" /> -->
         <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /> -->
         <!-- <link -->
