@@ -179,6 +179,7 @@ function openExpandedView(svg: SVGElement, source: string) {
     closeBtn.className = 'mermaid-modal-close'
     closeBtn.setAttribute('aria-label', 'Close')
     closeBtn.title = 'Close (Esc)'
+    closeBtn.textContent = '×'
 
     const svgClone = svg.cloneNode(true) as SVGElement
     svgClone.style.removeProperty('transform')
@@ -374,6 +375,7 @@ function setupInteractiveViewport(block: HTMLElement) {
     // Build controls
     const controls = document.createElement('div')
     controls.className = 'mermaid-controls'
+    controls.setAttribute('role', 'group')
     controls.setAttribute('aria-label', 'Diagram controls')
 
     const makeButton = (
@@ -445,15 +447,17 @@ function setupInteractiveViewport(block: HTMLElement) {
     // Top-right cluster: expand + copy
     const topActions = document.createElement('div')
     topActions.className = 'mermaid-actions'
+    topActions.setAttribute('role', 'group')
+    topActions.setAttribute('aria-label', 'Diagram actions')
 
     const expandBtn = makeButton(
-        '',
+        '⤢',
         'Expand diagram',
         () => openExpandedView(svg, block.dataset.mermaid ?? ''),
         'mc-expand',
     )
     const copyBtn = makeButton(
-        '',
+        '⧉',
         'Copy diagram source',
         () => copyMermaidSource(copyBtn, block.dataset.mermaid ?? ''),
         'mc-copy',
