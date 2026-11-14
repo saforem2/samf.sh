@@ -320,7 +320,7 @@
         --prose-measure: 84ch;
         /* Structured blocks get more room than prose while staying short of
            the full article width on wide displays. */
-        --structured-measure: 120ch;
+        --structured-measure: 145ch;
     }
     /* ── BODY font axis — [data-mono-font] sets --font-stack. All 10 fonts.
        'Symbols Nerd Font' is appended via --font-family so icons render
@@ -3007,23 +3007,15 @@ html[data-webtui-theme='catppuccin-latte'] {
         margin: 0;
     }
 
-    /* Pin the leading column while wide tables scroll horizontally. Give
-       sticky cells their own surface so the moving columns don't show through;
-       the zebra and hover rules below replace this base color as needed. */
+    /* Pin the leading column while wide tables scroll horizontally. Keep it
+       above moving cells; sticky header cells get a higher layer below. */
     .table-scroll-wrapper
         > :where(table:not(:has(.line-code)))
         tr
         > :is(th, td):first-child {
         position: sticky;
         inset-inline-start: 0;
-        z-index: 1;
-    }
-    .table-scroll-wrapper
-        > :where(table:not(:has(.line-code)))
-        tbody
-        tr
-        > td:first-child {
-        background-color: var(--background0);
+        z-index: 2;
     }
 
     /* Disable webtui table cell borders on CodePreview line-code rows */
@@ -3192,6 +3184,68 @@ html[data-webtui-theme='catppuccin-latte'] {
     }
     .table-scroll-wrapper > table[data-table-style='terminal'] tbody td {
         white-space: nowrap;
+    }
+
+    /* Sticky cells need opaque fills. The general zebra and hover colors use
+       alpha, which lets horizontally scrolling text show through the pinned
+       first column. Mix each tint with the page surface for this column only. */
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        tbody
+        > tr
+        > td:first-child {
+        background-color: var(--background0);
+    }
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        :is(tbody, :scope)
+        > tr:nth-child(even):not(:has(th))
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 60%,
+            var(--background1)
+        );
+    }
+    .table-scroll-wrapper
+        > table:not([data-table-style='terminal']):not(:has(.line-code))
+        :is(tbody, :scope)
+        > tr:not(:has(th)):hover
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 88%,
+            var(--accent, var(--blue)) 12%
+        );
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        tbody
+        > tr
+        > td:first-child {
+        background-color: var(--background0);
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        :is(tbody, :scope)
+        > tr:nth-child(even):not(:has(th))
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 55%,
+            var(--background2)
+        );
+    }
+    .table-scroll-wrapper
+        > table[data-table-style='terminal']
+        :is(tbody, :scope)
+        > tr:not(:has(th)):hover
+        > td:first-child {
+        background-color: color-mix(
+            in oklch,
+            var(--background0) 86%,
+            var(--accent, var(--blue)) 14%
+        );
     }
 
     /* Link styling — applies to all themes (was previously scoped to
