@@ -84,7 +84,7 @@ Each move also records a decision row in `decision_log.jsonl`: chosen SAN, up to
 3. `verify` — replay from the start, compare FEN.
 4. `archive_match` — copy the transcript into `games/chess/match-NNN/`.
 
-A live game is resumable. `--resume-live` re-attaches `series.txt` → `match-NNN` and replays `moves.txt` to recover ply and board. `--start-index` picks up mid-series by replaying `existing_series_rows` for standings.
+Games save continuously: every ply appends `moves.txt`/`fen.txt`/`decision_log.jsonl` in `.ai-agent-arcade/live/`, each finished game archives to `games/chess/match-NNN/`, and `series-summary.json` tracks the running tally. That tally is **persistent per pairing** — re-running `uvx ai-agent-arcade --games 20` for the same two models continues the count from `series-summary.json` instead of resetting to 0. Switching pairings starts a fresh tally; `--resume-live` still replays `moves.txt` to recover ply and board.
 
 Transient 502s and `OSError`s retry with backoff inside `ask`. When retries are exhausted, `GameFailed` fires: the series flips that `match.json` to `abandoned`, copies the partial transcript to `abandoned/<timestamp>/`, and continues to the next game. That is PR [#1][pr1] — one bad ply fails one game, not the whole series.
 
