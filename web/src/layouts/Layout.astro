@@ -428,16 +428,16 @@ const fontFaceCss = [
             }
             .mermaid-controls {
                 position: absolute;
-                bottom: 1ch;
+                top: 1ch;
                 right: 1ch;
-                display: grid;
-                gap: 0.5ch;
-                padding: 0.5ch;
+                display: flex;
+                align-items: center;
+                padding: 0;
                 font-size: 1rem;
                 line-height: 1.25;
                 background-color: var(--background0);
-                border: 0.125ch solid var(--accent, var(--blue));
-                z-index: 1;
+                border: 0.125ch solid var(--background2);
+                z-index: 3;
                 user-select: none;
                 opacity: 0;
                 transition: opacity 0.15s ease-out;
@@ -447,56 +447,25 @@ const fontFaceCss = [
                 opacity: 1;
             }
             @media (hover: none), (pointer: coarse) {
-                .mermaid-controls,
-                .mermaid-actions {
+                .mermaid-controls {
                     opacity: 1;
                 }
             }
-            .mermaid-pad {
-                display: grid;
-                grid-template-columns: repeat(3, 4ch);
-                grid-template-rows: repeat(3, 2lh);
-                gap: 0.125ch;
+            .mermaid-control-group {
+                display: flex;
+                align-items: center;
             }
-            .mermaid-pad .mc-up {
-                grid-column: 2;
-                grid-row: 1;
-            }
-            .mermaid-pad .mc-left {
-                grid-column: 1;
-                grid-row: 2;
-            }
-            .mermaid-pad .mc-reset {
-                grid-column: 2;
-                grid-row: 2;
-            }
-            .mermaid-pad .mc-right {
-                grid-column: 3;
-                grid-row: 2;
-            }
-            .mermaid-pad .mc-down {
-                grid-column: 2;
-                grid-row: 3;
-            }
-            .mermaid-zoom {
-                display: grid;
-                grid-template-columns: repeat(3, 4ch);
-                gap: 0.125ch;
-            }
-            .mermaid-zoom .mc-zoom-in {
-                grid-column: 1;
-            }
-            .mermaid-zoom .mc-zoom-out {
-                grid-column: 3;
+            .mermaid-control-group + .mermaid-control-group {
+                border-inline-start: 0.125ch solid var(--background2);
             }
             .mermaid-ctrl {
                 appearance: none;
-                background: var(--background1);
-                color: var(--foreground1);
-                border: 0.125ch solid var(--background2);
+                background: transparent;
+                color: var(--foreground2);
+                border: 0;
                 border-radius: 0;
-                width: 4ch;
-                height: 2lh;
+                width: 3.5ch;
+                height: 1.75lh;
                 font-family: inherit;
                 font-size: 1rem;
                 line-height: 1.25;
@@ -505,46 +474,21 @@ const fontFaceCss = [
                 align-items: center;
                 justify-content: center;
                 padding: 0;
+                margin: 0;
             }
             .mermaid-ctrl.mc-reset {
-                background: var(--accent, var(--blue));
-                color: var(--background0);
-                border-color: var(--accent, var(--blue));
+                color: var(--accent, var(--blue));
             }
             .mermaid-ctrl:hover {
-                background: var(--accent, var(--blue));
-                color: var(--background0);
-                border-color: var(--accent, var(--blue));
+                background: var(--background1);
+                color: var(--accent, var(--blue));
             }
             .mermaid-ctrl:focus-visible {
                 outline: 0.125ch solid var(--accent, var(--blue));
                 outline-offset: 0.125ch;
             }
             .mermaid-ctrl.mc-success {
-                background: var(--green);
-                color: var(--background0);
-            }
-            .mermaid-actions {
-                position: absolute;
-                top: 1ch;
-                right: 1ch;
-                display: flex;
-                gap: 0.125ch;
-                font-size: 1rem;
-                line-height: 1.25;
-                z-index: 1;
-                user-select: none;
-                opacity: 0;
-                transition: opacity 0.15s ease-out;
-            }
-            .mermaid-viewport:hover .mermaid-actions,
-            .mermaid-viewport:focus-within .mermaid-actions {
-                opacity: 1;
-            }
-            .mermaid-actions .mermaid-ctrl {
-                width: 3ch;
-                height: 1.5lh;
-                background: var(--background0);
+                color: var(--green);
             }
             .mermaid-modal {
                 position: fixed;

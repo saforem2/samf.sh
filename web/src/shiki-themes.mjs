@@ -21,7 +21,14 @@ const withOverrides = (
         'editor.foreground': foreground,
     },
     tokenColors: [
-        ...base.tokenColors,
+        {
+            ...base.tokenColors[0],
+            settings: {
+                ...base.tokenColors[0].settings,
+                foreground,
+            },
+        },
+        ...base.tokenColors.slice(1),
         ...rules.map(([scope, color, fontStyle]) => ({
             scope,
             settings: {
@@ -34,22 +41,34 @@ const withOverrides = (
 
 export const customLightTheme = withOverrides(nvimLightRole, {
     name: 'custom-light',
-    displayName: 'Vim / Kitty Light',
-    // Onelight's Normal foreground and the light Kitty background.
+    displayName: 'Light blend',
+    // Blend the soft Material Lighter / Onelight canvas with syntax accents
+    // sampled from all four Vim themes.
     foreground: '#6A6A6A',
-    background: '#FFFFFF',
+    background: '#FAFAFA',
     rules: [
-        // Onelight/auto-dark-mode.lua explicit Tree-sitter highlight colors.
+        [['comment', 'punctuation.definition.comment'], '#9B9FA6'],
         [['variable', 'variable.other.readwrite'], '#444444'],
-        [['variable.other.member', 'variable.other.property'], '#EA76CB'],
-        // Bash grammars scope bare command arguments as strings; keep them
-        // at the normal foreground so whole shell commands don't turn orange.
-        [['string.unquoted.argument.shell'], '#6A6A6A'],
-        [['string'], '#FD971F'],
-        [['support.function.builtin'], '#1DA912'],
-        [['constant.language.python', 'constant.other.python'], '#F92672'],
-        [['entity.name.namespace', 'support.module'], '#01A9F4'],
-        [['entity.name.function', 'meta.function-call'], '#EC407A'],
+        [['variable.other.member', 'variable.other.property'], '#0F62FE'],
+        // Separate the executable, flags, and ordinary arguments.
+        [['entity.name.function.call.shell'], '#0F62FE'],
+        [
+            ['string.unquoted.argument.shell', 'string.unquoted.argument'],
+            '#6A6A6A',
+        ],
+        [
+            ['constant.other.option', 'constant.other.option.dash.shell'],
+            '#673AB7',
+        ],
+        [['constant.numeric.shell'], '#0F62FE'],
+        [['string'], '#2E7D32'],
+        [['support.function.builtin'], '#2E7D32'],
+        [['constant.language.python', 'constant.other.python'], '#673AB7'],
+        [['entity.name.namespace', 'support.module'], '#0F62FE'],
+        [['entity.name.function', 'meta.function-call'], '#673AB7'],
+        [['keyword', 'storage.type'], '#673AB7'],
+        [['constant.numeric', 'constant.language'], '#0F62FE'],
+        [['entity.name.type', 'support.type'], '#0F62FE'],
     ],
 })
 
@@ -61,8 +80,17 @@ export const customDarkTheme = withOverrides(nvimDarkRole, {
     background: '#1C1C1C',
     rules: [
         // cyberdream.lua / auto-dark-mode.lua explicit highlight overrides.
-        [['comment', 'punctuation.definition.comment'], '#5F6972'],
+        [['comment', 'punctuation.definition.comment'], '#7B8496'],
         [['string.unquoted.argument.shell'], '#B3B3B3'],
+        [['entity.name.function.call.shell'], '#5EA1FF'],
+        [
+            ['constant.other.option', 'constant.other.option.dash.shell'],
+            '#BE95FF',
+        ],
+        [
+            ['constant.numeric.shell', 'constant.numeric.integer.shell'],
+            '#78A9FF',
+        ],
         [['string'], '#99FFA2'],
         [['keyword'], '#00CCFF'],
         [['keyword.control.import', 'keyword.control.from'], '#D3FF3B'],

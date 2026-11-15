@@ -142,6 +142,32 @@
     }
 }
 
+/* Put related scaling plots together when the article has room. The inner
+   grid stacks them when its container is narrower than 130ch, keeping labels
+   readable beside the site sidebar. */
+.mermaid-chart-pair {
+    container-type: inline-size;
+    margin-block: 1lh;
+}
+
+.mermaid-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1ch;
+}
+
+.mermaid-chart-grid > .mermaid {
+    min-width: 0;
+    margin-block: 0;
+    --pele-border: var(--foreground3) !important;
+}
+
+@container (max-width: 130ch) {
+    .mermaid-chart-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* Below the float breakpoint the figure is a normal block, but its
    containing block is the full article column — which is wider than the
    84ch prose cap between ~1024px and 1280px, so the chart hung out past

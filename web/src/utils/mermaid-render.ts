@@ -398,57 +398,30 @@ function setupInteractiveViewport(block: HTMLElement) {
         return btn
     }
 
-    // GitHub-style layout: arrows in a cross, reset in center, zoom buttons separate
-    const padCluster = document.createElement('div')
-    padCluster.className = 'mermaid-pad'
+    const viewControls = document.createElement('div')
+    viewControls.className = 'mermaid-control-group'
+    viewControls.setAttribute('role', 'group')
+    viewControls.setAttribute('aria-label', 'Zoom and reset')
 
-    const upBtn = makeButton('▲', 'Pan up', () => pan(0, PAN_STEP), 'mc-up')
-    const leftBtn = makeButton(
-        '◀',
-        'Pan left',
-        () => pan(PAN_STEP, 0),
-        'mc-left',
-    )
-    const resetBtn = makeButton('↻', 'Reset view', reset, 'mc-reset')
-    const rightBtn = makeButton(
-        '▶',
-        'Pan right',
-        () => pan(-PAN_STEP, 0),
-        'mc-right',
-    )
-    const downBtn = makeButton(
-        '▼',
-        'Pan down',
-        () => pan(0, -PAN_STEP),
-        'mc-down',
-    )
-
-    padCluster.append(upBtn, leftBtn, resetBtn, rightBtn, downBtn)
-
-    const zoomCluster = document.createElement('div')
-    zoomCluster.className = 'mermaid-zoom'
-    const zoomInBtn = makeButton(
-        '+',
-        'Zoom in',
-        () => zoomAt(ZOOM_STEP),
-        'mc-zoom-in',
-    )
     const zoomOutBtn = makeButton(
         '−',
         'Zoom out',
         () => zoomAt(1 / ZOOM_STEP),
         'mc-zoom-out',
     )
-    zoomCluster.append(zoomInBtn, zoomOutBtn)
+    const resetBtn = makeButton('↻', 'Reset view', reset, 'mc-reset')
+    const zoomInBtn = makeButton(
+        '+',
+        'Zoom in',
+        () => zoomAt(ZOOM_STEP),
+        'mc-zoom-in',
+    )
+    viewControls.append(zoomOutBtn, resetBtn, zoomInBtn)
 
-    controls.append(padCluster, zoomCluster)
-    viewport.appendChild(controls)
-
-    // Top-right cluster: expand + copy
-    const topActions = document.createElement('div')
-    topActions.className = 'mermaid-actions'
-    topActions.setAttribute('role', 'group')
-    topActions.setAttribute('aria-label', 'Diagram actions')
+    const actionControls = document.createElement('div')
+    actionControls.className = 'mermaid-control-group'
+    actionControls.setAttribute('role', 'group')
+    actionControls.setAttribute('aria-label', 'Diagram actions')
 
     const expandBtn = makeButton(
         '⤢',
@@ -462,8 +435,9 @@ function setupInteractiveViewport(block: HTMLElement) {
         () => copyMermaidSource(copyBtn, block.dataset.mermaid ?? ''),
         'mc-copy',
     )
-    topActions.append(expandBtn, copyBtn)
-    viewport.appendChild(topActions)
+    actionControls.append(expandBtn, copyBtn)
+    controls.append(viewControls, actionControls)
+    viewport.appendChild(controls)
 
     // Keyboard support when block is focused
     block.tabIndex = block.tabIndex < 0 ? 0 : block.tabIndex
