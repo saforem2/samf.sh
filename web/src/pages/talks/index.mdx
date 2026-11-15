@@ -19,6 +19,7 @@ export const collected = (await getCollection('docs'))
         date: new Date(doc.data.date),
         title: doc.data.shortTitle ?? doc.data.title,
         url: `/${doc.id.replace(/\/index\.(mdx?|md)$/, '/')}`,
+        videoUrl: doc.data.videoUrl ?? '',
         location: doc.data.location ?? '',
         locationUrl: doc.data.locationUrl ?? '',
     }))
@@ -27,6 +28,7 @@ export const legacy = legacyTalks.map((t) => ({
     date: new Date(t.date),
     title: t.title,
     url: t.url,
+    videoUrl: '',
     location: t.location ?? '',
     locationUrl: t.locationUrl ?? '',
 }))
@@ -44,7 +46,7 @@ Sam Foreman
 {talks.map((t) => (
 <tr>
 <td>{(() => { const d = t.date; return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; })()}</td>
-<td><a href={t.url}>{t.title}</a></td>
+<td><a href={t.url}>{t.title}</a>{t.videoUrl && <> <a href={t.videoUrl}>[video]</a></>}</td>
 <td>{t.locationUrl ? (<a href={t.locationUrl} target="_blank" rel="noopener">{t.location}</a>) : t.location}</td>
 </tr>
 ))}
