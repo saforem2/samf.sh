@@ -36,6 +36,7 @@
 @import '@/styles/themes/custom.css';
 @import '@webtui/theme-catppuccin';
 @import '@webtui/theme-custom';
+
 @import '@/styles/themes/doe.css';
 @import '@/styles/themes/alcf.css';
 @import '@/styles/themes/pytorch.css';
@@ -2995,9 +2996,34 @@ html[data-webtui-theme='catppuccin-latte'] {
         max-width: var(--structured-measure);
         min-width: 0;
         overflow-x: auto;
+        position: relative;
+    }
+    .table-scroll-hint {
+        display: none;
+    }
+    .table-scroll-wrapper.has-horizontal-overflow:not([data-scroll-end='true'])
+        .table-scroll-hint {
+        display: block;
+        position: absolute;
+        inset-block-end: 0.5lh;
+        inset-inline-end: 1ch;
+        z-index: 5;
+        width: max-content;
+        padding: 0.15lh 0.75ch;
+        color: var(--foreground1);
+        background: var(--background1);
+        border: 0.125ch solid var(--foreground3);
+        font-size: 0.8em;
+        line-height: 1.2;
+        pointer-events: none;
+        opacity: 0.9;
     }
     .table-scroll-wrapper > table {
         margin: 0;
+    }
+    .table-scroll-wrapper.has-horizontal-overflow:focus-visible {
+        outline: 0.125ch solid var(--url);
+        outline-offset: 0.125ch;
     }
 
     /* Pin the leading column while wide tables scroll horizontally. Keep it
@@ -3248,36 +3274,16 @@ html[data-webtui-theme='catppuccin-latte'] {
         text-decoration: none;
     }
 
-    /* Body link hover effect: grow-from-underline highlight. At rest the accent
-       is a short bar pinned to the BOTTOM of the link (reads as a fat
-       underline); on hover it grows up to fill the whole line-box and the text
-       flips to background0 — a reverse-video reveal that expands vertically
-       rather than sweeping across.
-       Implemented as a bottom-anchored background-size on the Y axis (not a
-       ::before with z-index:-1 as in the reference — that negative z-index
-       hides the bar behind callout/box backgrounds; a background layer stays
-       put and also clones per line-fragment for wrapped links). The transition
-       (background-size + color, 150ms) lives on the Doc.css layer(doc)
-       focusable rule, which wins the cascade over this layer(components) rule —
-       declaring it here would be silently dropped. Scoped to :hover only (not
-       :focus-visible) so keyboard focus keeps the dedicated focus-ring in
-       Doc.css. reduced-motion collapses the transition via the global reset. */
+    /* Body links keep their quiet resting underline. On hover, replace it with
+       the accent-colored wavy underline used on samf.sh and add a faint accent
+       wash behind wrapped link fragments. */
     #main-content
         :is(p, blockquote, li, [is-~='typography-block'])
         a:not(.heading-anchor):not([data-footnote-ref]):not(
             [data-footnote-backref]
         ) {
-        /* Two stacked background layers (comma-separated), both bottom-anchored:
-             1. PINK grow bar — a solid --accent gradient, 0 height at rest,
-                grown to full line height on hover; painted ON TOP.
-             2. BLUE underline — a static bar tinted from the link's OWN colour
-                at low alpha (codebase var is --url, not --url-color as in the
-                source snippet), 0.33lh tall, always present; painted UNDER.
-           REST: only the blue underline shows (pink is 0 height). HOVER: the
-           pink grows up over the blue and the text flips to background0; on
-           unhover it retracts and the blue underline returns. Only the pink
-           layer's size changes, so the background-size transition in Doc.css
-           animates the grow. */
+        /* Two background layers keep the link's resting underline. They retract
+           on hover while the wavy text decoration takes over. */
         padding-inline: 0ch;
         background-image:
             linear-gradient(
@@ -3300,16 +3306,21 @@ html[data-webtui-theme='catppuccin-latte'] {
             left bottom;
         background-size:
             100% 0,
-            100% 0.33lh;
+            100% 0.25lh;
         -webkit-box-decoration-break: clone;
         box-decoration-break: clone;
 
         &:hover {
             background-size:
-                100% 100%,
-                100% 0.18lh;
-            color: var(--background0);
-            text-decoration: none;
+                100% 0,
+                100% 0;
+            background-color: oklch(
+                from var(--accent, var(--blue)) l c h / 0.1
+            );
+            color: var(--accent, var(--url));
+            text-decoration: wavy underline;
+            text-decoration-color: var(--accent, var(--blue));
+            text-underline-offset: 0.12lh;
         }
     }
     /* Footnote refs/backrefs: leave them plain — no padding band. */
@@ -3441,7 +3452,8 @@ html[data-webtui-theme='catppuccin-latte'] {
         > code {
         background-color: transparent;
         color: inherit;
-        text-decoration: none;
+        text-decoration: wavy underline;
+        text-decoration-color: var(--accent, var(--blue));
     }
 }
 

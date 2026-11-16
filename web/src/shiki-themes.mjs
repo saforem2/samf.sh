@@ -79,7 +79,9 @@ export const customDarkTheme = withOverrides(nvimDarkRole, {
     foreground: '#B3B3B3',
     background: '#1C1C1C',
     rules: [
-        // cyberdream.lua / auto-dark-mode.lua explicit highlight overrides.
+        // Keep the dark Kitty canvas, readable foreground and the Cyberdream
+        // blue/green accents, while using Lush roles for numbers, keywords,
+        // control flow, imports and types.
         [['comment', 'punctuation.definition.comment'], '#7B8496'],
         [['string.unquoted.argument.shell'], '#B3B3B3'],
         [['entity.name.function.call.shell'], '#5EA1FF'],
@@ -89,14 +91,16 @@ export const customDarkTheme = withOverrides(nvimDarkRole, {
         ],
         [
             ['constant.numeric.shell', 'constant.numeric.integer.shell'],
-            '#78A9FF',
+            '#FFBD5E',
         ],
         [['string'], '#99FFA2'],
-        [['keyword'], '#00CCFF'],
-        [['keyword.control.import', 'keyword.control.from'], '#D3FF3B'],
-        [['keyword.control.conditional'], '#FF3BD3'],
-        [['storage.type'], '#00CCFF'],
-        [['keyword.type'], '#E599F7'],
+        [['constant.numeric', 'constant.language'], '#FFBD5E'],
+        [['constant.other', 'support.constant'], '#FF5EA0'],
+        [['constant.language.boolean'], '#5EF1FF'],
+        [['keyword'], '#FFBD5E'],
+        [['keyword.control.import', 'keyword.control.from'], '#5EF1FF'],
+        [['keyword.control.conditional'], '#FF5EF1'],
+        [['storage.type', 'keyword.type'], '#BD5EFF'],
         [['variable.other.property'], '#FA99CD'],
     ],
 })

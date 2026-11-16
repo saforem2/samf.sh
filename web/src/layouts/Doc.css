@@ -1300,15 +1300,8 @@ h6::before {
         :is([tabindex='0'], a[href], summary) {
             position: relative;
             outline: none;
-            /* background-size + color are here for the prose-link hover
-               highlight (global.css): the accent fill grows up from the rest
-               underline to full line height while the text flips to
-               background0. This rule lives in layer(doc), which wins over
-               global.css's layer(components) regardless of specificity, so its
-               `transition` shorthand would otherwise strip background-size and
-               the fill would snap instantly. Keep them in the list. Fill
-               (background-size) and text (color) share the SAME 150ms ease-out
-               so the fill and the color flip land together. */
+            /* Keep background-size in the transition so the resting link bar
+               retracts as the wavy hover underline appears (global.css). */
             transition:
                 background-color 100ms linear,
                 color 150ms ease-out,

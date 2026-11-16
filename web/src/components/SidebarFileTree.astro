@@ -417,16 +417,14 @@ const ICON_ABOUT = '\u{f1028}'
                         )
                     }
 
-                    /* ── "more" group: expander with "index" (about/more) +
-                       projects, ideas, now sub-categories ── */
+                    /* ── "more" group: projects, ideas, and now ── */
                     if (slug === 'more') {
-                        const isMoreActive =
-                            compareUrlPaths(urlPath, 'about/more') ||
-                            moreSubCategories.some(([, subPages]) =>
+                        const isMoreActive = moreSubCategories.some(
+                            ([, subPages]) =>
                                 subPages.some(({ id }) =>
                                     compareUrlPaths(urlPath, id),
                                 ),
-                            )
+                        )
 
                         return (
                             <details
@@ -434,15 +432,7 @@ const ICON_ABOUT = '\u{f1028}'
                                 class="tree-folder depth-1"
                                 data-last={isLastCategory ? '' : undefined}>
                                 <summary
-                                    class:list={[
-                                        'tree-entry',
-                                        {
-                                            active: compareUrlPaths(
-                                                urlPath,
-                                                'about/more',
-                                            ),
-                                        },
-                                    ]}>
+                                    class="tree-entry">
                                     <span class="tree-line" />
                                     <span class="tree-chevron" />
                                     <span class="tree-icon folder-icon" />
@@ -455,27 +445,6 @@ const ICON_ABOUT = '\u{f1028}'
                                     </span>
                                 </summary>
                                 <div class="tree-children">
-                                    {/* "index" sub-entry: maps to about/more (the original about page content) */}
-                                    <a
-                                        href="/about/more"
-                                        class:list={[
-                                            'tree-file',
-                                            'tree-entry',
-                                            'depth-2',
-                                            {
-                                                active: compareUrlPaths(
-                                                    urlPath,
-                                                    'about/more',
-                                                ),
-                                            },
-                                        ]}
-                                        data-slug="about/more">
-                                        <span class="tree-line" />
-                                        <span class="tree-icon file-icon">
-                                            {ICON_FILE}
-                                        </span>
-                                        <span class="tree-label">index</span>
-                                    </a>
                                     {moreSubCategories.map(
                                         ([subSlug, subPages], subIdx) => {
                                             const subIndexPage = subPages.find(

@@ -165,7 +165,7 @@
         "markup.inline"
       ],
       "settings": {
-        "foreground": "#fd971f"
+        "foreground": "#FF5722"
       }
     },
     {
@@ -215,7 +215,7 @@
     {
       "scope": "variable.parameter.function",
       "settings": {
-        "foreground": "#ee9025"
+        "foreground": "#FF5722"
       }
     },
     {
@@ -244,7 +244,7 @@
         "keyword.other.template"
       ],
       "settings": {
-        "foreground": "#fd971f"
+        "foreground": "#FF5722"
       }
     },
     {
@@ -262,7 +262,7 @@
     {
       "scope": "token.error-token",
       "settings": {
-        "foreground": "#cd3131"
+        "foreground": "#FF1744"
       }
     },
     {
@@ -298,7 +298,7 @@
         "punctuation.definition.metadata.markdown"
       ],
       "settings": {
-        "foreground": "#fd971f"
+        "foreground": "#FF5722"
       }
     },
     {
