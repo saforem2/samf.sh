@@ -14,7 +14,7 @@
    `.`, and similar punctuation as wrap points, which can strand them at the
    end of a line in changelog-style lists. Spaces between code spans remain
    normal break opportunities. */
-#main-content li code {
+#main-content li :not(pre) > code {
     white-space: nowrap;
 }
 
