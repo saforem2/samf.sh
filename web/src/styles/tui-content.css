@@ -10,6 +10,14 @@
     color: var(--accent, var(--blue));
 }
 
+/* Keep inline-code tokens whole inside list items. The browser treats `/`,
+   `.`, and similar punctuation as wrap points, which can strand them at the
+   end of a line in changelog-style lists. Spaces between code spans remain
+   normal break opportunities. */
+#main-content li :not(pre) > code {
+    white-space: nowrap;
+}
+
 /* Definition lists work well as compact key/value readouts. A narrow label
    column keeps related values easy to scan while allowing long terms and
    descriptions to wrap naturally. */
