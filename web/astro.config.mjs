@@ -553,6 +553,9 @@ export default defineConfig({
             cssMinify: 'esbuild',
         },
         server: {
+            // Native file events were missed in this checkout; polling keeps
+            // HMR reliable while checking the tree every half second.
+            watch: { usePolling: true, interval: 500 },
             // The dev server is intentionally bound to the LAN/tailnet. Keep
             // Vite's DNS-rebinding protection, but permit this machine's two
             // names instead of allowing every Host header.
