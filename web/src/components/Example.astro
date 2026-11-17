@@ -28,8 +28,6 @@ const { html, css, stylesheets, themes, ...rest } = Astro.props as Props
                 id="preview"
                 srcdoc={`<html data-webtui-theme="${rest['data-initial-theme']}">
 <head>
-<link rel="preconnect" href="https://iosevka-webfonts.github.io" crossorigin />
-<link href="https://iosevka-webfonts.github.io/iosevka/Iosevka.css" rel="stylesheet" />
 <style>@layer base, utils, components;</style>
 <style>${webtuiBase}</style>
 <style>${customTheme}</style>
@@ -38,12 +36,16 @@ ${stylesheets ? stylesheets.map((stylesheet) => `<style>${stylesheet}</style>`).
 <style>
 @layer base {
   :root {
-    --font-family: 'Iosevka Web', 'JetBrains Mono', Menlo, Monaco, monospace, 'Symbols Nerd Font';
+    --font-family: 'mIosevka-QP Web', 'JetBrains Mono', Menlo, Monaco, monospace, 'Symbols Nerd Font';
   }
 
   body {
     padding: 1lh 1ch;
     font-family: var(--font-family);
+  }
+
+  :is(pre, code, kbd, samp, var, .astro-code) {
+    font-family: var(--code-font-family, var(--font-family));
   }
 }
 </style>
@@ -180,6 +182,89 @@ ${css ? `<style>${css}</style>` : ''}
             const html = document.querySelector('html') as HTMLElement
             const initialTheme = self.getAttribute('data-initial-theme')
 
+            // srcdoc documents do not inherit the page's font-face rules or
+            // selected font. Load the selected local font stylesheet and
+            // mirror the computed stack so previews use the same face.
+            const syncIframeFont = () => {
+                const previewDoc = iframe.contentDocument
+                const previewHtml = previewDoc?.documentElement
+                if (!previewDoc || !previewHtml) return
+
+                const fontStylesheets: Record<string, string> = {
+                    'iosevka25-condensed':
+                        '/fonts/iosevka25-condensed/iosevka25-condensed.css',
+                    iosevka: '/fonts/iosevka/iosevka.css',
+                    'victor-mono': '/fonts/victor-mono/victor-mono.css',
+                    'miosevka-qp': '/fonts/miosevka-qp/miosevka-qp.css',
+                    'miosevka-term': '/fonts/miosevka-term/miosevka-term.css',
+                    'iosevka-aile': '/fonts/iosevka-aile/iosevka-aile.css',
+                    'iosevka-etoile':
+                        '/fonts/iosevka-etoile/iosevka-etoile.css',
+                }
+                const codeFontStylesheets: Record<string, string> = {
+                    'iosevka25-condensed':
+                        '/fonts/iosevka25-condensed/iosevka25-condensed.css',
+                    iosevka: '/fonts/iosevka/iosevka.css',
+                    'victor-mono': '/fonts/victor-mono/victor-mono.css',
+                    'miosevka-term': '/fonts/miosevka-term/miosevka-term.css',
+                }
+                const fontKey =
+                    html.getAttribute('data-mono-font') ?? 'miosevka-qp'
+                const fontHref = fontStylesheets[fontKey]
+                let fontLink = previewDoc.querySelector<HTMLLinkElement>(
+                    '#selected-body-font',
+                )
+                if (fontHref) {
+                    if (!fontLink) {
+                        fontLink = previewDoc.createElement('link')
+                        fontLink.id = 'selected-body-font'
+                        fontLink.rel = 'stylesheet'
+                        previewDoc.head.append(fontLink)
+                    }
+                    fontLink.href = fontHref
+                } else {
+                    fontLink?.remove()
+                }
+
+                const codeFontKey =
+                    html.getAttribute('data-code-font') ?? 'miosevka-term'
+                const codeFontHref = codeFontStylesheets[codeFontKey]
+                let codeFontLink = previewDoc.querySelector<HTMLLinkElement>(
+                    '#selected-code-font',
+                )
+                if (codeFontHref) {
+                    if (!codeFontLink) {
+                        codeFontLink = previewDoc.createElement('link')
+                        codeFontLink.id = 'selected-code-font'
+                        codeFontLink.rel = 'stylesheet'
+                        previewDoc.head.append(codeFontLink)
+                    }
+                    codeFontLink.href = codeFontHref
+                } else {
+                    codeFontLink?.remove()
+                }
+
+                if (!previewDoc.querySelector('#preview-nerd-font')) {
+                    const nerdLink = previewDoc.createElement('link')
+                    nerdLink.id = 'preview-nerd-font'
+                    nerdLink.rel = 'stylesheet'
+                    nerdLink.href = '/fonts/nerd/nerd.css'
+                    previewDoc.head.append(nerdLink)
+                }
+
+                const pageFont = getComputedStyle(html)
+                previewHtml.style.setProperty(
+                    '--font-family',
+                    pageFont.fontFamily,
+                )
+                previewHtml.style.setProperty(
+                    '--code-font-family',
+                    pageFont.getPropertyValue('--code-font-family').trim(),
+                )
+                previewHtml.style.setProperty('--font-size', pageFont.fontSize)
+                previewHtml.style.letterSpacing = pageFont.letterSpacing
+            }
+
             // The preview follows the reader's active page theme by default.
             // Picking from this example's own dropdown is a sticky LOCAL
             // override: once set, this preview stops following the page.
@@ -194,7 +279,10 @@ ${css ? `<style>${css}</style>` : ''}
             // page theme. `load` covers the parse-later case; the immediate
             // call covers the already-parsed race (load fired before this
             // deferred module ran). updateIframeTheme is idempotent.
-            const applyInitial = () => self.updateIframeTheme(pageTheme())
+            const applyInitial = () => {
+                self.updateIframeTheme(pageTheme())
+                syncIframeFont()
+            }
             const srcdocReady = () =>
                 !!iframe.contentDocument?.documentElement?.hasAttribute(
                     'data-webtui-theme',
@@ -222,6 +310,11 @@ ${css ? `<style>${css}</style>` : ''}
             }).observe(html, {
                 attributes: true,
                 attributeFilter: ['data-webtui-theme'],
+            })
+
+            new MutationObserver(syncIframeFont).observe(html, {
+                attributes: true,
+                attributeFilter: ['data-mono-font', 'data-code-font'],
             })
         }
 

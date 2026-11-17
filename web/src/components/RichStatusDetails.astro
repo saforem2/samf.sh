@@ -1,0 +1,141 @@
+---
+interface DetailLine {
+    id?: string
+    state?: 'running' | 'queued' | 'held' | 'warning'
+    text: string
+}
+
+interface EndpointWarning {
+    host: string
+    code: string
+}
+
+interface Props {
+    notes: DetailLine[]
+    nodes: DetailLine[]
+    warnings: EndpointWarning[]
+    runtime: string
+}
+
+const { notes, nodes, warnings, runtime } = Astro.props as Props
+
+const stateClass = (state?: DetailLine['state']) => {
+    if (state === 'running') return 'status-running'
+    if (state === 'queued') return 'status-queued'
+    if (state === 'held') return 'status-held'
+    if (state === 'warning') return 'status-warning'
+    return 'status-dim'
+}
+---
+
+<div
+    class="rich-status-details"
+    role="group"
+    aria-label="Status notes from this snapshot">
+    <section aria-labelledby="status-notes-heading">
+        <div
+            id="status-notes-heading"
+            class="status-heading"
+            role="heading"
+            aria-level="3">notes:</div
+        >
+        {
+            notes.map((line) => (
+                <p class="status-line">
+                    <span class:list={['status-id', stateClass(line.state)]}>
+                        {line.id}
+                    </span>
+                    <span>{line.text}</span>
+                </p>
+            ))
+        }
+    </section>
+
+    <section aria-labelledby="status-nodes-heading">
+        <div
+            id="status-nodes-heading"
+            class="status-heading"
+            role="heading"
+            aria-level="3">running job nodes:</div
+        >
+        {
+            nodes.map((line) => (
+                <p class="status-line">
+                    <span class:list={['status-id', stateClass(line.state)]}>
+                        {line.id}
+                    </span>
+                    <span>{line.text}</span>
+                </p>
+            ))
+        }
+    </section>
+
+    <section aria-label="Endpoint warnings">
+        {
+            warnings.map((line) => (
+                <p class="status-line">
+                    <span class="status-warning">[⚠️ warn]</span>
+                    <span>
+                        {line.host}: unreachable (
+                        <span class="warning-code">{line.code}</span>)
+                    </span>
+                </p>
+            ))
+        }
+    </section>
+
+    <p class="status-line status-runtime">Execution time: {runtime}</p>
+</div>
+
+<style>
+    .rich-status-details {
+        margin-block: 1lh;
+        color: var(--foreground2);
+        font-family: var(--code-font-family);
+        font-size: 1rem;
+        line-height: 1.5;
+        overflow-x: auto;
+    }
+    .rich-status-details section + section {
+        margin-top: 1lh;
+    }
+    .status-heading,
+    .status-line {
+        margin: 0;
+        font: inherit;
+        white-space: pre;
+    }
+    .status-heading {
+        color: var(--foreground2);
+    }
+    .status-line {
+        display: flex;
+        gap: 1ch;
+        min-width: max-content;
+    }
+    .status-id {
+        flex: 0 0 8ch;
+        text-align: right;
+    }
+    .status-running {
+        color: var(--green);
+    }
+    .status-queued {
+        color: var(--yellow);
+    }
+    .status-held {
+        color: var(--mauve, var(--pink, #c678dd));
+    }
+    .status-warning {
+        color: var(--yellow);
+    }
+    .warning-code {
+        color: var(--cyan, var(--teal, #56b6c2));
+    }
+    .status-dim {
+        color: var(--foreground2);
+    }
+    .status-runtime {
+        margin-top: 1lh;
+    }
+</style>

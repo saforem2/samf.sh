@@ -4,21 +4,19 @@ title: 'Benchmarking ALCF systems with torch-hammer'
 date: 2026-11-11
 date-created: 2026-11-11
 date-modified: today
-description: 'Same 9 benchmarks, same tool, two completed ALCF systems: Sunspot (PVC Max 1550) and Sirius (A100). Aurora and Polaris remain queued. The results include one benchmark where Intel wins 8×.'
+description: 'Nine GPU benchmarks on Sunspot (PVC Max 1550) and Sirius (A100). Aurora and Polaris are queued. PVC Max 1550 measured 8.4× A100 on Sparse MM.'
 ---
 
 import ScalingChart from '@/components/ScalingChart.astro'
 
-[torch-hammer] is an HPE-maintained GPU benchmark suite — 9 workloads from batched GEMM to stencil PDEs to sparse matmul, with built-in telemetry (NVML / ROCm-SMI / xpu-smi), compact CSV + HTML fleet reports, and multi-GPU aggregation via `multiprocessing.spawn`. It runs on CUDA, ROCm, XPU, and MPS from one codebase.
-
-This post is about making it run **everywhere at ALCF** and what came out.
+[`torch-hammer`][torch-hammer] is an HPE-maintained GPU benchmark suite. It runs 9 workloads, from batched GEMM and stencil PDEs to sparse matmul. Telemetry uses `NVML`, `ROCm-SMI`, and `xpu-smi`. It writes CSV and HTML fleet reports and aggregates multi-GPU results with `multiprocessing.spawn`. One codebase supports `CUDA`, `ROCm`, `XPU`, and `MPS`.
 
 [torch-hammer]: https://github.com/HPE/torch-hammer
 [alcf]: https://www.alcf.anl.gov
 
-## TL;DR — the numbers
+## Results
 
-Same benchmarks, same flags (`--stress-test`, HBM-scaled), two machines that actually scheduled. Aurora and Polaris are still queued behind reservations — same PBS, same staging, they'll land when `debug` frees up.
+Both completed runs used the same 9 benchmarks, `--stress-test`, and HBM-scaled sizing. Aurora and Polaris were queued in `debug` behind reservations when this snapshot was recorded.
 
 **1-GPU stress (HBM-scaled, float32):**
 
@@ -41,13 +39,11 @@ Same benchmarks, same flags (`--stress-test`, HBM-scaled), two machines that act
 | Sunspot | 24 (2×12 tiles) | 18.0 TFLOP/s | 1.49M img/s | 13.9 TFLOP/s | 27.0 GB/s | 2/2 PASS · CV 0.7–5.7% |
 | Sirius | 4 visible (2 allocated) | 18.9 TFLOP/s | 9.39M img/s | 17.1 TFLOP/s | 29.6 GB/s | 1/1 PASS · CV ≤0.2% |
 
-The one surprise is **Sparse MM**: PVC Max 1550 beats A100 by 8.4× on unstructured sparse matmul. Everything else favors A100 or ties — which is the expected story for dense GEMM / attention / atomics.
+PVC Max 1550 measured 2,028 GFLOP/s on Sparse MM; A100 measured 243 GFLOP/s, an 8.4× difference on this unstructured sparse workload. A100 led the other reported benchmarks or tied Batched GEMM.
 
-FFT is missing on both: XPU hits an MKL DFT "unimplemented" for the configured shape; Sirius OOMs at 11.75 GiB under stress fill on 40 GB (prior benches already hold ~30 GiB).
+Neither system completed 3D FFT. XPU returned an MKL DFT "unimplemented" error for the configured shape. Sirius ran out of memory at 11.75 GiB under stress fill on its 40 GB GPU; earlier benchmarks already held about 30 GiB.
 
 ## What was needed per machine
-
-The interesting part is not the fastest GPU — it is what it costs to make one script work across different ALCF systems.
 
 | | Sunspot | Aurora | Polaris | Sirius |
 |---|---------|--------|---------|--------|
@@ -58,18 +54,18 @@ The interesting part is not the fastest GPU — it is what it costs to make one 
 | MPI | `mpiexec --ppn` | `mpiexec --ppn` | `mpiexec --ppn` | none — head-node fallback |
 | Telemetry | placeholder (no `xpu-smi`) | placeholder | NVML (full) | NVML (full) |
 
-Sirius was the hardest per line of PBS: Python 3.6 as the system default with `from __future__ import annotations` as a `SyntaxError`, no `mpirun`/`srun`/`pbsdsh` at all, and the hammer report itself failing under 3.6. The fix was explicit `miniconda3/envs/cu122-pt221` (Py 3.11 + torch 2.2) and a single-node `--all-gpus` fallback that still exercises all 4 A100s via `torch.multiprocessing.spawn`.
+Sirius defaults to Python 3.6, which raises a `SyntaxError` on `from __future__ import annotations`. It has no `mpirun`, `srun`, or `pbsdsh`, and the report tool also fails under Python 3.6. The run used `miniconda3/envs/cu122-pt221` with Python 3.11 and `torch` 2.2. A single-node `--all-gpus` fallback uses `torch.multiprocessing.spawn` to run on all 4 A100s.
 
-For the larger machines the same PBS template works with three substitutions: account, queue, and filesystem. Staging is shared — one `rsync` of `torch-hammer.py` + `reports/` + `config-examples/` to `~/thammer-staging` on each host.
+The same PBS template works on the larger systems with per-system account, queue, and filesystem values. Each host uses one `rsync` staging step for `torch-hammer.py`, `reports/`, and `config-examples/` in `~/thammer-staging`.
 
 ## How the run is structured
 
 Every job does the same four phases:
 
-1. **Single-GPU quick** — all 9 benchmarks, small sizes, `--device-index 0`. Cheap sanity check; also exercises the CSV/JSON/HTML paths.
-2. **Single-GPU stress** — same 9 benchmarks, `--stress-test` to fill ~50% of free HBM (the `0.3 GB/s` → `27.7 GB/s` fix — without it the memory bench runs on 4 KiB and measures `randint` overhead).
-3. **Per-node all-GPUs** — the 4-benches subset (`gemm`/`conv`/`einsum`/`memory-traffic`) under stress, one `mpiexec` rank per node, each rank fanning out to its GPUs.
-4. **Reports** — `hammer_report.py` on each CSV/JSON plus a fleet rollup over `all-benchmarks/`.
+1. Single-GPU quick: all 9 benchmarks at small sizes with `--device-index 0`. This checks the run and exercises the CSV, JSON, and HTML report paths.
+2. Single-GPU stress: all 9 benchmarks with `--stress-test`, sized to fill about 50% of free HBM. The memory benchmark measured `0.3 GB/s` before the sizing fix and `27.7 GB/s` after. The earlier run used a 4 KiB buffer and measured `randint` overhead.
+3. Per-node all-GPUs: the `gemm`, `conv`, `einsum`, and `memory-traffic` subset under stress. One `mpiexec` rank runs per node and starts the node's GPUs.
+4. Reports: `hammer_report.py` reads each CSV and JSON artifact. A fleet rollup reads `all-benchmarks/`.
 
 Phase 3 is what produces the fleet verdict. Mixing quick + stress CSVs in one directory gives a spurious `0/N OUTLIER` report (different problem sizes) — isolated per-phase outputs are the correct inputs to the fleet report.
 
@@ -135,26 +131,17 @@ Full NVML telemetry — power, temp, SM util, clocks — in every row.
 
 ### Aurora & Polaris — queued
 
-Same PBS, same staging, same reports path. Both are `Q` in `debug` behind unrelated reservations and a 58-deep `prod` routing queue. No code change needed; they'll produce identical HTML when `debug` frees up.
+Both jobs were queued in `debug` behind unrelated reservations and a 58-deep `prod` routing queue. Their results are not included here.
 
-## What to do with this
+## Reproducing the runs
 
-As a one-off, the table above is the takeaway: A100 wins dense, XPU wins sparse, and `torch-hammer` is a cheap way to check that a machine is still the machine it claims to be.
-
-As infrastructure, the value is the **template**:
-
-- One staging dir per host (`~/thammer-staging`), one PBS template with per-system account/queue/filesystem/env/MPI substitutions.
-- Four-phase job with isolated report inputs so the fleet verdict is never polluted by a scale mismatch.
-- One `hammer_report.py` invocation per artifact — single-GPU, stress, and fleet — so regressions show up as HTML without needing to parse logs.
-
-Aurora and Polaris remain queued and will be added when they run.
+- Stage `torch-hammer.py`, `reports/`, and `config-examples/` in `~/thammer-staging` on each host.
+- Set the system account, queue, filesystem, environment, and MPI launcher in the PBS template.
+- Keep report inputs separated by phase. Mixing quick and stress CSVs produces a `0/N OUTLIER` result because the problem sizes differ.
+- Run `hammer_report.py` on each single-GPU, stress, and fleet artifact.
 
 ## Artifacts
 
-- Code: [`saforem2/torch-hammer`](https://github.com/saforem2/torch-hammer) (branch `feature/intel-xpu-support`, includes the XPU backend + `--stress-test` HBM fix)
+- Code: [`saforem2/torch-hammer`](https://github.com/saforem2/torch-hammer), branch `feature/intel-xpu-support` (XPU backend and `--stress-test` HBM fix)
 - HTML report snapshots: combined [1-GPU comparison](/posts/2026/11/11/alcf-combined-1gpu.html) and [stress comparison](/posts/2026/11/11/alcf-combined-stress.html); Sunspot [compact 1-GPU](/posts/2026/11/11/sunspot-1gpu-stress.html), [full 1-GPU](/posts/2026/11/11/sunspot-stress-1gpu.html), [24-GPU fleet](/posts/2026/11/11/sunspot-24gpu-fleet.html), and [fleet rollup](/posts/2026/11/11/fleet-report-sunspot.html); Sirius [compact 1-GPU](/posts/2026/11/11/sirius-1gpu-stress.html), [full 1-GPU](/posts/2026/11/11/sirius-stress-1gpu.html), and [4-GPU fleet](/posts/2026/11/11/sirius-4gpu-fleet.html).
 - Jobs: Sunspot `12483256` (F 00:12:18), Sirius `33426` (E 00:02:08 → R 00:01:14 after fix)
-
----
-
-*Thanks to the ALCF support staff who keep `debug` moving. If you want this on your allocation, the PBS template is three lines of `sed` away from yours — PRs welcome.*

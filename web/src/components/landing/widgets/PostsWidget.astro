@@ -27,12 +27,7 @@ function stripEmoji(text: string): string {
 }
 ---
 
-<column
-    box-="square"
-    pad-="2 1"
-    gap-="0"
-    class="posts-widget"
-    tabindex="0">
+<column box-="square" pad-="2 1" gap-="0" class="posts-widget" tabindex="0">
     <span is-="badge" variant-="blue" class="pw-title"
         >&#xf02d; <a href="/posts" class="widget-link"><u>p</u>osts</a></span
     >
@@ -112,7 +107,13 @@ function stripEmoji(text: string): string {
         &:hover {
             color: var(--background0);
             background: var(--widget-accent) !important;
-            .pw-date { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent)); }
+            .pw-date {
+                color: color-mix(
+                    in srgb,
+                    var(--background0) 65%,
+                    var(--widget-accent)
+                );
+            }
         }
 
         &:nth-child(even) {
@@ -148,4 +149,3 @@ function stripEmoji(text: string): string {
         min-width: 0;
     }
 </style>
-

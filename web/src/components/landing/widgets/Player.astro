@@ -59,7 +59,8 @@
     // getElementById returns the first DOM match and the duplicate stays on
     // "Loading…".
     const statsRoot = document.getElementById('stats-widget')
-    const getInStats = (id) => statsRoot?.querySelector(`#${id}`) ?? document.getElementById(id)
+    const getInStats = (id) =>
+        statsRoot?.querySelector(`#${id}`) ?? document.getElementById(id)
     const trackTitle = getInStats('track-title')
     const trackAlbum = getInStats('track-album')
     const trackArtist = getInStats('track-artist')
@@ -73,16 +74,6 @@
         while (upNext.firstChild) {
             upNext.removeChild(upNext.firstChild)
         }
-    }
-
-    const makeSeparator = () => {
-        const column = document.createElement('column')
-        column.setAttribute('pad-', '1 0')
-        const divider = document.createElement('div')
-        divider.setAttribute('is-', 'separator')
-        divider.style.setProperty('--separator-color', 'var(--background1)')
-        column.appendChild(divider)
-        return column
     }
 
     const makeRow = ({ name, album, artist, url }) => {
@@ -255,7 +246,7 @@
             // Render history before awaiting now-playing (which may fetch track duration)
             clearUpNext()
             if (upNext && rest.length > 0) {
-                rest.forEach((track, index) => {
+                rest.forEach((track) => {
                     upNext.appendChild(
                         makeRow({
                             name: track?.name,
@@ -264,9 +255,6 @@
                             url: track?.url,
                         }),
                     )
-                    if (index < rest.length - 1) {
-                        upNext.appendChild(makeSeparator())
-                    }
                 })
             }
 
@@ -444,12 +432,12 @@
         grid-column: 2 / 4;
         grid-row: 1 / 3;
         min-height: 0;
+        row-gap: 0.5lh;
     }
 
     .history-section {
         overflow: hidden;
         min-height: 0;
-        line-height: 1;
     }
 
     #stats-widget {
@@ -457,6 +445,7 @@
     }
 
     #up-next {
+        row-gap: 0.25lh;
         overflow-x: hidden;
         overflow-y: auto;
         min-height: 0;
@@ -529,8 +518,11 @@
         min-width: 0;
         box-sizing: border-box;
         scrollbar-gutter: stable;
-        border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 12%, transparent);
-        span span { color: var(--widget-accent, var(--red)); }
+        border-bottom: 1px solid
+            color-mix(in srgb, var(--foreground2) 12%, transparent);
+        span span {
+            color: var(--widget-accent, var(--red));
+        }
     }
     :global(.history-head > span) {
         display: inline-flex;
@@ -571,11 +563,17 @@
         display: grid;
         grid-template-columns: var(--history-grid);
         gap: 1ch;
-        padding: 0 1ch;
+        padding: 0 1.5ch;
+        margin-inline: -0.5ch;
         color: var(--foreground1);
         text-decoration: none;
         align-items: center;
         min-width: 0;
+        border-radius: 2px;
+    }
+
+    :global(.song:nth-child(even)) {
+        background: color-mix(in srgb, var(--foreground0) 4%, transparent);
     }
     :global(.song-icon) {
         min-width: 0;
@@ -583,10 +581,27 @@
         white-space: nowrap;
     }
 
-    :global(a.song:hover) {
+    :global(a.song:hover),
+    :global(a.song:focus-visible) {
         color: var(--background0);
-        background: var(--widget-accent, var(--accent));
-        :global(.author), :global(.album) { color: color-mix(in srgb, var(--background0) 65%, var(--widget-accent, var(--accent))); }
+        background: var(--widget-accent, var(--accent)) !important;
+        :global(.author),
+        :global(.album) {
+            color: color-mix(
+                in srgb,
+                var(--background0) 65%,
+                var(--widget-accent, var(--accent))
+            );
+        }
+    }
+
+    :global(a.song:active) {
+        background: color-mix(
+            in srgb,
+            var(--widget-accent, var(--accent)) 86%,
+            var(--foreground1)
+        ) !important;
+        translate: 0 1px;
     }
 
     :global(.np-link) {

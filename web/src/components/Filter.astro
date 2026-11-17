@@ -58,7 +58,7 @@ const themeOptions = {
     alcf: 'ALCF',
 }
 
-// Body font: all 9 (mono, the quasi-proportional QP / Aile /
+// Body font: all 10 (mono, the quasi-proportional QP / Aile /
 // Etoile, and the generic sans / serif system stacks).
 // Defaults first: Layout.astro falls back to miosevka-qp for the body and
 // miosevka-term for code, so each list leads with the font you are already
@@ -67,6 +67,7 @@ const bodyFontOptions = {
     'miosevka-qp': 'mIosevka-QP',
     'miosevka-term': 'mIosevka-Term',
     iosevka: 'Iosevka',
+    'iosevka25-condensed': 'Iosevka25 Condensed',
     'victor-mono': 'Victor Mono',
     system: 'System',
     sans: 'Sans',
@@ -78,17 +79,30 @@ const bodyFontOptions = {
 const codeFontOptions = {
     'miosevka-term': 'mIosevka-Term',
     iosevka: 'Iosevka',
+    'iosevka25-condensed': 'Iosevka25 Condensed',
     'victor-mono': 'Victor Mono',
     system: 'System',
 }
 ---
 
-<dialog id="command-dialog" size-="small" position-="center" container-="fill">
+<dialog
+    id="command-dialog"
+    aria-labelledby="command-dialog-title"
+    size-="small"
+    position-="center"
+    container-="fill">
     <div box-="square" shear-="top" id="command-content">
         <row align-="between">
-            <span is-="badge" variant-="green">&#xf120; Command</span>
-            <button id="command-close-btn" variant-="foreground0" size-="small"
-                >x</button
+            <span id="command-dialog-title" is-="badge" variant-="green"
+                >&#xf120; Command</span
+            >
+            <button
+                id="command-close-btn"
+                type="button"
+                aria-label="Close command palette"
+                title="Close command palette"
+                variant-="foreground0"
+                size-="small">x</button
             >
         </row>
         <p class="command-tagline">

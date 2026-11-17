@@ -16,14 +16,15 @@
     overflow: visible !important;
     --code-mask-under: var(--background0);
     --code-mask-bg: transparent;
-    padding: 1.6lh 1.5ch 0.5lh 1.5ch !important;
+    padding: 1.5lh 1.5ch 0.5lh 1.5ch !important;
     opacity: 1;
     transition:
         opacity 150ms linear,
         border-color 120ms ease-out,
         box-shadow 120ms ease-out;
     border: 1px solid var(--wbl-border);
-    border-radius: 2px;
+    border-radius: var(--border-radius, 2px);
+    --border-radius: 2px;
     box-shadow: 1px 1px 0 0
         color-mix(
             in srgb,
