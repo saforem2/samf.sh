@@ -124,6 +124,8 @@ const stateClass = (s: string) => {
 <style>
     .rich-table-wrap {
         margin-block: 1lh;
+        width: fit-content;
+        max-width: min(var(--structured-measure), 100%);
         border: 0.125ch solid
             color-mix(in srgb, var(--foreground2) 18%, transparent);
         border-radius: 0;
@@ -149,6 +151,7 @@ const stateClass = (s: string) => {
     }
 
     .rich-table-scroll {
+        max-width: 100%;
         overflow-x: auto;
     }
 

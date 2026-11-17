@@ -346,22 +346,22 @@ is there, queue somewhere else.
 
 For the changelog-minded, in commit order:
 
-- **`05e156b` → `0bdc270`** — `ezpz status` / `ezpz cancel` via IRI (`GET` single,
-  `POST` list, `DELETE` cancel) plus SSH fallbacks (`qstat`, `qdel`/`scancel`).
+- **`05e156b` → `0bdc270`** — `ezpz status` and `ezpz cancel` via IRI (`GET` single,
+  `POST` list, `DELETE` cancel) plus SSH fallbacks (`qstat`, `qdel` or `scancel`).
   New library surface: `RemoteJobStatus`, `get_job_status_via_iri`,
-  `list_jobs_via_iri`, `cancel_via_iri`/`cancel_via_ssh`, `cancel_remote`.
+  `list_jobs_via_iri`, `cancel_via_iri` or `cancel_via_ssh`, `cancel_remote`.
 
 - **`c966a07`** — payload schema fix per the ALCF docs: `filesystems` at
   `attributes.custom_attributes.filesystems` (not top-level), `stdout_path` /
   `stderr_path` as mandatory top-level fields, seconds not `HH:MM:SS`.
 
-- **`a324f7f`** — `auto` flips to IRI-first on `aurora`/`polaris`/`crux`, SSH
-  otherwise; clean timeout messages instead of raw tracebacks.
+- **`a324f7f`** — `auto` flips to IRI-first on Aurora, Polaris, and Crux, and
+  uses SSH elsewhere; clean timeout messages instead of raw tracebacks.
 
-- **`a87a828`** — `ezpz extend` (`PUT /compute/job/{rid}/{jid}`), `ezpz
-  resources` (`GET /status/resources`), `ezpz incidents`
-  (`GET /status/incidents`). Dry-run for extend, Rich + plain-text tables for
-  resources/incidents/status, `--json` everywhere.
+- **`a87a828`** — `ezpz extend` at `PUT /compute/job/{rid}/{jid}`, `ezpz resources`
+  at `GET /status/resources`, and `ezpz incidents` at `GET /status/incidents`.
+  Dry-run for extend, Rich + plain-text tables for resources, incidents, and
+  status, `--json` everywhere.
 
 Docs at [`docs/guides/remote-submission.md`](https://github.com/saforem2/ezpz/blob/main/docs/guides/remote-submission.md)
 and [`docs/cli/submit.md`](https://github.com/saforem2/ezpz/blob/main/docs/cli/submit.md)
