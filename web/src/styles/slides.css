@@ -186,7 +186,17 @@
     }
     /* Heads are only slightly bigger than body — keeps proportions
        balanced and avoids "billboard title, mouse-print body" effect.
-       Colors inherit from global.css (h1=red / h2=orange / h3=green). */
+       Colors: slide headings inherit the body foreground instead of the
+       blue/orange/green heading palette; color carries no meaning here
+       and the tinted blue reads faint at projection distance. */
+    h1,
+    h2,
+    h3 {
+        --h1: var(--foreground0);
+        --h2: var(--foreground0);
+        --h3: var(--foreground0);
+        color: var(--foreground0);
+    }
     h1 {
         font-size: 1.4em;
     }

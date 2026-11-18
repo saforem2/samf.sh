@@ -89,7 +89,19 @@ function mount(
     const colors = paletteVars.map((name, i) =>
         readVar(name, paletteFallback[i]),
     )
-    const baseSize = compact ? 26 : 30
+    // Canvas is sized by CSS (maintainAspectRatio: false), so derive the
+    // label size from the rendered width instead of a fixed px value.
+    // Reference width 620px ~ the full slide figure column; clamped so the
+    // text never collapses on narrow layouts or balloons on 4K.
+    const frameWidth = () => frame.clientWidth || frame.parentElement?.clientWidth || 620
+    // Compact panels sit in a two-up grid (~half the width), so scale off a
+    // narrower reference.
+    const referenceWidth = compact ? 300 : 640
+    const minSize = compact ? 15 : 18
+    const maxSize = compact ? 34 : 40
+    const fontSizeFor = (w: number) =>
+        Math.round(Math.max(minSize, Math.min(maxSize, (w / referenceWidth) * (compact ? 20 : 24))))
+    const baseSize = fontSizeFor(frameWidth())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }
     const datasets = mds
@@ -182,7 +194,7 @@ function mount(
             if (!zoom || progress < 1) return
             ctx.save()
             ctx.fillStyle = color
-            ctx.font = 'bold 21px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth()) * 0.8) + 'px "' + family + '"'
             datasets.forEach((series, index) => {
                 const point = [...series.data]
                     .reverse()
@@ -215,7 +227,7 @@ function mount(
             ctx.moveTo(left, y)
             ctx.lineTo(right, y)
             ctx.stroke()
-            ctx.font = 'bold 24px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth()) * 0.9) + 'px "' + family + '"'
             ctx.textAlign = 'center'
             ctx.fillText(ratio + '× fewer tokens', (left + right) / 2, y - 11)
             ctx.restore()
@@ -281,6 +293,34 @@ function mount(
             },
         },
     })
+    // Fonts are baked into option objects, so resizing the container does not
+    // rescale them on its own. Recompute on width changes and push the new
+    // sizes in place (no destroy/recreate, so the reveal animation and theme
+    // observer are unaffected).
+    const applyFontSize = (size: number) => {
+        const scaled = { family, size, weight: 400 as const }
+        const title = { family, size, weight: 700 as const }
+        for (const scale of Object.values(chart.options.scales ?? {})) {
+            if (scale.ticks) scale.ticks.font = scaled
+            if (scale.title) scale.title.font = title
+        }
+        const plugins = chart.options.plugins ?? {}
+        if (plugins.legend?.labels) plugins.legend.labels.font = scaled
+        if (plugins.title) plugins.title.font = title
+        if (plugins.tooltip) {
+            plugins.tooltip.titleFont = scaled
+            plugins.tooltip.bodyFont = scaled
+        }
+    }
+    let lastWidth = frameWidth()
+    const resizeObserver = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width ?? frame.clientWidth
+        if (!width || Math.abs(width - lastWidth) < 24) return
+        lastWidth = width
+        applyFontSize(fontSizeFor(width))
+        chart.update('none')
+    })
+    resizeObserver.observe(frame)
     root.dataset.ready = ''
     if (
         animate &&
