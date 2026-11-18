@@ -431,21 +431,26 @@ const fontFaceCss = [
                 position: relative;
                 overflow: hidden;
                 width: 100%;
+                /* Reserve the control row in flow instead of floating it
+                   over the SVG — absolute positioning covered the top of
+                   the diagram (labels/nodes) whenever it was revealed. */
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
             }
             .mermaid-controls {
-                position: absolute;
-                top: 1ch;
-                right: 1ch;
+                align-self: flex-end;
                 display: flex;
                 align-items: center;
                 padding: 0;
-                font-size: 1rem;
+                margin: 0 0 0.25lh 0;
+                font-size: 0.85rem;
                 line-height: 1.25;
                 background-color: var(--background0);
                 border: 0.125ch solid var(--background2);
                 z-index: 3;
                 user-select: none;
-                opacity: 0;
+                opacity: 0.55;
                 transition: opacity 0.15s ease-out;
             }
             .mermaid-viewport:hover .mermaid-controls,

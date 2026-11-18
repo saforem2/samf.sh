@@ -267,6 +267,8 @@ function setupInteractiveViewport(block: HTMLElement) {
     viewport.className = 'mermaid-viewport'
     svg.parentNode?.insertBefore(viewport, svg)
     viewport.appendChild(svg)
+    // Controls are inserted as a leading row in the viewport (see below),
+    // so the SVG is pushed down instead of overlaid.
 
     const state: ViewportState = { scale: 1, tx: 0, ty: 0 }
 
@@ -437,7 +439,9 @@ function setupInteractiveViewport(block: HTMLElement) {
     )
     actionControls.append(expandBtn, copyBtn)
     controls.append(viewControls, actionControls)
-    viewport.appendChild(controls)
+    // Before the SVG in document order: a reserved strip above the diagram
+    // rather than an overlay on top of it.
+    viewport.insertBefore(controls, svg)
 
     // Keyboard support when block is focused
     block.tabIndex = block.tabIndex < 0 ? 0 : block.tabIndex
