@@ -269,11 +269,25 @@ Stop here. Leave the links on screen for questions.
 
 ## Backup: HellaSwag accuracy by checkpoint
 
-<SC26Chart kind="hellaswag" fallback="/talks/2026/10/30/figures/eval-panel-hellaswag.svg" label="HellaSwag accuracy across the 20B checkpoints and the 2B reference" />
+<div class="hellaswag-history">
+    <svg class="theme-plot" viewBox="0 38 289 190" role="img" aria-label="HellaSwag accuracy versus tokens for four production runs, including the full 2B MDS reference series and the 20B TorchTitan series">
+        <image href="/talks/2026/10/30/figures/eval-inflight.svg" width="579.089063" height="484.236" />
+    </svg>
+    <div class="hellaswag-key">
+        <strong>Tokens consumed (trillions)</strong>
+        <span>Open circles · 2B MDS reference</span>
+        <span>Triangles · 20B TorchTitan 512N</span>
+        <span>Squares · 2B TorchTitan 512N</span>
+        <span>Diamonds · 2B TorchTitan 256N</span>
+    </div>
+</div>
 
 </Slide>
 
 <style is:global>{`
+    .hellaswag-history { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: center; gap: 1.3rem; }
+    .hellaswag-history svg { width: min(100%, 94vh); height: auto; aspect-ratio: 289 / 190; overflow: hidden; }
+    .hellaswag-key { display: grid; gap: 0.5em; font-size: clamp(1rem, 2.15vw, 1.8rem); color: var(--foreground0); }
     .checkpoint-comparison { display: grid; gap: clamp(1rem, 3.4vh, 2rem); margin-block: clamp(1.5rem, 6vh, 4rem); color: var(--foreground0); }
     .checkpoint-row { display: grid; grid-template-columns: minmax(10ch, 12ch) minmax(0, 1fr) max-content; gap: 0.6em; align-items: center; font-size: clamp(1rem, 2.6vw, 2.2rem); line-height: 1.15; }
     .checkpoint-bar { height: 0.8em; border-inline-start: 2px solid var(--foreground2); }
