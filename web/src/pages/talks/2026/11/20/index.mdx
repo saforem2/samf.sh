@@ -397,6 +397,21 @@ flowchart TB
     class proc procC
 ```
 
+<div class="recovery-scopes-mobile" aria-label="Recovery scopes, nested from job to node to process">
+  <div class="scope-card scope-job">
+    <div class="scope-label"><span class="scope-icon">▦</span> JOB scope <span class="scope-meta">PBS · hours</span></div>
+    <div class="scope-detail"><em>crash / walltime</em><span aria-hidden="true">→</span><strong>chained resubmit</strong></div>
+    <div class="scope-card scope-node">
+      <div class="scope-label"><span class="scope-icon">⬡</span> NODE scope <span class="scope-meta">failover wrapper · minutes</span></div>
+      <div class="scope-detail"><em>bad host detected</em><span aria-hidden="true">→</span><strong>swap from spare pool</strong></div>
+      <div class="scope-card scope-process">
+        <div class="scope-label"><span class="scope-icon">◉</span> PROCESS scope <span class="scope-meta">ezpz launch · seconds</span></div>
+        <div class="scope-detail"><em>stdout idle ≥ N s</em><span aria-hidden="true">→</span><strong>kill + backoff</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </Slide>
 
 <style is:global>{`
@@ -1096,14 +1111,64 @@ flowchart TB
         background: url('/talks/2026-10-21/figures/aurora-hero.jpg') center / cover no-repeat;
     }
     #title-slide .title-aurora { position: absolute; width: 1px; height: 1px; opacity: 0; }
-    :is(#aurora, #portable-stack, #bit-exact, #auto-retry) .mermaid {
+    :is(#aurora, #portable-stack, #bit-exact, #auto-retry, #recovery-scopes) .mermaid {
         --mermaid-max-height: 43vh;
         margin-block: 0.9rem;
     }
-    :is(#aurora, #portable-stack, #bit-exact, #auto-retry) .mermaid svg {
+    :is(#aurora, #portable-stack, #bit-exact, #auto-retry, #recovery-scopes) .mermaid svg {
         width: 100% !important;
         max-height: 43vh !important;
     }
+    /* Recovery-scopes: the nested 3-level diagram is legible on desktop but
+       clips on phone portrait; swap in the stacked layout below. */
+    @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
+        /* Nested 3-scope diagram doesn't fit phone portrait; swap in the
+           stacked layout authored below instead of shrinking SVG text to
+           unreadable sizes. */
+        #recovery-scopes .mermaid { display: none; }
+        #recovery-scopes .recovery-scopes-mobile { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+    }
+    .recovery-scopes-mobile { display: none; }
+    .scope-card {
+        border: 1.5px solid var(--scope-color, var(--foreground2));
+        color: var(--scope-color, var(--foreground0));
+        background: color-mix(in srgb, var(--scope-color, transparent) 4%, transparent);
+        border-radius: 0.35rem;
+        padding: 0.55rem 0.65rem 0.65rem;
+        min-width: 0;
+    }
+    .scope-card + .scope-card,
+    .scope-card .scope-card { margin-top: 0.55rem; }
+    .scope-job { --scope-color: #118cc2; }
+    .scope-node { --scope-color: #ee8f24; margin-left: 0.75rem; }
+    .scope-process { --scope-color: #1da811; margin-left: 0.75rem; }
+    .scope-label {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35em;
+        flex-wrap: wrap;
+        font-size: clamp(0.8rem, 3.8vw, 1rem);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        line-height: 1.25;
+    }
+    .scope-meta {
+        font-weight: 500;
+        font-size: 0.82em;
+        opacity: 0.9;
+    }
+    .scope-icon { font-size: 0.85em; }
+    .scope-detail {
+        display: flex;
+        align-items: baseline;
+        gap: 0.45em;
+        flex-wrap: wrap;
+        margin: 0.35rem 0 0.15rem 1.5em;
+        font-size: clamp(0.78rem, 3.5vw, 0.95rem);
+        color: var(--foreground0);
+    }
+    .scope-detail strong { color: var(--scope-color); }
+    .scope-card.scope-process .scope-detail { margin-left: 0; }
     .sc-lead, .sc-detail {
         color: var(--foreground0);
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);
