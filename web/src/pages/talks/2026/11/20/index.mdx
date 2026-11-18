@@ -1,0 +1,970 @@
+---
+layout: '@/layouts/SlideLayout.astro'
+title: 'Pre-Training AuroraGPT on Intel XPUs'
+shortTitle: 'AuroraGPT on Intel XPUs'
+description: 'Portable pre-training on Aurora: the ezpz and TorchTitan stack, the 2B and 20B production results, and three failures that changed how we validate and recover large runs.'
+date: 2026-11-20
+location: 'SC26 · 4th Annual Trillion Parameter Workshop · W181abc'
+locationUrl: 'https://sc26.conference-program.com/presentation/?id=ws_tpw126&sess=sess149'
+---
+
+import Slide from '@/components/slides/Slide.astro'
+import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
+
+{/*
+    SC26 · Trillion Parameter Workshop · 2026-11-20 · 13 min
+
+    First-cut arc:
+      1. Aurora makes portability concrete.
+      2. ezpz + TorchTitan run the same PyTorch program across vendors.
+      3. The production result is 7.77T tokens at 2B and a more
+         sample-efficient in-flight 20B run.
+      4. Three failures changed validation, stability monitoring, and recovery.
+
+    Timing target: 11:30 of prepared material, leaving 1:30 of margin.
+*/}
+
+<Slide id="title-slide">
+
+<img
+    class="title-aurora"
+    src="/talks/2026-10-21/figures/aurora-hero.jpg"
+    alt="Aurora at the Argonne Leadership Computing Facility"
+/>
+
+<div class="title-panel">
+
+<div class="eyebrow">AuroraGPT · SC26</div>
+
+# Pre-Training AuroraGPT<br />on Intel XPUs
+
+<p class="title-thesis">Training, validation, and recovery at scale</p>
+
+<div class="title-authors">
+    <span><strong>Sam Foreman</strong> · Nathan Nichols · Varuni Sastry · Sam Wheeler · Khalid Hossain</span>
+    <span>Huihuo Zheng · Murali Emani · Filippo Simini · Marieme Ngom · Ethan Wong · Venkatram Vishwanath</span>
+</div>
+
+<div class="title-conf-line">4th Annual Trillion Parameter Workshop · November 20, 2026</div>
+<div class="title-url">samf.sh/talks/2026/11/20</div>
+
+</div>
+
+<SpeakerNotes>
+AuroraGPT pre-trains open foundation models for science on Aurora. This talk is about the software boundary: what changed when we moved production training from a project-specific stack to portable PyTorch on Intel XPUs, and the failures we found only by running it at scale.
+
+20 seconds.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="aurora">
+
+## AuroraGPT on Aurora
+
+<div class="aurora-layout">
+
+<div>
+    <div class="hero-number">127,488</div>
+    <div class="hero-label">Intel Max-series XPUs</div>
+    <p class="hero-context"><strong>10,624</strong> HPE Cray EX nodes<br /><strong>12</strong> XPU tiles per node</p>
+</div>
+
+<div class="aurora-contract">
+    <div><span class="contract-label c-cyan">DEVICE</span><strong>`torch.xpu`</strong></div>
+    <div><span class="contract-label c-orange">COLLECTIVES</span><strong>`oneCCL`</strong></div>
+    <div><span class="contract-label c-pink">EXECUTION</span><strong>short, shared allocations</strong></div>
+    <p>Multi-day pre-training crosses job boundaries. The model state, optimizer state, data position, and RNG state all have to survive.</p>
+</div>
+
+</div>
+
+<div class="takeaway-line"><span>At this scale</span> a portability bug and an operations bug have the same symptom: the run stops.</div>
+
+<SpeakerNotes>
+Set the machine and software context once. Aurora is one of the largest non-NVIDIA GPU systems in production. The important difference for this talk is the stack: SYCL and oneCCL below PyTorch, not CUDA and NCCL. We also inherit the usual HPC constraints: shared storage, scheduled allocations, and restarts across job boundaries.
+
+55 seconds. Cumulative: 1:15.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="portable-stack">
+
+## One training program across vendors
+
+<div class="stack-grid">
+
+<div>
+
+```python
+import ezpz
+
+ezpz.setup_torch()
+
+model = build_model()
+mesh = ezpz.get_mesh()
+model = fully_shard(model, mesh=mesh)
+
+train(model)
+```
+
+
+</div>
+
+<div>
+
+| System | Accelerator | Backend |
+| --- | --- | --- |
+| Aurora | Intel Max | `XPU` / `oneCCL` |
+| Polaris | NVIDIA A100 | `CUDA` / `NCCL` |
+| Frontier | AMD MI250X | `ROCm` / `RCCL` |
+
+
+</div>
+
+</div>
+
+<SpeakerNotes>
+The interface is the point. The training program does not branch on the vendor. ezpz discovers the scheduler and builds the distributed environment. TorchTitan supplies FSDP, tensor and pipeline parallelism, and distributed checkpointing. Our work lives in an experiments/ezpz fork while we push reusable pieces upstream.
+
+75 seconds. Cumulative: 2:30.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="production-result">
+
+## The 2B reference finished at 7.77T tokens
+
+<img
+    class="wide-plot"
+    src="/talks/2026/10/30/figures/agpt-2b-progress.svg"
+    alt="AuroraGPT 2B production training loss over cumulative tokens"
+/>
+
+<div class="result-strip">
+    <span><strong>2B</strong> completed on the original stack</span>
+    <span><strong>20B</strong> now trains on `TorchTitan` + `ezpz`</span>
+</div>
+
+<SpeakerNotes>
+The completed 2B run is our reference: 7.77 trillion tokens. We migrated the production path to TorchTitan and ezpz rather than carrying the old Megatron-DeepSpeed fork forward. The chart also shows the continuity work: checkpoints and training behavior survived changes in node count and stack.
+
+70 seconds. Cumulative: 3:40.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="sample-efficiency">
+
+## The 20B run matched the 2B peak
+
+<div class="eval-layout">
+    <div class="eval-number">
+        <strong>17×</strong>
+        <span>fewer tokens</span>
+        <p>at comparable compute</p>
+        <small>20B training is ongoing</small>
+    </div>
+    <img
+        class="eval-plot theme-plot"
+        src="/talks/2026/10/30/figures/eval-inflight.svg"
+        alt="AuroraGPT production evaluation scores for the 2B and 20B runs over tokens"
+    />
+</div>
+
+<SpeakerNotes>
+This is the science result. At comparable compute, the in-flight 20B run reaches the fully trained 2B model's peak evaluation scores while consuming about 17 times fewer tokens. Say "in flight" and "matches peak scores" precisely. Do not describe this as a finished 20B run or a universal scaling result.
+
+70 seconds. Cumulative: 4:50.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="three-failures">
+
+## Three failures changed the stack
+
+<ol class="failure-list">
+    <li class="failure-cyan"><strong>Silent loss reporting</strong><span>the curve looked healthy</span><em>bit-exact regression exposed it</em></li>
+    <li class="failure-pink"><strong>80B instability</strong><span>the process stayed alive</span><em>three optimizers reached `NaN`</em></li>
+    <li class="failure-orange"><strong>Silent job death</strong><span>the allocation stayed active</span><em>nine runs lost in two weeks</em></li>
+</ol>
+
+
+<SpeakerNotes>
+These are the three concrete failures behind the rest of the talk. They sit at different layers: reporting correctness, training stability, and operations. In every case, the first symptom was misleading. The narrow fix came from strengthening the check at the layer where the failure could hide.
+
+35 seconds. Cumulative: 5:25.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="bit-exact">
+
+## Failure 1: a correct-looking loss was wrong
+
+<div class="failure-layout bit-layout">
+
+<div class="failure-copy">
+
+<span class="micro-label c-orange">SYMPTOM</span>
+
+Training ran. Loss decreased. Nothing crashed.
+
+<span class="micro-label c-cyan">DETECTION</span>
+
+A bit-exact regression against the reference stack diverged.
+
+<span class="micro-label c-green">MIGRATION GATE</span>
+
+We made step-level parity a migration gate, not a post-hoc plot comparison.
+
+</div>
+
+<pre class="regression"><code>same checkpoint{`\n`}same batch{`\n`}same RNG state{`\n`}same step{`\n\n`}loss_ref  == loss_new{`\n`}grads_ref == grads_new</code><span class="exact-verdict">EXACT</span></pre>
+
+</div>
+
+<SpeakerNotes>
+The dangerous migration failure was not a crash. The reported loss looked plausible and decreased normally. Aggregate curves could not catch it. A controlled, bit-exact comparison on the same checkpoint, batch, RNG state, and step did. That changed the acceptance criterion for the migrated stack: exact parity first, long-run similarity second.
+
+85 seconds. Cumulative: 6:50.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="stability">
+
+## Gradient norm failed one step before loss
+
+<p>80B training on Sunspot · 6,144 sequences per batch</p>
+
+<dl class="optimizer-results">
+    <dt><code>mano</code></dt><dd>Step 5</dd>
+    <dt><code>AdamW</code></dt><dd>Step 9</dd>
+    <dt><code>SophiaG</code></dt><dd>Step 12</dd>
+</dl>
+
+<SpeakerNotes>
+At the same 80B, GBS 6144, data-parallel 186 corner, mano reached NaN at gradient step 5, AdamW at step 9, and SophiaG at step 12. Each used its finder-recommended constant learning rate. The shared signature rules out one optimizer implementation as the explanation. In every case, grad norm failed one step before loss, so process health and a plausible loss value were both inadequate monitors. The mechanism remains unresolved. A separate fp32 activation run stayed finite for 120 steps at about one-third the throughput, with a different warmup.
+
+75 seconds. Cumulative: 8:05.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="auto-retry">
+
+## Launcher retry stopped silent job loss
+
+<div class="retry-layout">
+    <img
+        class="retry-plot theme-plot"
+        src="/talks/2026/10/30/figures/failover-before-after.svg"
+        alt="Comparison of production runs before and after launcher-native failover"
+    />
+    <div class="retry-copy">
+        <div class="lost-runs"><strong>9</strong><span>runs lost<br />in 2 weeks</span></div>
+        <ol class="retry-sequence">
+            <li><code>watch stdout</code></li>
+            <li><code>classify exit</code></li>
+            <li><code>exclude host</code></li>
+            <li><code>resume checkpoint</code></li>
+        </ol>
+    </div>
+</div>
+
+<div class="takeaway-line"><span>`ezpz launch --auto-retry`</span></div>
+
+<SpeakerNotes>
+The scheduler knew that the allocation existed. It did not know that useful training had stopped. The launcher now watches application progress, terminates a wedged launch, classifies the exit, excludes a bad host when a spare exists, and resumes from the latest checkpoint. The important design choice is that recovery lives with the launcher, where scheduler state and application state meet.
+
+90 seconds. Cumulative: 9:35.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="lessons">
+
+## Portable pre-training needs three contracts
+
+<table class="contracts">
+    <thead>
+        <tr><th>Contract</th><th>Question</th><th>Proof</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><strong>Numerical</strong></td><td>Did the implementation preserve the step?</td><td>Bit-exact regression</td></tr>
+        <tr><td><strong>Scientific</strong></td><td>Is the trajectory still healthy?</td><td>Online norms + evaluation</td></tr>
+        <tr><td><strong>Operational</strong></td><td>Can the run survive the machine?</td><td>Watchdog + retry + checkpoint</td></tr>
+    </tbody>
+</table>
+
+<div class="links-line">
+    [`ezpz`](https://github.com/saforem2/ezpz) ·
+    [`TorchTitan`](https://github.com/pytorch/torchtitan) ·
+    [`Aurora`](https://www.alcf.anl.gov/aurora)
+</div>
+
+<SpeakerNotes>
+The stack has three contracts. Numerical correctness is local and exact. Scientific validity is a trajectory, not a process exit code. Operational recovery spans the launcher, scheduler, hosts, and checkpoints. Portability requires all three. A backend abstraction alone is not enough.
+
+65 seconds. Cumulative: 10:40.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="thanks">
+
+## Thank you
+
+<p class="thanks-line"><span class="c-cyan">AuroraGPT</span> trains open foundation models for science.</p>
+<p class="thanks-line"><span class="c-pink">`ezpz` + `TorchTitan`</span> carry the run across devices, systems, and failures.</p>
+
+<p class="acknowledgement">
+Aurora was built with HPE and Intel. Thanks to the ALCF operations and support teams, the Intel `torch.xpu` and `oneCCL` teams, and the AuroraGPT collaborators.
+</p>
+
+<div class="final-url">samf.sh/talks/2026/11/20</div>
+
+<SpeakerNotes>
+Stop here. Leave the links on screen for questions.
+
+20 seconds. Prepared total: about 11 minutes. The remaining margin covers transitions and one interruption.
+</SpeakerNotes>
+
+</Slide>
+
+<style is:global>{`
+    /* Lattice23-derived visual language, expressed through the site's live
+       light/dark tokens. Layout stays left-aligned in both themes. */
+    #title-slide,
+    #aurora,
+    #portable-stack,
+    #production-result,
+    #sample-efficiency,
+    #three-failures,
+    #bit-exact,
+    #stability,
+    #auto-retry,
+    #lessons,
+    #thanks {
+        --sc-cyan: #00779f;
+        --sc-pink: #c21f63;
+        --sc-green: #187a43;
+        --sc-orange: #c55500;
+        --sc-purple: #7048a8;
+        --sc-rule: color-mix(in srgb, var(--foreground2) 35%, transparent);
+    }
+
+    html[data-webtui-theme='custom-dark'] :is(
+        #title-slide,
+        #aurora,
+        #portable-stack,
+        #production-result,
+        #sample-efficiency,
+        #three-failures,
+        #bit-exact,
+        #stability,
+        #auto-retry,
+        #lessons,
+        #thanks
+    ) {
+        --sc-cyan: #00ccff;
+        --sc-pink: #ff67b3;
+        --sc-green: #63ff8b;
+        --sc-orange: #ff9a45;
+        --sc-purple: #bd92ff;
+    }
+
+    .c-cyan { color: var(--sc-cyan); }
+    .c-pink { color: var(--sc-pink); }
+    .c-green { color: var(--sc-green); }
+    .c-orange { color: var(--sc-orange); }
+    .c-purple { color: var(--sc-purple); }
+
+    #title-slide .slide-inner {
+        justify-content: center;
+        padding-left: clamp(2rem, 6vw, 6rem);
+        overflow: hidden;
+    }
+
+    .title-aurora {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        z-index: -2;
+    }
+
+    #title-slide::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgb(5 10 18 / 0.88) 0%, rgb(5 10 18 / 0.72) 48%, rgb(5 10 18 / 0.08) 82%);
+        z-index: -1;
+    }
+
+    .title-panel {
+        width: min(72ch, 72vw);
+        padding: 1.15rem 1.45rem 1.25rem;
+        border: 1px solid rgb(255 255 255 / 0.2);
+        border-left: 4px solid var(--sc-cyan);
+        border-radius: 0.35rem;
+        background: rgb(15 18 24 / 0.76);
+        box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 0.35);
+        color: #f5f7fa;
+        backdrop-filter: blur(7px);
+        text-align: left;
+    }
+
+    .title-panel .eyebrow {
+        margin-bottom: 0.45rem;
+        color: #aeb8c2;
+        font-size: 0.56em;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .title-panel h1 {
+        color: #f7f9fb !important;
+        font-size: clamp(2.25rem, 4.2vw, 4.5rem) !important;
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+    }
+
+    .title-thesis {
+        margin: 0.8rem 0 0;
+        font-size: 0.84em;
+        font-weight: 650;
+    }
+
+    .title-authors {
+        display: grid;
+        gap: 0.15rem;
+        margin-top: 1rem;
+        color: #c9d0d7;
+        font-size: 0.58em;
+        line-height: 1.35;
+    }
+
+    .title-authors strong { color: #fff; }
+
+    .title-conf-line,
+    .title-url {
+        margin-top: 0.75rem;
+        color: #aeb8c2;
+        font-size: 0.56em;
+    }
+
+    .title-url {
+        margin-top: 0.25rem;
+        color: var(--sc-cyan);
+        font-family: var(--font-family-mono, monospace);
+        font-weight: 700;
+    }
+
+    .aurora-layout {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: clamp(2rem, 5vw, 5rem);
+        align-items: center;
+        flex: 1;
+    }
+
+    .hero-number {
+        color: var(--foreground0);
+        font-size: clamp(4.4rem, 10vw, 8.6rem);
+        font-weight: 850;
+        line-height: 0.8;
+        letter-spacing: -0.06em;
+    }
+
+    .hero-label {
+        margin-top: 0.7rem;
+        color: var(--sc-cyan);
+        font-size: 1.05em;
+        font-weight: 750;
+    }
+
+    .hero-context {
+        margin-top: 1.1rem;
+        color: var(--foreground2);
+        font-size: 0.78em;
+    }
+
+    .aurora-contract {
+        display: grid;
+        gap: 0.7rem;
+        padding-left: 1.1rem;
+        border-left: 1px solid var(--sc-rule);
+    }
+
+    .aurora-contract > div {
+        display: grid;
+        grid-template-columns: 11ch 1fr;
+        align-items: baseline;
+        gap: 1rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px solid var(--sc-rule);
+    }
+
+    .aurora-contract .contract-label,
+    .micro-label {
+        font-size: 0.6em;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+    }
+
+    .aurora-contract p {
+        color: var(--foreground2);
+        font-size: 0.76em;
+    }
+
+    .takeaway-line {
+        margin-top: auto;
+        padding-top: 0.65rem;
+        border-top: 1px solid var(--sc-rule);
+        color: var(--foreground2);
+        font-size: 0.75em;
+    }
+
+    .takeaway-line span {
+        margin-right: 0.8ch;
+        color: var(--foreground0);
+        font-weight: 800;
+    }
+
+    .stack-grid,
+    .failure-layout {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: clamp(1.5rem, 4vw, 4rem);
+        align-items: center;
+    }
+
+    #portable-stack pre {
+        border: 1px solid var(--sc-rule);
+        border-left: 4px solid var(--sc-cyan);
+        box-shadow: none;
+    }
+
+    .code-caption {
+        margin-top: 0.5rem;
+        color: var(--foreground2);
+        font-size: 0.62em;
+    }
+
+    #portable-stack table {
+        font-size: 0.78em;
+    }
+
+    #portable-stack table th {
+        color: var(--sc-cyan);
+    }
+
+    .wide-plot,
+    .eval-plot,
+    .retry-plot {
+        display: block;
+        width: 100%;
+        max-height: 58vh;
+        margin: 0;
+        object-fit: contain;
+    }
+
+    html[data-webtui-theme='custom-dark'] .theme-plot {
+        filter: invert(0.91) hue-rotate(180deg) saturate(1.15) brightness(0.95) contrast(1.03);
+    }
+
+    .result-strip {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 0.65rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--sc-rule);
+        font-size: 0.75em;
+    }
+
+    .eval-layout {
+        display: grid;
+        grid-template-columns: 0.43fr 1.57fr;
+        gap: 1.6rem;
+        align-items: center;
+        flex: 1;
+    }
+
+    .eval-number {
+        padding-left: 1rem;
+        border-left: 4px solid var(--sc-green);
+    }
+
+    .eval-number strong,
+    .eval-number span {
+        display: block;
+    }
+
+    .eval-number strong {
+        color: var(--sc-green);
+        font-size: clamp(4.2rem, 8vw, 7rem);
+        line-height: 0.82;
+        letter-spacing: -0.07em;
+    }
+
+    .eval-number span {
+        margin-top: 0.5rem;
+        color: var(--foreground0);
+        font-size: 1.08em;
+        font-weight: 800;
+    }
+
+    .eval-number p {
+        margin: 0.9rem 0 0;
+        color: var(--foreground1);
+        font-size: 0.72em;
+    }
+
+    .eval-number small {
+        display: block;
+        margin-top: 1rem;
+        color: var(--foreground2);
+        font-size: 0.54em;
+        line-height: 1.4;
+    }
+
+    .eval-plot { max-height: 61vh; }
+
+    .failure-list {
+        display: grid;
+        gap: 0.78rem;
+        margin: 1rem 0 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: failure;
+    }
+
+    .failure-list li {
+        display: grid;
+        grid-template-columns: 2.2rem minmax(14rem, 0.9fr) 1.1fr;
+        gap: 0.15rem 0.8rem;
+        align-items: baseline;
+        padding: 0.72rem 0.8rem;
+        border: 1px solid var(--sc-rule);
+        border-left-width: 4px;
+        border-radius: 0.25rem;
+        counter-increment: failure;
+    }
+
+    .failure-list li::before {
+        grid-row: 1 / 3;
+        content: counter(failure, decimal-leading-zero);
+        font-size: 0.7em;
+        font-weight: 850;
+    }
+
+    .failure-list .failure-cyan { border-left-color: var(--sc-cyan); }
+    .failure-list .failure-cyan::before { color: var(--sc-cyan); }
+    .failure-list .failure-pink { border-left-color: var(--sc-pink); }
+    .failure-list .failure-pink::before { color: var(--sc-pink); }
+    .failure-list .failure-orange { border-left-color: var(--sc-orange); }
+    .failure-list .failure-orange::before { color: var(--sc-orange); }
+
+    .failure-list strong {
+        grid-column: 2;
+        font-size: 0.92em;
+    }
+    .failure-list span,
+    .failure-list em {
+        color: var(--foreground2);
+        font-size: 0.7em;
+        font-style: normal;
+    }
+    .failure-list span { grid-column: 2; }
+    .failure-list em {
+        grid-column: 3;
+        grid-row: 1 / 3;
+        align-self: center;
+        text-align: right;
+    }
+
+    .failure-rule {
+        margin-top: 1rem;
+        color: var(--foreground0);
+        font-size: 1.05em;
+        font-weight: 800;
+    }
+
+    .failure-copy {
+        display: grid;
+        gap: 0.1rem;
+    }
+
+    .failure-copy p {
+        margin: 0.05rem 0 0.55rem;
+        font-size: 0.88em;
+    }
+
+    .regression {
+        position: relative;
+        margin: 0;
+        padding: 1rem 1.2rem;
+        border: 1px solid var(--sc-rule);
+        border-left: 4px solid var(--sc-cyan);
+        background: color-mix(in srgb, var(--background1) 76%, transparent);
+        font-size: 0.95em;
+        overflow: visible;
+    }
+
+    .exact-verdict {
+        position: absolute;
+        right: 0.8rem;
+        bottom: 0.55rem;
+        color: var(--sc-green);
+        font-family: var(--font-family, inherit);
+        font-size: 0.7em;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+    }
+
+    .stability-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        margin-top: 1.4rem;
+        border-block: 1px solid var(--sc-rule);
+    }
+
+    .stability-fact {
+        display: grid;
+        gap: 0.45rem;
+        padding: 1rem 1.2rem;
+        border-right: 1px solid var(--sc-rule);
+    }
+
+    .stability-fact:last-child { border-right: 0; }
+    .stability-fact .label {
+        color: var(--foreground2);
+        font-size: 0.55em;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+    }
+    .stability-fact strong { font-size: 1.05em; }
+    .stability-fact em {
+        color: var(--sc-pink);
+        font-size: 1.35em;
+        font-style: normal;
+        font-weight: 850;
+    }
+
+    .stability-conclusion {
+        display: grid;
+        grid-template-columns: 1fr 1px 1fr;
+        gap: 1.1rem;
+        align-items: center;
+        margin-top: 1.15rem;
+        font-size: 0.76em;
+    }
+
+    .stability-conclusion > div {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.65rem;
+        align-items: baseline;
+    }
+
+    .stability-conclusion > div span { font-weight: 850; }
+    .stability-conclusion > div strong { font-weight: 550; }
+    .stability-conclusion .divider {
+        width: 1px;
+        height: 2.3rem;
+        background: var(--sc-rule);
+    }
+
+    .retry-layout {
+        display: grid;
+        grid-template-columns: 1.42fr 0.58fr;
+        gap: 1.5rem;
+        align-items: center;
+        flex: 1;
+    }
+
+    .retry-plot { max-height: 53vh; }
+    .retry-copy {
+        padding-left: 1rem;
+        border-left: 1px solid var(--sc-rule);
+    }
+
+    .lost-runs {
+        display: flex;
+        gap: 0.8rem;
+        align-items: flex-end;
+    }
+
+    .lost-runs strong {
+        color: var(--sc-pink);
+        font-size: clamp(4rem, 7vw, 6.5rem);
+        line-height: 0.78;
+    }
+
+    .lost-runs span {
+        color: var(--foreground1);
+        font-size: 0.72em;
+        font-weight: 750;
+        line-height: 1.05;
+    }
+
+    .retry-sequence {
+        display: grid;
+        gap: 0;
+        margin: 1.1rem 0 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: retry;
+    }
+
+    .retry-sequence li {
+        display: grid;
+        grid-template-columns: 1.4rem 1fr;
+        gap: 0.5rem;
+        padding: 0.42rem 0;
+        border-top: 1px solid var(--sc-rule);
+        counter-increment: retry;
+    }
+
+    .retry-sequence li::before {
+        content: counter(retry);
+        color: var(--sc-orange);
+        font-size: 0.65em;
+        font-weight: 850;
+    }
+
+    .retry-sequence code { font-size: 0.66em; }
+
+    .contracts {
+        margin-top: 1.4rem;
+        font-size: 0.78em;
+    }
+
+    .contracts th { color: var(--sc-cyan); }
+    .contracts th:first-child,
+    .contracts td:first-child { width: 18%; }
+
+    .links-line {
+        margin-top: auto;
+        font-size: 0.68em;
+    }
+
+    #thanks .slide-inner { justify-content: center; }
+    #thanks h2 { margin-bottom: 1.2rem; }
+
+    .thanks-line {
+        max-width: 48rem;
+        margin: 0.25rem 0;
+        font-size: 1.08em;
+        line-height: 1.3;
+    }
+
+    .thanks-line span { font-weight: 850; }
+
+    .acknowledgement {
+        max-width: 48rem;
+        margin-top: 1.4rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--sc-rule);
+        color: var(--foreground2);
+        font-size: 0.65em;
+    }
+
+    .final-url {
+        margin-top: 0.8rem;
+        color: var(--sc-cyan);
+        font-family: var(--font-family-mono, monospace);
+        font-size: 0.8em;
+        font-weight: 750;
+    }
+
+    @media (max-width: 700px) {
+        .title-panel { width: 88vw; }
+        .aurora-layout,
+        .stack-grid,
+        .failure-layout,
+        .eval-layout,
+        .retry-layout,
+        .stability-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .failure-list li { grid-template-columns: 1.5rem 1fr; }
+        .failure-list em { grid-column: 2; text-align: left; }
+        .stability-fact { border-right: 0; border-bottom: 1px solid var(--sc-rule); }
+        .stability-conclusion { grid-template-columns: 1fr; }
+        .stability-conclusion .divider { display: none; }
+        .result-strip { flex-wrap: wrap; }
+    }
+
+    #title-slide .title-panel {
+        width: min(68ch, 77vw);
+        background: rgb(8 13 20 / 0.9);
+        box-shadow: none;
+    }
+    #title-slide .title-panel h1 {
+        font-size: clamp(2rem, 5.3vw, 5rem) !important;
+    }
+    #title-slide .title-thesis { color: #fff; font-size: clamp(1rem, 2.65vw, 2.6rem); }
+
+    #title-slide ~ [is~='slide'] .slide-inner {
+        text-align: left;
+    }
+    @media (min-width: 701px) {
+        :is(#aurora, #portable-stack, #production-result, #sample-efficiency,
+            #three-failures, #bit-exact, #stability, #auto-retry, #lessons, #thanks)
+            .slide-inner h2 {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            line-height: 1.06;
+        }
+        :is(.hero-context, .aurora-contract p, .takeaway-line, .result-strip,
+            .failure-list span, .failure-list em, .failure-copy p, .eval-number p,
+            .eval-number small, .lost-runs span, .retry-sequence code, .thanks-line) {
+            color: var(--foreground0);
+            font-size: clamp(1rem, 2.55vw, 2.15rem);
+            line-height: 1.16;
+        }
+        :is(#portable-stack table, #portable-stack pre, .regression, .contracts, .optimizer-results) {
+            font-size: clamp(1rem, 2.4vw, 2.1rem);
+            line-height: 1.18;
+        }
+        .eval-layout { grid-template-columns: minmax(13ch, 0.65fr) 1.35fr; }
+        .eval-number small { margin-top: 0.6rem; }
+        .failure-list em { text-align: left; }
+        .retry-layout { grid-template-columns: 1.2fr 0.8fr; }
+        .wide-plot, .eval-plot, .retry-plot { max-height: 48vh; }
+    }
+    #stability .slide-inner > p {
+        color: var(--foreground0);
+        font-size: clamp(1rem, 2.65vw, 2.4rem);
+        margin: 0.75em 0;
+    }
+    .optimizer-results {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0.6em 2em;
+        margin-top: 1em;
+        font-size: clamp(1.2rem, 3vw, 2.5rem);
+        color: var(--foreground0);
+    }
+    .optimizer-results dd { margin: 0; }
+    .optimizer-results code { color: inherit; }
+
+    @media (min-width: 701px) {
+        .wide-plot, .eval-plot { max-height: 59vh; }
+        .eval-layout { grid-template-columns: 0.54fr 1.46fr; }
+        .retry-sequence li { grid-template-columns: 1.4rem minmax(0, 1fr); }
+        .retry-sequence li code { justify-self: start; white-space: nowrap; }
+        .failure-list strong { font-size: clamp(1.1rem, 2.7vw, 2.25rem); }
+    }
+`}</style>
