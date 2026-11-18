@@ -1,0 +1,337 @@
+/* Pele (mermaid-compatible renderer) theme mapping.
+   One shared semantic bridge plus per-theme overrides, following
+   https://pele.run/theming. Every selector is scoped to pele's own
+   `.pele` root so it can be loaded unconditionally in global.css.
+
+   Semantic ground rules:
+   - --pele-bg/-surface/-surface-alt come from the theme's background steps
+     (never transparent, diagrams sit on the slide or page surface).
+   - --pele-fg/-muted/-line/-border come from foreground tokens so text and
+     edges keep AA contrast in every theme.
+   - --pele-accent follows the theme's accent; --pele-series-* follows the
+     theme's categorical palette, with 1 = accent for "primary" data.
+   - Themes without a real palette alias to the semantic set so diagrams
+     still work everywhere; no theme silently falls back to pele defaults
+     except where noted. */
+
+.pele {
+    --pele-bg: var(--background0);
+    --pele-fg: var(--foreground0);
+    --pele-fg-on-light: #1f1f1f;
+    --pele-fg-on-dark: #ffffff;
+    --pele-muted: var(--foreground2);
+    --pele-line: var(--foreground2);
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--foreground3);
+    --pele-accent: var(--accent);
+    --pele-critical: var(--red);
+    --pele-error: var(--red);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--orange);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--purple);
+    --pele-series-6: var(--cyan, var(--teal, var(--aqua, var(--blue))));
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+    --pele-font: var(--font-family, sans-serif);
+    --pele-font-mono: var(--code-font-family, monospace);
+    --pele-title-weight: bold;
+    --pele-heading-weight: bold;
+    --pele-bold-weight: bold;
+    --pele-radius: 0;
+}
+
+/* ---------- Kitty-matched Vim palettes (custom-light / custom-dark) --------
+   These are the site's house palettes (vim/kitty for the terminal pair). */
+[data-webtui-theme='custom-light'] .pele,
+[data-webtui-theme='sam-light'] .pele,
+[data-webtui-theme='nvim-light-role'] .pele,
+[data-webtui-theme='nvim-light-hue'] .pele {
+    --pele-fg-on-light: var(--foreground0);
+    --pele-fg-on-dark: #ffffff;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: oklch(from var(--foreground2) l c h / 0.6);
+    --pele-accent: var(--accent); /* hot pink #ff1a8f */
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--orange);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--purple);
+    --pele-series-6: var(--aqua);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+[data-webtui-theme='custom-dark'] .pele,
+[data-webtui-theme='sam-dark'] .pele,
+[data-webtui-theme='nvim-dark-role'] .pele,
+[data-webtui-theme='nvim-dark-hue'] .pele {
+    --pele-fg-on-light: var(--foreground1);
+    --pele-fg-on-dark: var(--foreground0);
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--background3);
+    --pele-accent: var(--accent); /* #e599f7 */
+    --pele-series-1: var(--blue);   /* #29b6f6 */
+    --pele-series-2: var(--green);  /* #40c057 */
+    --pele-series-3: var(--orange); /* #fd971f */
+    --pele-series-4: var(--pink);   /* #e599f7 */
+    --pele-series-5: var(--purple); /* #ae81ff */
+    --pele-series-6: var(--teal);   /* #38d9a9, distinct from green */
+    --pele-series-7: var(--yellow); /* #fcc419 */
+    --pele-series-8: var(--red);    /* #ff6b6b */
+}
+
+/* ---------- Catppuccin (Latte / Frappé / Macchiato / Mocha) ----------- */
+[data-webtui-theme='catppuccin'] .pele,
+[data-webtui-theme='catppuccin-mocha'] .pele {
+    --pele-fg-on-light: #1e1e2e;
+    --pele-fg-on-dark: #cdd6f4;
+    --pele-surface: var(--base);
+    --pele-surface-alt: var(--surface0);
+    --pele-border: var(--overlay0);
+    --pele-line: var(--overlay2);
+    --pele-muted: var(--subtext0);
+    --pele-accent: var(--mauve);
+    --pele-critical: var(--red);
+    --pele-error: var(--red);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--peach);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--mauve);
+    --pele-series-6: var(--teal);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+[data-webtui-theme='catppuccin-macchiato'] .pele {
+    --pele-fg-on-light: #24273a;
+    --pele-fg-on-dark: #cad3f5;
+    --pele-surface: var(--base);
+    --pele-surface-alt: var(--surface0);
+    --pele-border: var(--overlay0);
+    --pele-line: var(--overlay2);
+    --pele-muted: var(--subtext0);
+    --pele-accent: var(--mauve);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--peach);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--mauve);
+    --pele-series-6: var(--teal);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+[data-webtui-theme='catppuccin-frappe'] .pele {
+    --pele-fg-on-light: #303446;
+    --pele-fg-on-dark: #c6d0f5;
+    --pele-surface: var(--base);
+    --pele-surface-alt: var(--surface0);
+    --pele-border: var(--overlay0);
+    --pele-line: var(--overlay2);
+    --pele-muted: var(--subtext0);
+    --pele-accent: var(--mauve);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--peach);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--mauve);
+    --pele-series-6: var(--teal);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+[data-webtui-theme='catppuccin-latte'] .pele {
+    --pele-fg-on-light: #4c4f69;
+    --pele-fg-on-dark: #eff1f5;
+    --pele-surface: var(--base);
+    --pele-surface-alt: var(--mantle);
+    --pele-border: var(--overlay0);
+    --pele-line: var(--overlay1);
+    --pele-muted: var(--subtext0);
+    --pele-accent: var(--mauve);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--peach);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--mauve);
+    --pele-series-6: var(--teal);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+/* ---------- ALCF template palette (light only) -------------------------
+   Blue/navy brand on white; accents are the template's own rules. Keep
+   series distinguishable on the pale panel (#dcebff). */
+[data-webtui-theme='alcf'] .pele {
+    --pele-fg-on-light: #000000;
+    --pele-fg-on-dark: #ffffff;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--alcf-blue);
+    --pele-line: var(--alcf-grey-text);
+    --pele-accent: var(--alcf-blue);
+    --pele-critical: var(--alcf-red);
+    --pele-error: var(--alcf-red);
+    --pele-series-1: var(--alcf-blue);      /* #0061af */
+    --pele-series-2: var(--alcf-teal);      /* #107970 */
+    --pele-series-3: var(--alcf-coral);     /* #ec6358 */
+    --pele-series-4: var(--alcf-red);       /* #d03e53 */
+    --pele-series-5: var(--purple);         /* #4b47a0 */
+    --pele-series-6: var(--alcf-teal-bright);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--alcf-plum);
+}
+
+/* ---------- DOE / Genesis Mission (light only) ------------------------- */
+[data-webtui-theme='doe'] .pele {
+    --pele-fg-on-light: #000000;
+    --pele-fg-on-dark: #ffffff;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--doe-blue-text);
+    --pele-line: var(--doe-grey-text);
+    --pele-accent: var(--doe-blue-text);
+    --pele-critical: var(--red);
+    --pele-error: var(--red);
+    --pele-series-1: var(--doe-blue-text);  /* #0066cc */
+    --pele-series-2: var(--teal);
+    --pele-series-3: var(--orange);
+    --pele-series-4: var(--pink);
+    --pele-series-5: var(--purple);
+    --pele-series-6: var(--aqua);
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--red);
+}
+
+/* ---------- PyTorch conference template (light) ------------------------ */
+[data-webtui-theme='pytorch'] .pele {
+    --pele-fg-on-light: #111111;
+    --pele-fg-on-dark: #ffffff;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--pt-red);
+    --pele-line: var(--pt-mid-grey);
+    --pele-accent: var(--pt-red);           /* #ee3b24 */
+    --pele-critical: var(--pt-red);
+    --pele-error: var(--pt-red);
+    --pele-series-1: var(--pt-red);         /* #ee3b24 */
+    --pele-series-2: var(--pt-indigo);      /* #3532a8 */
+    --pele-series-3: var(--pt-magenta);     /* #cc2faa */
+    --pele-series-4: var(--pt-purple);      /* #8d2e9b */
+    --pele-series-5: var(--pt-red-dark);    /* #e12353 */
+    --pele-series-6: var(--pt-teal);        /* #0097a7 */
+    --pele-series-7: var(--yellow);
+    --pele-series-8: var(--pt-red-dark);
+}
+
+/* ---------- terminal.shop ----------------------------------------------
+   Sparse palette: only brand accents are defined, so derive everything else
+   from the brand colors and keep AA on black. */
+[data-webtui-theme='terminaldotshop'] .pele {
+    --pele-fg-on-light: #000000;
+    --pele-fg-on-dark: #ffffff;
+    --pele-surface: #000000;
+    --pele-surface-alt: var(--background2);
+    --pele-border: var(--border);
+    --pele-line: var(--body);
+    --pele-muted: var(--body);
+    --pele-accent: var(--brand);            /* #ff5c00 */
+    --pele-critical: var(--artisan);
+    --pele-error: var(--artisan);
+    --pele-series-1: var(--brand);          /* #ff5c00 */
+    --pele-series-2: var(--cron);           /* #00fdff */
+    --pele-series-3: var(--object-object);  /* #ffaf00 */
+    --pele-series-4: var(--404);            /* #d75f87 */
+    --pele-series-5: var(--segfault);       /* #00afaf */
+    --pele-series-6: var(--dark-mode);      /* #00875f */
+    --pele-series-7: #ffffff;
+    --pele-series-8: var(--artisan);
+}
+
+/* ---------- Everforest / Vitesse / Nord / Gruvbox (bundled packages) -----
+   No bespoke tokens beyond the generic semantic set these packages define;
+   mapping explicitly so these are intentional, not accidental fallbacks. */
+[data-webtui-theme|='everforest'] .pele {
+    /* Everforest defines only raw channel steps + accent palette; derive the
+       rest from the theme's own tokens so both hard and soft variants hold. */
+    --pele-fg-on-light: #1e2326;
+    --pele-fg-on-dark: #d3c6aa;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--aqua);
+    --pele-line: var(--foreground1);
+    --pele-accent: var(--aqua);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--orange);
+    --pele-series-4: var(--purple);
+    --pele-series-5: var(--aqua);
+    --pele-series-6: var(--yellow);
+    --pele-series-7: var(--red);
+    --pele-series-8: var(--fg);
+}
+
+[data-webtui-theme|='vitesse'] .pele {
+    --pele-fg-on-light: #393a34;
+    --pele-fg-on-dark: #dbd7ca;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--blue);
+    --pele-line: var(--foreground2);
+    --pele-accent: var(--blue);
+    --pele-series-1: var(--blue);
+    --pele-series-2: var(--green);
+    --pele-series-3: var(--orange);
+    --pele-series-4: var(--purple);
+    --pele-series-5: var(--aqua);
+    --pele-series-6: var(--yellow);
+    --pele-series-7: var(--red);
+    --pele-series-8: var(--gray);
+}
+
+[data-webtui-theme='nord'] .pele {
+    --pele-fg-on-light: #2e3440;
+    --pele-fg-on-dark: #eceff4;
+    --pele-surface: var(--nord0);
+    --pele-surface-alt: var(--nord1);
+    --pele-border: var(--nord9);
+    --pele-line: var(--nord3);
+    --pele-muted: var(--nord4);
+    --pele-accent: var(--nord8);
+    --pele-critical: var(--nord11);
+    --pele-error: var(--nord11);
+    --pele-series-1: var(--nord8);   /* frost nord8 */
+    --pele-series-2: var(--nord14);  /* aurora green */
+    --pele-series-3: var(--nord12);  /* aurora orange */
+    --pele-series-4: var(--nord15);  /* aurora purple */
+    --pele-series-5: var(--nord7);   /* frost nord7 */
+    --pele-series-6: var(--nord13);  /* aurora yellow */
+    --pele-series-7: var(--nord9);   /* frost nord9 */
+    --pele-series-8: var(--nord11);  /* aurora red */
+}
+
+[data-webtui-theme|='gruvbox'] .pele {
+    --pele-fg-on-light: #282828;
+    --pele-fg-on-dark: #fbf1c7;
+    --pele-surface: var(--background0);
+    --pele-surface-alt: var(--background1);
+    --pele-border: var(--gb-blue);
+    --pele-line: var(--background3);
+    --pele-accent: var(--gb-blue);
+    --pele-critical: var(--gb-red);
+    --pele-error: var(--gb-red);
+    --pele-series-1: var(--gb-blue);
+    --pele-series-2: var(--gb-green);
+    --pele-series-3: var(--gb-orange);
+    --pele-series-4: var(--gb-purple);
+    --pele-series-5: var(--gb-aqua);
+    --pele-series-6: var(--gb-yellow);
+    --pele-series-7: var(--gb-red);
+    --pele-series-8: var(--foreground2);
+}

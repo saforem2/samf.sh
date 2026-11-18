@@ -120,7 +120,7 @@ Rank 1/24
 
 ```mermaid
 %%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
-flowchart LR
+flowchart TB
     EZ{"<span style='font-weight:700'>ezpz launch</span>"}
     EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
     EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
@@ -371,33 +371,20 @@ Comparison slide. State diagrams compress the loop naturally; labels get long if
 
 ## Compare: outcome cards
 
-<div class="retry-outcomes">
-  <div class="retry-trigger">
-    <span class="retry-kicker">Trigger</span>
-    <strong>No output for 30 minutes</strong>
-    <span>Watchdog terminates the launcher and reads the exit status it was given — which can be “successful” even though the trainer died.</span>
-  </div>
-  <ol class="retry-cards">
-    <li class="retry-done">
-      <span class="retry-label">Clean exit</span>
-      <strong>Done</strong>
-      <span>Exit status came from the trainer. Nothing to retry.</span>
-    </li>
-    <li class="retry-swap">
-      <span class="retry-label">Bad host</span>
-      <strong>Swap spare</strong>
-      <span>Drain the host, swap in a spare, <code>ezpz launch --auto-retry</code> resumes from the last checkpoint.</span>
-    </li>
-    <li class="retry-stop">
-      <span class="retry-label">Cannot retry</span>
-      <strong>Stop</strong>
-      <span>No spare, or retry budget spent. Surface it loudly; do not silently succeed.</span>
-    </li>
-  </ol>
-</div>
+> [!WARNING] No output for 30 minutes
+> The watchdog terminates the launcher and reads the exit status it was handed — which can be “successful” even though the trainer died.
+
+> [!SUCCESS] Done
+> Clean exit — the status came from the trainer. Nothing to retry.
+
+> [!NOTE] Bad host → swap spare
+> Drain the host, swap in a spare, and `ezpz launch --auto-retry` resumes from the last checkpoint.
+
+> [!ERROR] Stop
+> No spare, or the retry budget is spent. Surface it loudly; do not silently succeed.
 
 <SpeakerNotes>
-Comparison slide. This is the version that fits the deck's card-based visual language and is the easiest to read from the back row. The tradeoff is it drops the temporal/sequence aspect.
+Comparison slide. Uses the site's built-in callout components, not a one-off card layout. Reads well as a risk ladder: warning, success, retry, stop.
 </SpeakerNotes>
 
 </Slide>
@@ -551,7 +538,7 @@ flowchart TB
         font-variant-ligatures: none;
         font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
     }
-    .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.5rem; align-items: center; }
+    .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr); gap: 1.5rem; align-items: center; }
     .sc-launch-grid > div { min-width: 0; }
     .sc-launch-figure { min-width: 0; margin: 0; }
     .sc-launch-figure figcaption { text-align: left; }
@@ -669,7 +656,6 @@ flowchart TB
         padding: 1.15rem 1.45rem 1.25rem;
         border: 1px solid rgb(255 255 255 / 0.2);
         border-left: 4px solid var(--sc-cyan);
-        border-radius: 0.35rem;
         background: rgb(15 18 24 / 0.76);
         box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 0.35);
         color: #f5f7fa;
@@ -916,7 +902,6 @@ flowchart TB
         padding: 0.72rem 0.8rem;
         border: 1px solid var(--sc-rule);
         border-left-width: 4px;
-        border-radius: 0.25rem;
         counter-increment: failure;
     }
 
@@ -1265,7 +1250,6 @@ flowchart TB
         border: 1.5px solid var(--scope-color, var(--foreground2));
         color: var(--scope-color, var(--foreground0));
         background: color-mix(in srgb, var(--scope-color, transparent) 4%, transparent);
-        border-radius: 0.35rem;
         padding: 0.55rem 0.65rem 0.65rem;
         min-width: 0;
     }
@@ -1301,69 +1285,6 @@ flowchart TB
     }
     .scope-detail strong { color: var(--scope-color); }
     .scope-card.scope-process .scope-detail { margin-left: 0; }
-    .retry-outcomes {
-        display: flex;
-        flex-direction: column;
-        gap: 1.1rem;
-        margin-top: 0.5rem;
-        flex: 1;
-        justify-content: center;
-    }
-    .retry-trigger {
-        padding: 0.9rem 1.1rem;
-        border: 1px solid var(--sc-rule);
-        border-left: 4px solid var(--sc-orange);
-        border-radius: 0.3rem;
-        background: color-mix(in srgb, var(--sc-orange) 6%, transparent);
-        display: grid;
-        gap: 0.2rem;
-    }
-    .retry-kicker {
-        font-size: 0.62em;
-        font-weight: 800;
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-        color: var(--sc-orange);
-    }
-    .retry-trigger strong { font-size: clamp(1.3rem, 2.4vw, 2rem); }
-    .retry-trigger span:last-child { color: var(--foreground1); font-size: 0.78em; }
-    .retry-cards {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 0.8rem;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-    .retry-cards li {
-        display: grid;
-        align-content: start;
-        gap: 0.35rem;
-        padding: 0.9rem 1rem;
-        border: 1px solid var(--sc-rule);
-        border-left: 4px solid currentColor;
-        border-radius: 0.3rem;
-        color: var(--foreground0);
-    }
-    .retry-cards strong { font-size: clamp(1.4rem, 2.6vw, 2.2rem); line-height: 1; }
-    .retry-cards li > span:last-child { color: var(--foreground1); font-size: 0.72em; line-height: 1.3; }
-    .retry-label {
-        font-size: 0.62em;
-        font-weight: 800;
-        letter-spacing: 0.09em;
-        text-transform: uppercase;
-    }
-    .retry-done { color: var(--sc-green); }
-    .retry-swap { color: var(--sc-cyan); }
-    .retry-stop { color: var(--sc-pink); }
-    .retry-done .retry-label,
-    .retry-swap .retry-label,
-    .retry-stop .retry-label { color: inherit; }
-    .retry-cards code { font-size: 0.85em; }
-    @media (max-width: 700px) {
-        .retry-cards { grid-template-columns: 1fr; }
-    }
-
     .sc-lead, .sc-detail {
         color: var(--foreground0);
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);

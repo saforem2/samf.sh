@@ -30,7 +30,7 @@
 
 html[data-webtui-theme='pytorch'] {
     --pt-red: oklch(from #ee3b24 l c h);
-    /* Framework logo accent; separate from the conference template red. */
+    /* Framework logo accent; kept for components that pre-date pele.css. */
     --pt-diagram-accent: #ee4c2c;
     --pt-red-dark: oklch(from #e12353 l c h);
     --pt-purple: oklch(from #8d2e9b l c h);

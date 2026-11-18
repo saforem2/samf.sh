@@ -33,6 +33,11 @@
 @import '@/styles/material.css';
 @import '@/styles/lastfm.css';
 @import '@webtui/plugin-nf';
+@import '@webtui/theme-everforest';
+@import '@webtui/theme-vitesse';
+@import '@webtui/theme-nord';
+@import '@webtui/theme-gruvbox';
+@import './themes/terminaldotshop.css';
 @import '@/styles/themes/custom.css';
 @import '@webtui/theme-catppuccin';
 @import '@webtui/theme-custom';
@@ -40,6 +45,7 @@
 @import '@/styles/themes/doe.css';
 @import '@/styles/themes/alcf.css';
 @import '@/styles/themes/pytorch.css';
+@import '@/styles/pele.css';
 
 .flex-container.icon-flex a {
     text-decoration: none;
