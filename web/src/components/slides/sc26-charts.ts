@@ -104,7 +104,7 @@ function mount(
           ? optimizerHistories.map((run, i) =>
                 dataset(
                     ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                    [colors[2], colors[0], colors[3], colors[1]][i],
+                    [colors[2], colors[0], colors[4], colors[1]][i],
                     optGrad ? run.grad : run.loss,
                     1,
                     0,
