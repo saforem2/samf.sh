@@ -94,13 +94,15 @@ function mount(
     // Reference width 620px ~ the full slide figure column; clamped so the
     // text never collapses on narrow layouts or balloons on 4K.
     const frameWidth = () => frame.clientWidth || frame.parentElement?.clientWidth || 620
-    // Compact panels sit in a two-up grid (~half the width), so scale off a
-    // narrower reference.
-    const referenceWidth = compact ? 300 : 640
-    const minSize = compact ? 15 : 18
+    // Anchor on the measured desktop panel width (~558px for the two-up
+    // backup grid, wider for full-width figures) and never shrink below the
+    // previous fixed size. Compact panels get a slightly smaller ceiling.
+    const referenceWidth = compact ? 280 : 560
+    const minSize = compact ? 22 : 24
     const maxSize = compact ? 34 : 40
+    const baseTarget = compact ? 22 : 30
     const fontSizeFor = (w: number) =>
-        Math.round(Math.max(minSize, Math.min(maxSize, (w / referenceWidth) * (compact ? 20 : 24))))
+        Math.round(Math.max(minSize, Math.min(maxSize, (w / referenceWidth) * baseTarget)))
     const baseSize = fontSizeFor(frameWidth())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }

@@ -186,17 +186,14 @@
     }
     /* Heads are only slightly bigger than body — keeps proportions
        balanced and avoids "billboard title, mouse-print body" effect.
-       Colors: slide headings inherit the body foreground instead of the
-       blue/orange/green heading palette; color carries no meaning here
-       and the tinted blue reads faint at projection distance. */
-    h1,
-    h2,
-    h3 {
-        --h1: var(--foreground0);
-        --h2: var(--foreground0);
-        --h3: var(--foreground0);
-        color: var(--foreground0);
-    }
+       Colors: remap the heading vars to the body foreground instead of the
+       blue/orange/green palette — the tint carries no meaning here and the
+       blue reads faint at projection distance. (The variable is global, but
+       `[is-~='slide']` only matches the deck, so the site-wide h2 is
+       untouched.) */
+    --h1: var(--foreground0);
+    --h2: var(--foreground0);
+    --h3: var(--foreground0);
     h1 {
         font-size: 1.4em;
     }
