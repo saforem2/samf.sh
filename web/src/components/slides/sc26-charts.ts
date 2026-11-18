@@ -89,7 +89,9 @@ function mount(
     const colors = paletteVars.map((name, i) =>
         readVar(name, paletteFallback[i]),
     )
-    const font = { family, size: compact ? 20 : 23, weight: 400 as const }
+    const baseSize = compact ? 26 : 30
+    const font = { family, size: baseSize, weight: 400 as const }
+    const axisTitleFont = { family, size: baseSize, weight: 700 as const }
     const datasets = mds
         ? mdsStages.map((rows, i) =>
               dataset(
@@ -102,13 +104,27 @@ function mount(
           )
         : optimizer
           ? optimizerHistories.map((run, i) =>
-                dataset(
-                    ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                    [colors[2], colors[0], colors[4], colors[1]][i],
-                    optGrad ? run.grad : run.loss,
-                    1,
-                    0,
-                ),
+                // Gradient norms are sampled at ~11M-token bins, so a line
+                // interpolates between points that were never measured; plot
+                // points only. The loss curves stay lines (dense + smooth).
+                optGrad
+                    ? {
+                          ...dataset(
+                              ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
+                              [colors[2], colors[0], colors[4], colors[1]][i],
+                              run.grad,
+                              1,
+                              3,
+                          ),
+                          showLine: false,
+                      }
+                    : dataset(
+                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
+                          [colors[2], colors[0], colors[4], colors[1]][i],
+                          run.loss,
+                          1,
+                          0,
+                      ),
             )
           : isLoss
             ? Object.values(loss)
@@ -206,9 +222,10 @@ function mount(
         },
     }
     const axis = {
-        ticks: { color, font, maxTicksLimit: compact ? 4 : 6 },
+        ticks: { color, font, maxTicksLimit: compact ? 4 : 6, padding: 8 },
         grid: { color: grid },
     }
+    const axisTitle = { display: !compact, color, font: axisTitleFont, padding: { top: 8, bottom: 4 } }
     frame.hidden = false
     const chart = new Chart(canvas, {
         type: 'line',
@@ -243,10 +260,8 @@ function mount(
                     min: 0,
                     max: zoom ? 0.6 : optimizer ? 1.5 : undefined,
                     title: {
-                        display: !compact,
+                        ...axisTitle,
                         text: 'Tokens consumed (trillions)',
-                        color,
-                        font,
                     },
                 },
                 y: {
@@ -255,14 +270,12 @@ function mount(
                     max: isLoss ? 4.5 : undefined,
                     type: optimizer || mds ? 'logarithmic' : 'linear',
                     title: {
-                        display: !compact,
+                        ...axisTitle,
                         text: optGrad
                             ? 'Gradient norm'
                             : isLoss || mds || optLoss
                               ? 'Training loss'
                               : 'HellaSwag accuracy',
-                        color,
-                        font,
                     },
                 },
             },
@@ -292,7 +305,7 @@ function mount(
 async function initialize() {
     await Promise.all(
         [400, 700].map((weight) =>
-            document.fonts.load(weight + ' 23px "' + family + '"'),
+            document.fonts.load(weight + ' 30px "' + family + '"'),
         ),
     )
     for (const root of document.querySelectorAll<HTMLElement>(
