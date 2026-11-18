@@ -167,11 +167,13 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
         <p>at comparable compute</p>
         <small>20B training is ongoing</small>
     </div>
-    <img
-        class="eval-plot theme-plot"
-        src="/talks/2026/10/30/figures/eval-inflight.svg"
-        alt="AuroraGPT production evaluation scores for the 2B and 20B runs over tokens"
-    />
+    <figure class="eval-focus">
+        <svg class="theme-plot" viewBox="0 38 289 190" role="img" aria-label="HellaSwag accuracy versus tokens consumed. The in-flight 20B curve reaches the 2B reference peak much earlier.">
+            <defs><clipPath id="hellaswag-crop"><rect x="0" y="38" width="289" height="190" /></clipPath></defs>
+            <image href="/talks/2026/10/30/figures/eval-inflight.svg" width="579.089063" height="484.236" clipPath="url(#hellaswag-crop)" />
+        </svg>
+        <figcaption>Tokens consumed (trillions)<br />Triangles: 20B · Open circles: 2B reference</figcaption>
+    </figure>
 </div>
 
 <SpeakerNotes>
@@ -257,7 +259,7 @@ At the same 80B, GBS 6144, data-parallel 186 corner, mano reached NaN at gradien
 
 <Slide id="auto-retry">
 
-## Launcher retry stopped silent job loss
+## Launcher retry recovered 3 of 4 failures
 
 <div class="retry-layout">
     <img
@@ -333,6 +335,18 @@ Stop here. Leave the links on screen for questions.
 
 20 seconds. Prepared total: about 11 minutes. The remaining margin covers transitions and one interruption.
 </SpeakerNotes>
+
+</Slide>
+
+<Slide id="eval-backup">
+
+## Backup: held-out evaluation results
+
+<img
+    class="eval-backup-plot theme-plot"
+    src="/talks/2026/10/30/figures/eval-inflight.svg"
+    alt="Accuracy versus tokens consumed for HellaSwag, ARC-Easy, ARC-Challenge, and Winogrande"
+/>
 
 </Slide>
 
@@ -638,6 +652,10 @@ Stop here. Leave the links on screen for questions.
     }
 
     .eval-plot { max-height: 61vh; }
+    .eval-focus { min-width: 0; margin: 0; }
+    .eval-focus svg { display: block; width: min(100%, 80vh); height: auto; aspect-ratio: 289 / 190; overflow: hidden; }
+    .eval-focus figcaption { color: var(--foreground0); font-size: clamp(1rem, 2.15vw, 1.8rem); line-height: 1.18; text-align: left; }
+    #eval-backup img.eval-backup-plot { width: min(100%, 76vh); height: auto; margin: 0; }
 
     .failure-list {
         display: grid;
