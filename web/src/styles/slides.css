@@ -1697,11 +1697,14 @@ body.slides-print-mode .slide-web-link {
         display: block !important;
     }
 }
-/* Hide the persistent logo on mobile — at narrow widths it overlaps
-   content rather than tucking into a corner (less horizontal slack
-   for content to flow around it). The title slide still shows its
-   own bigger logo via the title-specific block below. */
-@media (max-width: 768px) {
+/* Hide the persistent logo on small screens — at narrow widths (notably
+   phone landscape, ~874px wide with a 402px height) it overlaps the content
+   rather than tucking into a corner, and the gutter reservation it forces
+   on the slide's last flow child costs more horizontal room than the mark
+   is worth there. The title slide still shows its own bigger logo. The
+   breakpoint keys off height as well as width: landscape phones run out of
+   height before they run out of width. */
+@media (max-width: 1024px), (max-height: 540px) {
     .deck-corner-logo {
         display: none !important;
     }
@@ -1726,8 +1729,8 @@ body.slides-print-mode .slide-web-link {
        scrollbar. Cap the width so the pair always fits the content box. */
     max-width: calc(100% - var(--deck-logo-gutter, 0px));
 }
-/* Logo is hidden at <=768px, so the gutter only applies above that. */
-@media (min-width: 769px) {
+/* Gutter applies only where the logo is actually visible. */
+@media (min-width: 1025px) and (min-height: 541px) {
     [is-~='presentation']:not(:has(#title-slide[data-current]))
         [is-~='slide'][data-current]
         .slide-inner {
