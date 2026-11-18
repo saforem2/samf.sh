@@ -8,6 +8,7 @@ location: 'SC26 · 4th Annual Trillion Parameter Workshop · W181abc'
 locationUrl: 'https://sc26.conference-program.com/presentation/?id=ws_tpw126&sess=sess149'
 ---
 
+import SC26Chart from '@/components/slides/SC26Chart.astro'
 import Slide from '@/components/slides/Slide.astro'
 import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
@@ -67,9 +68,14 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 ```mermaid
 %%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
 flowchart LR
-    A["Train on Aurora"] --> B["Save training state"]
-    B --> C["Next PBS allocation"]
-    C --> D["Resume at the saved step"]
+    subgraph A["PBS allocation 1"]
+        T["Train on Aurora"]
+    end
+    T --> S["Checkpoint on shared storage"]
+    S --> R
+    subgraph B["PBS allocation 2"]
+        R["Resume at the saved step"]
+    end
 ```
 
 <p class="sc-detail">A restart restores the model, optimizer, data position, and random state.</p>
@@ -88,11 +94,11 @@ Set the machine and software context once. Aurora is one of the largest non-NVID
 
 ```mermaid
 %%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
-flowchart TB
-    A["TorchTitan training recipe"] --> B["ezpz launch and distributed setup"]
-    B --> C["Aurora<br/>Intel XPU"]
-    B --> D["Polaris<br/>NVIDIA CUDA"]
-    B --> E["Frontier<br/>AMD ROCm"]
+flowchart LR
+    A["TorchTitan recipe"] --> B["ezpz launch"]
+    B --> C["Aurora · Intel XPU"]
+    B --> D["Polaris · NVIDIA CUDA"]
+    B --> E["Frontier · AMD ROCm"]
 ```
 
 <p class="sc-detail">The launcher sets up ranks and devices. The recipe defines the training step.</p>
@@ -109,11 +115,7 @@ The interface is the point. The training program does not branch on the vendor. 
 
 ## AuroraGPT production loss
 
-<img
-    class="production-loss theme-plot"
-    src="/talks/2026-08-03/figures/all-production-loss.svg"
-    alt="Training loss versus cumulative tokens for AuroraGPT production runs, including the 20B runs and the 2B reference"
-/>
+<SC26Chart kind="loss" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="Five AuroraGPT training-loss trajectories versus tokens consumed" />
 
 <p class="sc-detail"><strong>20B:</strong> 256 and 512 nodes. <strong>2B reference:</strong> 7.77T tokens.</p>
 
@@ -125,28 +127,39 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 </Slide>
 
-<Slide id="sample-efficiency">
+<Slide id="loss-zoom">
 
-## The 20B run matched the 2B peak
+## The first 600B tokens of 20B training
 
-<div class="eval-layout">
-    <div class="eval-number">
-        <strong>17×</strong>
-        <span>fewer tokens</span>
-        <p>at comparable compute</p>
-        <small>20B training is ongoing</small>
-    </div>
-    <figure class="eval-focus">
-        <svg class="theme-plot" viewBox="0 38 289 190" role="img" aria-label="HellaSwag accuracy versus tokens consumed. The in-flight 20B curve reaches the 2B reference peak much earlier.">
-            <defs><clipPath id="hellaswag-crop"><rect x="0" y="38" width="289" height="190" /></clipPath></defs>
-            <image href="/talks/2026/10/30/figures/eval-inflight.svg" width="579.089063" height="484.236" clipPath="url(#hellaswag-crop)" />
-        </svg>
-        <figcaption>Tokens consumed (trillions)<br />Triangles: 20B · Open circles: 2B reference</figcaption>
-    </figure>
-</div>
+<SC26Chart kind="loss-zoom" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="Early training loss for the 256-node and 512-node AuroraGPT 20B runs" />
 
 <SpeakerNotes>
-This is the science result. At comparable compute, the in-flight 20B run reaches the fully trained 2B model's peak evaluation scores while consuming about 17 times fewer tokens. Say "in flight" and "matches peak scores" precisely. Do not describe this as a finished 20B run or a universal scaling result.
+This is the same production snapshot on a narrower token axis. The two 20B trajectories ran with different batch sizes.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="sample-efficiency">
+
+## Both checkpoints scored about 56% on HellaSwag
+
+<div class="checkpoint-comparison" role="img" aria-label="20B scored 56.2 percent at 302 billion tokens. The 2B reference scored 55.6 percent at 3.52 trillion tokens.">
+    <div class="checkpoint-row checkpoint-20b">
+        <span>20B · 56.2%</span>
+        <div class="checkpoint-bar"><div style="width: 8.58%"></div></div>
+        <strong>302B tokens</strong>
+    </div>
+    <div class="checkpoint-row checkpoint-2b">
+        <span>2B reference · 55.6%</span>
+        <div class="checkpoint-bar"><div></div></div>
+        <strong>3.52T tokens</strong>
+    </div>
+</div>
+
+<p class="checkpoint-verdict"><strong>11.7×</strong> fewer training tokens for the 20B checkpoint</p>
+
+<SpeakerNotes>
+The plotted comparison uses the October data snapshot. The 2B MDS checkpoint scored 0.5555 at 3.520T tokens and the first sampled 20B checkpoint at or above that score was 0.5624 at 0.302T tokens. The ratio is 11.7 across these sampled checkpoints. This is a token comparison against one reference checkpoint.
 
 70 seconds. Cumulative: 4:50.
 </SpeakerNotes>
@@ -159,7 +172,7 @@ This is the science result. At comparable compute, the in-flight 20B run reaches
 
 <ol class="failure-list">
     <li class="failure-cyan"><strong>Silent loss reporting</strong><span>the curve looked healthy</span><em>bit-exact regression exposed it</em></li>
-    <li class="failure-pink"><strong>80B instability</strong><span>the process stayed alive</span><em>three optimizers reached `NaN`</em></li>
+    <li class="failure-pink"><strong>80B instability</strong><span>loss still looked finite</span><em>gradient norm went nonfinite one step earlier</em></li>
     <li class="failure-orange"><strong>Silent job death</strong><span>the allocation stayed active</span><em>nine runs lost in two weeks</em></li>
 </ol>
 
@@ -167,7 +180,9 @@ This is the science result. At comparable compute, the in-flight 20B run reaches
 <SpeakerNotes>
 These are the three concrete failures behind the rest of the talk. They sit at different layers: reporting correctness, training stability, and operations. In every case, the first symptom was misleading. The narrow fix came from strengthening the check at the layer where the failure could hide.
 
-35 seconds. Cumulative: 5:25.
+On Sunspot at 6,144 sequences per batch, the gradient norm went nonfinite one step before loss for mano, AdamW, and SophiaG. The cause remains unresolved.
+
+45 seconds.
 </SpeakerNotes>
 
 </Slide>
@@ -195,75 +210,21 @@ The dangerous migration failure was not a crash. The reported loss looked plausi
 
 </Slide>
 
-<Slide id="stability">
-
-## Gradient norm failed one step before loss
-
-<p>80B training on Sunspot · 6,144 sequences per batch</p>
-
-<dl class="optimizer-results">
-    <dt><code>mano</code></dt><dd>Step 5</dd>
-    <dt><code>AdamW</code></dt><dd>Step 9</dd>
-    <dt><code>SophiaG</code></dt><dd>Step 12</dd>
-</dl>
-
-<SpeakerNotes>
-At the same 80B, GBS 6144, data-parallel 186 corner, mano reached NaN at gradient step 5, AdamW at step 9, and SophiaG at step 12. Each used its finder-recommended constant learning rate. The shared signature rules out one optimizer implementation as the explanation. In every case, grad norm failed one step before loss, so process health and a plausible loss value were both inadequate monitors. The mechanism remains unresolved. A separate fp32 activation run stayed finite for 120 steps at about one-third the throughput, with a different warmup.
-
-75 seconds. Cumulative: 8:05.
-</SpeakerNotes>
-
-</Slide>
-
 <Slide id="auto-retry">
 
 ## Launcher retry recovered 3 of 4 failures
 
-<p class="sc-lead"><strong>Before:</strong> 9 runs lost in two weeks. <strong>After:</strong> 3 recovered, 1 lost.</p>
-
-```mermaid
-%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
-flowchart LR
-    A["Detect stalled<br/>output"] --> B["Classify<br/>launcher exit"]
-    B --> C["Swap bad host<br/>if spare exists"]
-    C --> D["Resume from<br/>checkpoint"]
-```
-
-<p class="sc-detail"><code>ezpz launch --auto-retry</code></p>
-
-<SpeakerNotes>
-The scheduler knew that the allocation existed. It did not know that useful training had stopped. The launcher now watches application progress, terminates a wedged launch, classifies the exit, excludes a bad host when a spare exists, and resumes from the latest checkpoint. The important design choice is that recovery lives with the launcher, where scheduler state and application state meet.
-
-90 seconds. Cumulative: 9:35.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="lessons">
-
-## Portable pre-training needs three contracts
-
-<table class="contracts">
-    <thead>
-        <tr><th>Contract</th><th>Question</th><th>Proof</th></tr>
-    </thead>
-    <tbody>
-        <tr><td><strong>Numerical</strong></td><td>Did the implementation preserve the step?</td><td>Bit-exact regression</td></tr>
-        <tr><td><strong>Scientific</strong></td><td>Is the trajectory still healthy?</td><td>Online norms + evaluation</td></tr>
-        <tr><td><strong>Operational</strong></td><td>Can the run survive the machine?</td><td>Watchdog + retry + checkpoint</td></tr>
-    </tbody>
-</table>
-
-<div class="links-line">
-    [`ezpz`](https://github.com/saforem2/ezpz) ·
-    [`TorchTitan`](https://github.com/pytorch/torchtitan) ·
-    [`Aurora`](https://www.alcf.anl.gov/aurora)
+<div class="recovery-comparison">
+    <div><span>Two weeks before retry</span><strong>9 lost</strong></div>
+    <div><span>Two weeks with retry</span><strong>3 recovered</strong><span>1 lost</span></div>
 </div>
 
-<SpeakerNotes>
-The stack has three contracts. Numerical correctness is local and exact. Scientific validity is a trajectory, not a process exit code. Operational recovery spans the launcher, scheduler, hosts, and checkpoints. Portability requires all three. A backend abstraction alone is not enough.
+<p class="sc-detail">When training stalls, <code>ezpz launch --auto-retry</code> can restart it from the last checkpoint.</p>
 
-65 seconds. Cumulative: 10:40.
+<SpeakerNotes>
+These are observed bad-node failure events in two consecutive two-week windows. The counts differ between windows, so report the outcomes directly. When output stalls, the launcher terminates the wedged launch, classifies the exit, swaps a bad host if a spare is available, and resumes from a checkpoint.
+
+60 seconds.
 </SpeakerNotes>
 
 </Slide>
@@ -293,15 +254,58 @@ Stop here. Leave the links on screen for questions.
 
 ## Backup: held-out evaluation results
 
-<img
-    class="eval-backup-plot theme-plot"
-    src="/talks/2026/10/30/figures/eval-inflight.svg"
-    alt="Accuracy versus tokens consumed for HellaSwag, ARC-Easy, ARC-Challenge, and Winogrande"
-/>
+<div class="sc-eval-grid">
+    <SC26Chart compact kind="hellaswag" fallback="/talks/2026/10/30/figures/eval-panel-hellaswag.svg" label="HellaSwag accuracy versus trillion tokens" />
+    <SC26Chart compact kind="arc_easy" fallback="/talks/2026/10/30/figures/eval-panel-arc_easy.svg" label="ARC-Easy accuracy versus trillion tokens" />
+    <SC26Chart compact kind="arc_challenge" fallback="/talks/2026/10/30/figures/eval-panel-arc_challenge.svg" label="ARC-Challenge accuracy versus trillion tokens" />
+    <SC26Chart compact kind="winogrande" fallback="/talks/2026/10/30/figures/eval-panel-winogrande.svg" label="Winogrande accuracy versus trillion tokens" />
+</div>
+
+<p class="sc-backup-legend">Accuracy vs. trillion tokens. Cross = 2B MDS, circle = 2B 256N, square = 2B 512N, triangle = 20B 512N.</p>
+
+</Slide>
+
+<Slide id="hellaswag-backup">
+
+## Backup: HellaSwag accuracy by checkpoint
+
+<SC26Chart kind="hellaswag" fallback="/talks/2026/10/30/figures/eval-panel-hellaswag.svg" label="HellaSwag accuracy across the 20B checkpoints and the 2B reference" />
 
 </Slide>
 
 <style is:global>{`
+    .checkpoint-comparison { display: grid; gap: clamp(1rem, 3.4vh, 2rem); margin-block: clamp(1.5rem, 6vh, 4rem); color: var(--foreground0); }
+    .checkpoint-row { display: grid; grid-template-columns: minmax(10ch, 12ch) minmax(0, 1fr) max-content; gap: 0.6em; align-items: center; font-size: clamp(1rem, 2.6vw, 2.2rem); line-height: 1.15; }
+    .checkpoint-bar { height: 0.8em; border-inline-start: 2px solid var(--foreground2); }
+    .checkpoint-bar > div { height: 100%; background: var(--sc-cyan); }
+    .checkpoint-20b .checkpoint-bar > div { background: var(--sc-green); }
+    .checkpoint-verdict { color: var(--foreground0); font-size: clamp(1rem, 2.65vw, 2.25rem); }
+    .checkpoint-verdict strong { color: var(--sc-green); font-size: 1.6em; }
+
+    @layer components {
+        body {
+            --font-family-monospace: var(--code-font-family, var(--font-family));
+            --font-family-mono: var(--code-font-family, var(--font-family));
+        }
+    }
+    .recovery-comparison {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        margin-block: 1.2rem;
+    }
+    .recovery-comparison > div {
+        border-inline-start: 4px solid var(--sc-rule);
+        padding-inline-start: clamp(0.65rem, 2vw, 1.4rem);
+        display: grid;
+        align-content: start;
+        gap: 0.4rem;
+        font-size: clamp(1rem, 2.6vw, 2.3rem);
+    }
+    .recovery-comparison strong { font-size: clamp(1.4rem, 5.5vw, 5rem); line-height: 1.1; }
+    .recovery-comparison > div:first-child strong { color: var(--sc-pink); }
+    .recovery-comparison > div:last-child strong { color: var(--sc-green); }
+
     /* Lattice23-derived visual language, expressed through the site's live
        light/dark tokens. Layout stays left-aligned in both themes. */
     #title-slide,
@@ -972,4 +976,6 @@ Stop here. Leave the links on screen for questions.
         object-fit: contain;
         margin: 0;
     }
+    .sc-eval-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.1rem; }
+    .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
 `}</style>

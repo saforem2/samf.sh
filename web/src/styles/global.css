@@ -343,6 +343,9 @@
     :root[data-mono-font='miosevka-qp'] {
         --font-stack: var(--font-stack-miosevka-qp);
     }
+    :root[data-mono-font='ibm-plex-sans'] {
+        --font-stack: 'IBM Plex Sans', system-ui, sans-serif;
+    }
     :root[data-mono-font='system'] {
         --font-stack: var(--font-stack-system);
     }
@@ -367,6 +370,9 @@
     }
     :root[data-code-font='victor-mono'] {
         --code-font-family: var(--font-stack-victor-mono), 'Symbols Nerd Font';
+    }
+    :root[data-code-font='ibm-plex-mono'] {
+        --code-font-family: 'IBM Plex Mono', 'Symbols Nerd Font', monospace;
     }
     :root[data-code-font='miosevka-term'] {
         --code-font-family:
