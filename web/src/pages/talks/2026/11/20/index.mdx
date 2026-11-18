@@ -270,6 +270,138 @@ Job 8481645 showed that the outer wrapper could mask a failed training exit. The
 
 </Slide>
 
+<Slide id="auto-retry-eventmodeling" data-draft="compare">
+
+## Compare: eventmodeling sequence
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '20px'}}}%%
+eventmodeling
+
+tf 01 cmd LaunchTraining
+tf 02 evt TrainingLaunched
+tf 03 pcr IdleWatchdog
+tf 04 evt TrainingStalled
+tf 05 cmd SwapSpareHost
+tf 06 evt HostSwapped
+tf 07 cmd ResumeTraining
+tf 08 evt TrainingResumed
+
+gwt 05
+  given evt TrainingStalled
+  when cmd SwapSpareHost
+  then evt HostSwapped
+gwt 07
+  given evt HostSwapped
+  when cmd ResumeTraining
+  then evt TrainingResumed
+
+note 04 {
+  Idle for 30m
+}
+note 05 {
+  Bad host: drain + swap
+}
+```
+
+<p class="sc-detail">The same story as event-sourcing: launch → stall → swap → resume. It shows ordering, but not the three-way decision.</p>
+
+<SpeakerNotes>
+Note: pele parses this as eventmodeling. The branch is not a first-class concept; it's implicit in the frame sequence.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="auto-retry-sequence" data-draft="compare">
+
+## Compare: sequence with retry path
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant L as Launcher
+    participant T as Trainer
+    participant S as Spare host
+    L->>T: ezpz launch
+    Note over T: no stdout/stderr for 30 min
+    L->>T: send SIGTERM
+    alt clean exit
+        L-->>L: mark run complete
+    else bad host, spare available
+        L->>S: drain current host, schedule spare
+        S->>T: resume from last checkpoint
+    else no retry possible
+        L-->>L: stop, report failure
+    end
+```
+
+<p class="sc-detail">Best fit if the audience should see <em>who</em> does <em>what</em>: launcher, trainer, watchdog, spare host.</p>
+
+<SpeakerNotes>
+Comparison slide. Shows actor boundaries and the branch. Linear flow is readable; parallel reset is implicit.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="auto-retry-state" data-draft="compare">
+
+## Compare: state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Running: ezpz launch
+    Running --> Stalled: 30 min without output
+    Stalled --> CheckExit: watchdog terminates
+    CheckExit --> Done: clean exit
+    CheckExit --> Running: bad host → spare, resume checkpoint
+    CheckExit --> Stopped: cannot retry
+    Done --> [*]
+    Stopped --> [*]
+```
+
+<p class="sc-detail">The most precise model of the behavior, but the visual weight goes to graph topology rather than the operational consequence.</p>
+
+<SpeakerNotes>
+Comparison slide. State diagrams compress the loop naturally; labels get long if you try to keep the operational detail.
+</SpeakerNotes>
+
+</Slide>
+
+<Slide id="auto-retry-cards" data-draft="compare">
+
+## Compare: outcome cards
+
+<div class="retry-outcomes">
+  <div class="retry-trigger">
+    <span class="retry-kicker">Trigger</span>
+    <strong>No output for 30 minutes</strong>
+    <span>Watchdog terminates the launcher and reads the exit status it was given — which can be “successful” even though the trainer died.</span>
+  </div>
+  <ol class="retry-cards">
+    <li class="retry-done">
+      <span class="retry-label">Clean exit</span>
+      <strong>Done</strong>
+      <span>Exit status came from the trainer. Nothing to retry.</span>
+    </li>
+    <li class="retry-swap">
+      <span class="retry-label">Bad host</span>
+      <strong>Swap spare</strong>
+      <span>Drain the host, swap in a spare, <code>ezpz launch --auto-retry</code> resumes from the last checkpoint.</span>
+    </li>
+    <li class="retry-stop">
+      <span class="retry-label">Cannot retry</span>
+      <strong>Stop</strong>
+      <span>No spare, or retry budget spent. Surface it loudly; do not silently succeed.</span>
+    </li>
+  </ol>
+</div>
+
+<SpeakerNotes>
+Comparison slide. This is the version that fits the deck's card-based visual language and is the easiest to read from the back row. The tradeoff is it drops the temporal/sequence aspect.
+</SpeakerNotes>
+
+</Slide>
+
 <Slide id="thanks">
 
 ## Thank you
@@ -1169,6 +1301,69 @@ flowchart TB
     }
     .scope-detail strong { color: var(--scope-color); }
     .scope-card.scope-process .scope-detail { margin-left: 0; }
+    .retry-outcomes {
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+        margin-top: 0.5rem;
+        flex: 1;
+        justify-content: center;
+    }
+    .retry-trigger {
+        padding: 0.9rem 1.1rem;
+        border: 1px solid var(--sc-rule);
+        border-left: 4px solid var(--sc-orange);
+        border-radius: 0.3rem;
+        background: color-mix(in srgb, var(--sc-orange) 6%, transparent);
+        display: grid;
+        gap: 0.2rem;
+    }
+    .retry-kicker {
+        font-size: 0.62em;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--sc-orange);
+    }
+    .retry-trigger strong { font-size: clamp(1.3rem, 2.4vw, 2rem); }
+    .retry-trigger span:last-child { color: var(--foreground1); font-size: 0.78em; }
+    .retry-cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .retry-cards li {
+        display: grid;
+        align-content: start;
+        gap: 0.35rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid var(--sc-rule);
+        border-left: 4px solid currentColor;
+        border-radius: 0.3rem;
+        color: var(--foreground0);
+    }
+    .retry-cards strong { font-size: clamp(1.4rem, 2.6vw, 2.2rem); line-height: 1; }
+    .retry-cards li > span:last-child { color: var(--foreground1); font-size: 0.72em; line-height: 1.3; }
+    .retry-label {
+        font-size: 0.62em;
+        font-weight: 800;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+    }
+    .retry-done { color: var(--sc-green); }
+    .retry-swap { color: var(--sc-cyan); }
+    .retry-stop { color: var(--sc-pink); }
+    .retry-done .retry-label,
+    .retry-swap .retry-label,
+    .retry-stop .retry-label { color: inherit; }
+    .retry-cards code { font-size: 0.85em; }
+    @media (max-width: 700px) {
+        .retry-cards { grid-template-columns: 1fr; }
+    }
+
     .sc-lead, .sc-detail {
         color: var(--foreground0);
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);
