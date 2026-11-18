@@ -1647,7 +1647,9 @@ body.slides-print-mode .slide-web-link {
     position: fixed !important;
     bottom: calc(1lh + 0.5lh) !important;
     right: 1ch !important;
-    height: 1.25lh !important;
+    /* Argonne | ALCF lockup is wide (6.6:1); size by height like the
+       old mark but a touch taller so the wordmark reads at distance. */
+    height: 1.6lh !important;
     width: auto !important;
     /* No opacity dim — the black/white SVG variants already contrast
        appropriately against their respective theme backgrounds. The
@@ -1729,7 +1731,9 @@ body.slides-print-mode .slide-web-link {
     [is-~='presentation']:not(:has(#title-slide[data-current]))
         [is-~='slide'][data-current]
         .slide-inner {
-        --deck-logo-gutter: 9ch;
+        /* The ALCF lockup is ~6.6x wider than tall; at 1.6lh this is
+           about 14ch of horizontal room plus breathing space. */
+        --deck-logo-gutter: 15ch;
     }
 }
 
