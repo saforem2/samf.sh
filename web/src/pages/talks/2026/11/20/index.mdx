@@ -60,26 +60,19 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 <Slide id="aurora">
 
-## AuroraGPT on Aurora
+## Aurora pre-training spans multiple allocations
 
-<div class="aurora-layout">
+<p class="sc-lead"><strong>10,624 nodes</strong> · <strong>127,488 XPU tiles</strong> at full machine scale</p>
 
-<div>
-    <div class="hero-number">127,488</div>
-    <div class="hero-label">Intel Max-series XPUs</div>
-    <p class="hero-context"><strong>10,624</strong> HPE Cray EX nodes<br /><strong>12</strong> XPU tiles per node</p>
-</div>
+```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
+flowchart LR
+    A["Train on Aurora"] --> B["Save training state"]
+    B --> C["Next PBS allocation"]
+    C --> D["Resume at the saved step"]
+```
 
-<div class="aurora-contract">
-    <div><span class="contract-label c-cyan">DEVICE</span><strong>`torch.xpu`</strong></div>
-    <div><span class="contract-label c-orange">COLLECTIVES</span><strong>`oneCCL`</strong></div>
-    <div><span class="contract-label c-pink">EXECUTION</span><strong>short, shared allocations</strong></div>
-    <p>Multi-day pre-training crosses job boundaries. The model state, optimizer state, data position, and RNG state all have to survive.</p>
-</div>
-
-</div>
-
-<div class="takeaway-line"><span>At this scale</span> a portability bug and an operations bug have the same symptom: the run stops.</div>
+<p class="sc-detail">A restart restores the model, optimizer, data position, and random state.</p>
 
 <SpeakerNotes>
 Set the machine and software context once. Aurora is one of the largest non-NVIDIA GPU systems in production. The important difference for this talk is the stack: SYCL and oneCCL below PyTorch, not CUDA and NCCL. We also inherit the usual HPC constraints: shared storage, scheduled allocations, and restarts across job boundaries.
@@ -91,39 +84,18 @@ Set the machine and software context once. Aurora is one of the largest non-NVID
 
 <Slide id="portable-stack">
 
-## One training program across vendors
+## One TorchTitan recipe across systems
 
-<div class="stack-grid">
-
-<div>
-
-```python
-import ezpz
-
-ezpz.setup_torch()
-
-model = build_model()
-mesh = ezpz.get_mesh()
-model = fully_shard(model, mesh=mesh)
-
-train(model)
+```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
+flowchart TB
+    A["TorchTitan training recipe"] --> B["ezpz launch and distributed setup"]
+    B --> C["Aurora<br/>Intel XPU"]
+    B --> D["Polaris<br/>NVIDIA CUDA"]
+    B --> E["Frontier<br/>AMD ROCm"]
 ```
 
-
-</div>
-
-<div>
-
-| System | Accelerator | Backend |
-| --- | --- | --- |
-| Aurora | Intel Max | `XPU` / `oneCCL` |
-| Polaris | NVIDIA A100 | `CUDA` / `NCCL` |
-| Frontier | AMD MI250X | `ROCm` / `RCCL` |
-
-
-</div>
-
-</div>
+<p class="sc-detail">The launcher sets up ranks and devices. The recipe defines the training step.</p>
 
 <SpeakerNotes>
 The interface is the point. The training program does not branch on the vendor. ezpz discovers the scheduler and builds the distributed environment. TorchTitan supplies FSDP, tensor and pipeline parallelism, and distributed checkpointing. Our work lives in an experiments/ezpz fork while we push reusable pieces upstream.
@@ -135,21 +107,18 @@ The interface is the point. The training program does not branch on the vendor. 
 
 <Slide id="production-result">
 
-## The 2B reference finished at 7.77T tokens
+## AuroraGPT production loss
 
 <img
-    class="wide-plot"
-    src="/talks/2026/10/30/figures/agpt-2b-progress.svg"
-    alt="AuroraGPT 2B production training loss over cumulative tokens"
+    class="production-loss theme-plot"
+    src="/talks/2026-08-03/figures/all-production-loss.svg"
+    alt="Training loss versus cumulative tokens for AuroraGPT production runs, including the 20B runs and the 2B reference"
 />
 
-<div class="result-strip">
-    <span><strong>2B</strong> completed on the original stack</span>
-    <span><strong>20B</strong> now trains on `TorchTitan` + `ezpz`</span>
-</div>
+<p class="sc-detail"><strong>20B:</strong> 256 and 512 nodes. <strong>2B reference:</strong> 7.77T tokens.</p>
 
 <SpeakerNotes>
-The completed 2B run is our reference: 7.77 trillion tokens. We migrated the production path to TorchTitan and ezpz rather than carrying the old Megatron-DeepSpeed fork forward. The chart also shows the continuity work: checkpoints and training behavior survived changes in node count and stack.
+The completed 2B run is our reference: 7.77 trillion tokens. We migrated the production path to TorchTitan and ezpz rather than carrying the old Megatron-DeepSpeed fork forward. The August production snapshot shows the 20B loss trajectories alongside the 2B reference. The 7.77T number is the completed 2B total.
 
 70 seconds. Cumulative: 3:40.
 </SpeakerNotes>
@@ -205,29 +174,18 @@ These are the three concrete failures behind the rest of the talk. They sit at d
 
 <Slide id="bit-exact">
 
-## Failure 1: a correct-looking loss was wrong
+## Bit-exact checks exposed a loss reporting bug
 
-<div class="failure-layout bit-layout">
+```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
+flowchart LR
+    A["Same checkpoint,<br/>batch, and RNG state"] --> B["Reference stack<br/>one training step"]
+    A --> C["Migrated stack<br/>one training step"]
+    B --> D["Compare loss and<br/>gradients bit for bit"]
+    C --> D
+```
 
-<div class="failure-copy">
-
-<span class="micro-label c-orange">SYMPTOM</span>
-
-Training ran. Loss decreased. Nothing crashed.
-
-<span class="micro-label c-cyan">DETECTION</span>
-
-A bit-exact regression against the reference stack diverged.
-
-<span class="micro-label c-green">MIGRATION GATE</span>
-
-We made step-level parity a migration gate, not a post-hoc plot comparison.
-
-</div>
-
-<pre class="regression"><code>same checkpoint{`\n`}same batch{`\n`}same RNG state{`\n`}same step{`\n\n`}loss_ref  == loss_new{`\n`}grads_ref == grads_new</code><span class="exact-verdict">EXACT</span></pre>
-
-</div>
+<p class="sc-detail">The run looked healthy. The step outputs disagreed.</p>
 
 <SpeakerNotes>
 The dangerous migration failure was not a crash. The reported loss looked plausible and decreased normally. Aggregate curves could not catch it. A controlled, bit-exact comparison on the same checkpoint, batch, RNG state, and step did. That changed the acceptance criterion for the migrated stack: exact parity first, long-run similarity second.
@@ -261,24 +219,17 @@ At the same 80B, GBS 6144, data-parallel 186 corner, mano reached NaN at gradien
 
 ## Launcher retry recovered 3 of 4 failures
 
-<div class="retry-layout">
-    <img
-        class="retry-plot theme-plot"
-        src="/talks/2026/10/30/figures/failover-before-after.svg"
-        alt="Comparison of production runs before and after launcher-native failover"
-    />
-    <div class="retry-copy">
-        <div class="lost-runs"><strong>9</strong><span>runs lost<br />in 2 weeks</span></div>
-        <ol class="retry-sequence">
-            <li><code>watch stdout</code></li>
-            <li><code>classify exit</code></li>
-            <li><code>exclude host</code></li>
-            <li><code>resume checkpoint</code></li>
-        </ol>
-    </div>
-</div>
+<p class="sc-lead"><strong>Before:</strong> 9 runs lost in two weeks. <strong>After:</strong> 3 recovered, 1 lost.</p>
 
-<div class="takeaway-line"><span>`ezpz launch --auto-retry`</span></div>
+```mermaid
+%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
+flowchart LR
+    A["Detect stalled<br/>output"] --> B["Classify<br/>launcher exit"]
+    B --> C["Swap bad host<br/>if spare exists"]
+    C --> D["Resume from<br/>checkpoint"]
+```
+
+<p class="sc-detail"><code>ezpz launch --auto-retry</code></p>
 
 <SpeakerNotes>
 The scheduler knew that the allocation existed. It did not know that useful training had stopped. The launcher now watches application progress, terminates a wedged launch, classifies the exit, excludes a bad host when a spare exists, and resumes from the latest checkpoint. The important design choice is that recovery lives with the launcher, where scheduler state and application state meet.
@@ -984,5 +935,41 @@ Stop here. Leave the links on screen for questions.
         .retry-sequence li { grid-template-columns: 1.4rem minmax(0, 1fr); }
         .retry-sequence li code { justify-self: start; white-space: nowrap; }
         .failure-list strong { font-size: clamp(1.1rem, 2.7vw, 2.25rem); }
+    }
+
+    #title-slide .slide-inner {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        height: 100%;
+        min-height: 100%;
+        box-sizing: border-box;
+    }
+    #title-slide .title-panel { margin-block: auto; }
+    #title-slide .title-panel h1 { margin-block: 0 0.3em; }
+    #title-slide {
+        background: url('/talks/2026-10-21/figures/aurora-hero.jpg') center / cover no-repeat;
+    }
+    #title-slide .title-aurora { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    :is(#aurora, #portable-stack, #bit-exact, #auto-retry) .mermaid {
+        --mermaid-max-height: 43vh;
+        margin-block: 0.9rem;
+    }
+    :is(#aurora, #portable-stack, #bit-exact, #auto-retry) .mermaid svg {
+        width: 100% !important;
+        max-height: 43vh !important;
+    }
+    .sc-lead, .sc-detail {
+        color: var(--foreground0);
+        font-size: clamp(1.05rem, 2.55vw, 2.2rem);
+        line-height: 1.25;
+    }
+    #production-result img.production-loss {
+        display: block;
+        width: 100%;
+        max-height: 62vh;
+        object-fit: contain;
+        margin: 0;
     }
 `}</style>
