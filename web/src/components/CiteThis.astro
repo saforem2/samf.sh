@@ -1,6 +1,7 @@
 ---
 import { createShikiHighlighter } from '@astrojs/markdown-remark/shiki'
 import { buildBibtex, type CitationKind } from '@/utils/citation'
+import { customDarkTheme, customLightTheme } from '@/shiki-themes.mjs'
 
 interface Props {
     title: string
@@ -29,8 +30,8 @@ const label = kind === 'talk' ? 'talk' : 'post'
 const highlighter = await createShikiHighlighter({
     langs: ['bibtex'],
     themes: {
-        'custom-light': 'min-light',
-        'custom-dark': 'one-dark-pro',
+        'custom-light': customLightTheme,
+        'custom-dark': customDarkTheme,
         catppuccin: 'catppuccin-mocha',
         'catppuccin-latte': 'catppuccin-latte',
     },

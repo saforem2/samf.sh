@@ -61,18 +61,18 @@
            (Was #1273e0 at 4.61:1.) */
         --url: oklch(56% 0.25 262);
         /* --h1: oklch(from #F44336 l c h); */
-        --h1: oklch(from #ff1a8f l c h);
-        --h2: oklch(from #5c7cfa l c h);
-        --h3: oklch(from #1da912 l c h);
-        --h4: oklch(from #5e35b1 l c h);
-        --h5: oklch(from #ee9025 l c h);
-        --h6: oklch(from #f44336 l c h);
+        --h1: var(--accent);
+        --h2: var(--blue);
+        --h3: var(--green);
+        --h4: var(--purple);
+        --h5: var(--orange);
+        --h6: var(--red);
         /* --h5: oklch(from #FB8C00 l c h); */
         /* --h6: oklch(from #00897B l c h); */
         --rosewater: oklch(from #f4dbd6 l c h);
         --flamingo: oklch(from #f0c6c6 l c h);
-        --red: oklch(from #ff6b6b l c h);
-        --orange: oklch(from #ff5722 l c h);
+        --red: #ff1744;
+        --orange: #ff5722;
         --peach: oklch(from #f5a97f l c h);
         --yellow: oklch(from #fd971f l c h);
         --green: oklch(from #05a551 l c h);
@@ -116,17 +116,12 @@
         /* --h2: oklch(from #FDDC69 calc(l * 1.05) calc(c * 1.35) h); */
         /* --h2: oklch(from #FFD8A8 calc(l * 1.05) calc(c * 1.35) h); */
         /* --h1: oklch(from #FF8787 calc(l * 1.05) calc(c * 1.35) h); */
-        /* Heading hues (canonical — the site no longer overrides these in
-           global.css). h2=blue, h3=green to match what pages actually used.
-           Each is lifted in L and saturated ×1.35 EXCEPT the green (h3), which
-           is left at its base chroma: a×1.35 green read overly stark next to
-           the softer code-block green, so h3 keeps `c`. */
-        --h1: oklch(from var(--accent) calc(l * 1.05) calc(c * 1.35) h);
-        --h2: oklch(from #90caf9 calc(l * 1.05) calc(c * 1.35) h);
-        --h3: oklch(from #a5d6a7 calc(l * 1.05) c h);
-        --h4: oklch(from #b39ddb calc(l * 1.05) calc(c * 1.35) h);
-        --h5: oklch(from #fff59d calc(l * 1.05) calc(c * 1.35) h);
-        --h6: oklch(from #80cbc4 calc(l * 1.05) calc(c * 1.35) h);
+        --h1: var(--accent);
+        --h2: var(--blue);
+        --h3: var(--green);
+        --h4: var(--purple);
+        --h5: var(--orange);
+        --h6: var(--red);
         /* --h6: oklch(from #fff59d calc(l * 1.05) calc(c * 1.35) h); */
         /* --accent: oklch(from #e599f7 l c h); */
         --accent: oklch(from #e599f7 l c h);

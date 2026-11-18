@@ -16,6 +16,7 @@ const docs = defineCollection({
         /* Optional URL for the venue/event named in `location`. Renders
            the location column on /talks/ as a link when set. */
         locationUrl: z.string().url().optional(),
+        videoUrl: z.string().url().optional(),
         draft: z.boolean().optional(),
         /* The page's Astro layout, e.g. '@/layouts/SlideLayout.astro'. Every
            page already declares this in frontmatter, but the schema is strict

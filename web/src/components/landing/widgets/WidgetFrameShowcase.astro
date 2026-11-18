@@ -38,7 +38,12 @@ const { framed = true } = Astro.props
     /* Fallback idle shadow so the flat-bordered cards don't read as
        inset: a faint 1px offset even before interaction. */
     .wbl-root.framed :global(#widgets-grid > [tabindex='0']) {
-        box-shadow: 1px 1px 0 0 color-mix(in srgb, var(--wbl-border, var(--background2)) 65%, transparent);
+        box-shadow: 1px 1px 0 0
+            color-mix(
+                in srgb,
+                var(--wbl-border, var(--background2)) 65%,
+                transparent
+            );
     }
     /* Hide the real navbar inside the showcase; the page has its own. */
     .wbl-root :global(#widgets-grid) {
@@ -108,9 +113,23 @@ const { framed = true } = Astro.props
     /* Preserve the homepage's ::before active shadow (Widgets.astro) even
        inside the showcase pane. Without this the mobile scroll-active /
        focus-within glow is absent in the Proposed column. */
-    .wbl-root.framed :global(#widgets-grid > [tabindex='0']:is(:hover, :focus-within, [data-scroll-active='true'], [data-vim-focused='true'])::before) {
+    .wbl-root.framed
+        :global(
+            #widgets-grid
+                > [tabindex='0']:is(
+                    :hover,
+                    :focus-within,
+                    [data-scroll-active='true'],
+                    [data-vim-focused='true']
+                )::before
+        ) {
         border-color: var(--wbl-accent, var(--foreground0)) !important;
-        box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--wbl-accent, var(--foreground0)) 55%, rgba(0,0,0,0.55)) !important;
+        box-shadow: 2px 2px 0 0
+            color-mix(
+                in srgb,
+                var(--wbl-accent, var(--foreground0)) 55%,
+                rgba(0, 0, 0, 0.55)
+            ) !important;
     }
     /* Dim cycle — mirrors Intro.astro: untouched until someone j/k's into the
        grid; once any card has data-vim-focused, the rest dim until you hover
@@ -120,12 +139,25 @@ const { framed = true } = Astro.props
     .wbl-root.framed
         :global(#widgets-grid:has([data-vim-focused='true']) > [tabindex='0']),
     .wbl-root.framed
-        :global(#widgets-grid:has([data-scroll-active='true']) > [tabindex='0']),
+        :global(
+            #widgets-grid:has([data-scroll-active='true']) > [tabindex='0']
+        ),
     .wbl-root.framed
         :global(#widgets-grid[data-wbl-hover='true'] > [tabindex='0']) {
         opacity: 0.35;
     }
-    .wbl-root.framed :global(#widgets-grid > [tabindex='0']:is(:hover, :focus, :focus-within, [data-vim-focused='true'], [data-scroll-active='true'], :has(:focus))) {
+    .wbl-root.framed
+        :global(
+            #widgets-grid
+                > [tabindex='0']:is(
+                    :hover,
+                    :focus,
+                    :focus-within,
+                    [data-vim-focused='true'],
+                    [data-scroll-active='true'],
+                    :has(:focus)
+                )
+        ) {
         opacity: 1;
         border-color: var(--wbl-accent, var(--foreground0));
         box-shadow: 2px 2px 0 0 var(--wbl-accent, rgba(0, 0, 0, 0.55));
@@ -213,7 +245,10 @@ const { framed = true } = Astro.props
             var(--foreground0) 5%
         );
         background-image:
-            linear-gradient(var(--code-mask-bg, transparent), var(--code-mask-bg, transparent)),
+            linear-gradient(
+                var(--code-mask-bg, transparent),
+                var(--code-mask-bg, transparent)
+            ),
             var(--code-mask-under, var(--background0));
         border: 1px solid
             color-mix(in srgb, var(--background0), var(--foreground0) 18%);
@@ -271,12 +306,12 @@ const { framed = true } = Astro.props
         background:
             linear-gradient(
                 oklch(
-                    from var(--wbl-accent)
-                        calc(l * var(--oklch-scale, 0.85)) c h / 0.1
+                    from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c
+                        h / 0.1
                 ),
                 oklch(
-                    from var(--wbl-accent)
-                        calc(l * var(--oklch-scale, 0.85)) c h / 0.1
+                    from var(--wbl-accent) calc(l * var(--oklch-scale, 0.85)) c
+                        h / 0.1
                 )
             ),
             linear-gradient(
@@ -336,15 +371,19 @@ const { framed = true } = Astro.props
     }
     /* Lift the badge when its card is hovered/focused — same as the about button */
     .wbl-root.framed
-        :global([tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
-            .wbl-frame-badge) {
+        :global(
+            [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+                .wbl-frame-badge
+        ) {
         transform: translate(-1px, -1px);
         box-shadow: 2px 2px 0 0 var(--wbl-accent);
         border-color: var(--wbl-accent);
     }
     .wbl-root.framed
-        :global([tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
-            .wbl-frame-badge:active) {
+        :global(
+            [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+                .wbl-frame-badge:active
+        ) {
         transform: translate(0, 0);
         box-shadow: 1px 1px 0 0 var(--wbl-accent);
     }
@@ -405,21 +444,51 @@ const { framed = true } = Astro.props
         height: 18%;
         transform-origin: bottom center;
     }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-pause) {
+    .wbl-root.framed
+        :global([data-wbl-id='playing'][data-live='true'] .np-pause) {
         display: none !important;
     }
     .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq) {
         display: inline-flex !important;
     }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i) {
+    .wbl-root.framed
+        :global([data-wbl-id='playing'][data-live='true'] .np-eq i) {
         animation: eq-bounce 650ms ease-in-out infinite alternate;
     }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(1)) { animation-duration: 420ms; animation-delay: -80ms; }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(2)) { animation-duration: 560ms; animation-delay: -160ms; }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(3)) { animation-duration: 380ms; animation-delay: -40ms; }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(4)) { animation-duration: 610ms; animation-delay: -190ms; }
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(1)
+        ) {
+        animation-duration: 420ms;
+        animation-delay: -80ms;
+    }
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(2)
+        ) {
+        animation-duration: 560ms;
+        animation-delay: -160ms;
+    }
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(3)
+        ) {
+        animation-duration: 380ms;
+        animation-delay: -40ms;
+    }
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true'] .np-eq i:nth-child(4)
+        ) {
+        animation-duration: 610ms;
+        animation-delay: -190ms;
+    }
     @media (prefers-reduced-motion: reduce) {
-        .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] .np-eq i) { animation: none !important; height: 55% !important; }
+        .wbl-root.framed
+            :global([data-wbl-id='playing'][data-live='true'] .np-eq i) {
+            animation: none !important;
+            height: 55% !important;
+        }
     }
     .wbl-root.framed :global([data-wbl-id='progress-bar']) {
         color: var(--blue);
@@ -462,13 +531,20 @@ const { framed = true } = Astro.props
             transparent
         );
     }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] [data-wbl-id='progress']) {
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true'] [data-wbl-id='progress']
+        ) {
         --separator-color: var(--green);
         --separator-width: 3px;
         filter: drop-shadow(0 0 2px var(--green));
         overflow: visible;
     }
-    .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] [data-wbl-id='progress']::after) {
+    .wbl-root.framed
+        :global(
+            [data-wbl-id='playing'][data-live='true']
+                [data-wbl-id='progress']::after
+        ) {
         content: '';
         position: absolute;
         top: 50%;
@@ -484,11 +560,21 @@ const { framed = true } = Astro.props
     }
 
     @keyframes live-dot-pulse {
-        0% { opacity: 0.85; scale: 0.92; }
-        100% { opacity: 1; scale: 1.02; }
+        0% {
+            opacity: 0.85;
+            scale: 0.92;
+        }
+        100% {
+            opacity: 1;
+            scale: 1.02;
+        }
     }
     @media (prefers-reduced-motion: reduce) {
-        .wbl-root.framed :global([data-wbl-id='playing'][data-live='true'] [data-wbl-id='progress']::after) {
+        .wbl-root.framed
+            :global(
+                [data-wbl-id='playing'][data-live='true']
+                    [data-wbl-id='progress']::after
+            ) {
             animation: none;
         }
     }
@@ -517,7 +603,8 @@ const { framed = true } = Astro.props
         opacity: 0.55;
         text-transform: uppercase;
         min-width: 0;
-        border-bottom: 1px solid color-mix(in srgb, var(--foreground2) 12%, transparent);
+        border-bottom: 1px solid
+            color-mix(in srgb, var(--foreground2) 12%, transparent);
         padding-bottom: 0.4lh;
         margin-bottom: 0.15lh;
     }
@@ -570,7 +657,10 @@ const { framed = true } = Astro.props
             if (src && hasInnerAnchor) {
                 let html = ''
                 src.childNodes.forEach((n) => {
-                    if (n.nodeType === Node.ELEMENT_NODE && (n as Element).tagName === 'A') {
+                    if (
+                        n.nodeType === Node.ELEMENT_NODE &&
+                        (n as Element).tagName === 'A'
+                    ) {
                         html += (n as HTMLElement).innerHTML.trim()
                     } else if (n.nodeType === Node.ELEMENT_NODE) {
                         html += (n as HTMLElement).outerHTML
@@ -582,7 +672,8 @@ const { framed = true } = Astro.props
                 // collapse any whitespace the source left between the <u> letter and rest
                 html = html.replace(/<\/u>\s+/g, '</u>')
                 badge.innerHTML = html.trim()
-                if (!badge.innerHTML) badge.textContent = label.replace(/\s+/g, ' ').trim()
+                if (!badge.innerHTML)
+                    badge.textContent = label.replace(/\s+/g, ' ').trim()
             } else if (src?.querySelector('u')) {
                 badge.innerHTML = src.innerHTML.replace(/<\/u>\s+/g, '</u>')
             } else if (label) {
@@ -592,7 +683,8 @@ const { framed = true } = Astro.props
                 // Fallback: reconstruct from childNodes so the icon entity keeps its gap
                 let html = ''
                 src.childNodes.forEach((n) => {
-                    if (n.nodeType === Node.ELEMENT_NODE) html += (n as HTMLElement).outerHTML
+                    if (n.nodeType === Node.ELEMENT_NODE)
+                        html += (n as HTMLElement).outerHTML
                     else if (n.nodeType === Node.TEXT_NODE) {
                         const t = (n.textContent ?? '').replace(/\s+/g, ' ')
                         if (t.trim()) html += t
@@ -612,14 +704,20 @@ const { framed = true } = Astro.props
             // Intro widget: mirror the [a]bout → CTA as a second border chip
             // on the top-right. The title row + CTA are CSS-hidden; we clone
             // the CTA here so it reads as a border action (same hover as before).
-            if (card.id === 'intro-widget' && !card.querySelector(':scope > .wbl-about-chip')) {
-                const cta = card.querySelector<HTMLAnchorElement>('.iw-title-about')
+            if (
+                card.id === 'intro-widget' &&
+                !card.querySelector(':scope > .wbl-about-chip')
+            ) {
+                const cta =
+                    card.querySelector<HTMLAnchorElement>('.iw-title-about')
                 if (cta?.href) {
                     const chip = document.createElement('a')
                     chip.className = 'wbl-about-chip'
                     chip.href = cta.getAttribute('href') ?? '/about'
                     // Preserve the bracketed label without double-encoding the arrow.
-                    chip.textContent = (cta.textContent ?? '[a]bout →').trim().replace(/\s+/g, ' ')
+                    chip.textContent = (cta.textContent ?? '[a]bout →')
+                        .trim()
+                        .replace(/\s+/g, ' ')
                     card.prepend(chip)
                 }
             }
@@ -636,7 +734,9 @@ const { framed = true } = Astro.props
         if (!grid) return
         if (grid.dataset.wblHoverDim === 'true') return
         grid.dataset.wblHoverDim = 'true'
-        const cards = Array.from(grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'))
+        const cards = Array.from(
+            grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'),
+        )
         const update = () => {
             // cede to keyboard nav when it's active anywhere in this grid
             const vimActive = grid.querySelector('[data-vim-focused="true"]')
@@ -659,12 +759,16 @@ const { framed = true } = Astro.props
     // duplicate so the proposed pane shows the same track/history. Use
     // MutationObserver rather than polling — cheap, event-driven.
     const mirrorLastfmDuplicate = () => {
-        const frames = document.querySelectorAll<HTMLElement>('[data-wbl-root].framed')
+        const frames = document.querySelectorAll<HTMLElement>(
+            '[data-wbl-root].framed',
+        )
         for (const frame of frames) {
             const dup = frame.querySelector<HTMLElement>('#stats-widget')
             if (!dup || dup.dataset.wblMirrored === 'true') continue
-            const master = document.querySelector<HTMLElement>('[data-wbl-root]:not(.framed) #stats-widget')
-                ?? document.getElementById('stats-widget')
+            const master =
+                document.querySelector<HTMLElement>(
+                    '[data-wbl-root]:not(.framed) #stats-widget',
+                ) ?? document.getElementById('stats-widget')
             if (!master || master === dup) continue
             // Deduplicate ids inside the duplicate so future getElementByIds stay with master
             for (const el of dup.querySelectorAll<HTMLElement>('[id]')) {
@@ -676,28 +780,45 @@ const { framed = true } = Astro.props
             }
             const syncNowPlaying = () => {
                 const srcPlaying = master.querySelector<HTMLElement>('#playing')
-                const dstPlaying = dup.querySelector<HTMLElement>('[data-wbl-id="playing"]')
+                const dstPlaying = dup.querySelector<HTMLElement>(
+                    '[data-wbl-id="playing"]',
+                )
                 if (srcPlaying && dstPlaying) {
                     dstPlaying.dataset.live = srcPlaying.dataset.live ?? 'false'
                     dstPlaying.style.cssText = srcPlaying.style.cssText
                 }
-                for (const id of ['track-title', 'track-artist', 'track-album', 'track-duration']) {
+                for (const id of [
+                    'track-title',
+                    'track-artist',
+                    'track-album',
+                    'track-duration',
+                ]) {
                     const src = master.querySelector(`#${id}`)
                     const dst = dup.querySelector(`[data-wbl-id="${id}"]`)
-                    if (src && dst) dst.innerHTML = (src as HTMLElement).innerHTML
+                    if (src && dst)
+                        dst.innerHTML = (src as HTMLElement).innerHTML
                 }
                 // progress bar width + --progress-head + data-live state
                 const srcProg = master.querySelector<HTMLElement>('#progress')
-                const dstProg = dup.querySelector<HTMLElement>('[data-wbl-id="progress"]')
-                if (srcProg && dstProg) (dstProg as HTMLElement).style.width = (srcProg as HTMLElement).style.width
+                const dstProg = dup.querySelector<HTMLElement>(
+                    '[data-wbl-id="progress"]',
+                )
+                if (srcProg && dstProg)
+                    (dstProg as HTMLElement).style.width = (
+                        srcProg as HTMLElement
+                    ).style.width
                 // history list — clone live (source already populated via Last.fm)
                 const srcUp = master.querySelector<HTMLElement>('#up-next')
-                const dstUp = dup.querySelector<HTMLElement>('[data-wbl-id="up-next"]')
+                const dstUp = dup.querySelector<HTMLElement>(
+                    '[data-wbl-id="up-next"]',
+                )
                 if (srcUp && dstUp) {
                     if (srcUp.children.length === 0) return false // not yet loaded
                     // Avoid churning if already in sync
-                    if (dstUp.children.length !== srcUp.children.length
-                        || dstUp.innerHTML !== srcUp.innerHTML) {
+                    if (
+                        dstUp.children.length !== srcUp.children.length ||
+                        dstUp.innerHTML !== srcUp.innerHTML
+                    ) {
                         dstUp.innerHTML = srcUp.innerHTML
                     }
                 }
@@ -716,9 +837,21 @@ const { framed = true } = Astro.props
             // characterData/textContent mutations; filtering to data-live/style/class
             // silenced them, which caused the track name + state regressions.
             const obs = new MutationObserver(syncLoop)
-            obs.observe(master, { childList: true, subtree: true, characterData: true, attributes: true })
+            obs.observe(master, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                attributes: true,
+            })
             const int = setInterval(syncLoop, 350)
-            dup.addEventListener('DOMNodeRemoved', () => { obs.disconnect(); clearInterval(int) }, { once: true })
+            dup.addEventListener(
+                'DOMNodeRemoved',
+                () => {
+                    obs.disconnect()
+                    clearInterval(int)
+                },
+                { once: true },
+            )
             // Also re-bind if the showcase is re-inited (e.g. HMR)
             dup.dataset.wblMirrored = 'true'
         }
@@ -732,9 +865,13 @@ const { framed = true } = Astro.props
                 wireHoverDim(root)
             })
         // Delay mirror so the master Player fetch has had a chance to start
-        requestAnimationFrame(() => requestAnimationFrame(mirrorLastfmDuplicate))
+        requestAnimationFrame(() =>
+            requestAnimationFrame(mirrorLastfmDuplicate),
+        )
         if (document.readyState !== 'complete') {
-            window.addEventListener('load', mirrorLastfmDuplicate, { once: true })
+            window.addEventListener('load', mirrorLastfmDuplicate, {
+                once: true,
+            })
         }
         setTimeout(mirrorLastfmDuplicate, 1200)
         setTimeout(mirrorLastfmDuplicate, 3500)

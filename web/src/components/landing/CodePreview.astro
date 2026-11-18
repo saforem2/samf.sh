@@ -1,5 +1,6 @@
 ---
 import { getSingletonHighlighter } from 'shiki'
+import { customDarkTheme, customLightTheme } from '@/shiki-themes.mjs'
 type LineHighlight = 'add' | 'remove' | 'change'
 
 interface Props {
@@ -23,8 +24,8 @@ const {
 } = Astro.props
 
 const shikiThemes = {
-    'custom-dark': 'one-dark-pro',
-    'custom-light': 'min-light',
+    'custom-dark': customDarkTheme,
+    'custom-light': customLightTheme,
     catppuccin: 'catppuccin-mocha',
 } as const
 

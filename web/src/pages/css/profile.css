@@ -249,7 +249,7 @@ main {
     height: 0pt;
     margin: 0pt;
     padding: 0pt;
-    outline: i1pt solid red;
+    outline: 1pt solid red;
 }
 
 /* .panel-tabset a:not(#lightbox):hover, */
