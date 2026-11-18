@@ -19,7 +19,11 @@ const { kind, fallback, label, compact = false } = Astro.props
     .sc26-chart { width: 100%; min-width: 0; }
     .sc26-chart > img { display: block; width: 100%; max-height: 61vh; object-fit: contain; }
     .compact > img { max-height: 28vh; }
-    .canvas-frame { position: relative; height: clamp(245px, 56vh, 680px); }
+    .canvas-frame { position: relative; height: clamp(200px, 56vh, 680px); min-width: 0; }
+    @media (max-width: 700px) {
+        .canvas-frame { height: clamp(180px, 46vh, 420px); }
+        .canvas-frame :global(canvas) { max-width: 100%; }
+    }
     .compact .canvas-frame { height: clamp(150px, 32vh, 380px); }
     .sc26-chart[data-ready] > img { display: none; }
     @media print {

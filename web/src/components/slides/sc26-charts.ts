@@ -94,16 +94,22 @@ function mount(
     // Reference width 620px ~ the full slide figure column; clamped so the
     // text never collapses on narrow layouts or balloons on 4K.
     const frameWidth = () => frame.clientWidth || frame.parentElement?.clientWidth || 620
+    const frameHeight = () => frame.clientHeight || frame.parentElement?.clientHeight || 320
     // Anchor on the measured desktop panel width (~558px for the two-up
-    // backup grid, wider for full-width figures) and never shrink below the
-    // previous fixed size. Compact panels get a slightly smaller ceiling.
+    // backup grid, wider for full-width figures). The floor is low because
+    // phone-landscape gives the frame ~185px of height: a 30px axis title
+    // rotated 90° is taller than the canvas and gets clipped top/bottom.
+    // Height is the binding constraint there, so scale by both.
     const referenceWidth = compact ? 280 : 560
-    const minSize = compact ? 22 : 24
+    const minSize = compact ? 14 : 15
     const maxSize = compact ? 34 : 40
     const baseTarget = compact ? 22 : 30
-    const fontSizeFor = (w: number) =>
-        Math.round(Math.max(minSize, Math.min(maxSize, (w / referenceWidth) * baseTarget)))
-    const baseSize = fontSizeFor(frameWidth())
+    const fontSizeFor = (w: number, h: number) => {
+        const byWidth = (w / referenceWidth) * baseTarget
+        const byHeight = h / 11
+        return Math.round(Math.max(minSize, Math.min(maxSize, Math.min(byWidth, byHeight))))
+    }
+    const baseSize = fontSizeFor(frameWidth(), frameHeight())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }
     const datasets = mds
@@ -196,7 +202,7 @@ function mount(
             if (!zoom || progress < 1) return
             ctx.save()
             ctx.fillStyle = color
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth()) * 0.8) + 'px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px "' + family + '"'
             datasets.forEach((series, index) => {
                 const point = [...series.data]
                     .reverse()
@@ -229,7 +235,7 @@ function mount(
             ctx.moveTo(left, y)
             ctx.lineTo(right, y)
             ctx.stroke()
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth()) * 0.9) + 'px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.9) + 'px "' + family + '"'
             ctx.textAlign = 'center'
             ctx.fillText(ratio + '× fewer tokens', (left + right) / 2, y - 11)
             ctx.restore()
@@ -239,7 +245,10 @@ function mount(
         ticks: { color, font, maxTicksLimit: compact ? 4 : 6, padding: 8 },
         grid: { color: grid },
     }
-    const axisTitle = { display: !compact, color, font: axisTitleFont, padding: { top: 8, bottom: 4 } }
+    // Wordy axis titles don't fit narrow or short panels; drop them there
+    // rather than let chart.js widen the plot past the frame edge.
+    const titleFits = () => !compact && frameWidth() >= 520 && frameHeight() >= 260
+    const axisTitle = { display: titleFits(), color, font: axisTitleFont, padding: { top: 8, bottom: 4 } }
     frame.hidden = false
     const chart = new Chart(canvas, {
         type: 'line',
@@ -313,13 +322,17 @@ function mount(
             plugins.tooltip.titleFont = scaled
             plugins.tooltip.bodyFont = scaled
         }
+        const fit = titleFits()
+        for (const scale of Object.values(chart.options.scales ?? {})) {
+            if (scale.title) scale.title.display = fit
+        }
     }
     let lastWidth = frameWidth()
     const resizeObserver = new ResizeObserver((entries) => {
         const width = entries[0]?.contentRect.width ?? frame.clientWidth
         if (!width || Math.abs(width - lastWidth) < 24) return
         lastWidth = width
-        applyFontSize(fontSizeFor(width))
+        applyFontSize(fontSizeFor(width, frameHeight()))
         chart.update('none')
     })
     resizeObserver.observe(frame)
