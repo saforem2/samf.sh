@@ -120,7 +120,7 @@ Rank 1/24
 
 ```mermaid
 %%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
-flowchart TB
+flowchart LR
     EZ{"<span style='font-weight:700'>ezpz launch</span>"}
     EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
     EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
@@ -538,7 +538,7 @@ flowchart TB
         font-variant-ligatures: none;
         font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
     }
-    .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr); gap: 1.5rem; align-items: center; }
+    .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.5rem; align-items: center; }
     .sc-launch-grid > div { min-width: 0; }
     .sc-launch-figure { min-width: 0; margin: 0; }
     .sc-launch-figure figcaption { text-align: left; }
@@ -548,7 +548,6 @@ flowchart TB
     #portable-stack .mermaid .pele-node.hub rect { fill: var(--background1) !important; stroke: var(--foreground2) !important; }
     #portable-stack .mermaid .pele-node.hub .pele-label { fill: var(--foreground0) !important; }
     #portable-stack .sc-launch-grid pre { font-size: clamp(1rem, 1.6vw, 1.85rem); }
-    #portable-stack .sc-launch-grid .mermaid svg { max-height: 54vh !important; }
     .sc-reference-figure { display: block; width: 100%; max-height: 68vh; object-fit: contain; }
     @media (max-width: 700px) { .sc-launch-grid { grid-template-columns: 1fr; } }
 
@@ -1228,13 +1227,19 @@ flowchart TB
         background: url('/talks/2026-10-21/figures/aurora-hero.jpg') center / cover no-repeat;
     }
     #title-slide .title-aurora { position: absolute; width: 1px; height: 1px; opacity: 0; }
-    :is(#aurora, #portable-stack, #bit-exact, #auto-retry, #recovery-scopes) .mermaid {
+    :is(#aurora, #bit-exact, #auto-retry, #recovery-scopes) .mermaid {
         --mermaid-max-height: 43vh;
         margin-block: 0.9rem;
     }
-    :is(#aurora, #portable-stack, #bit-exact, #auto-retry, #recovery-scopes) .mermaid svg {
+    :is(#aurora, #bit-exact, #auto-retry, #recovery-scopes) .mermaid svg {
         width: 100% !important;
         max-height: 43vh !important;
+    }
+    /* The vendor diagram is a tall TB flowchart: let it use the full height
+       of the slide's right column instead of the 43vh cap used elsewhere. */
+    #portable-stack .sc-launch-grid .mermaid {
+        margin-block: 0;
+        --mermaid-max-height: 74vh;
     }
     /* Recovery-scopes: the nested 3-level diagram is legible on desktop but
        clips on phone portrait; swap in the stacked layout below. */

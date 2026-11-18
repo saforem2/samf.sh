@@ -519,7 +519,19 @@ function stabilizeMermaidSvgLayout() {
             node.getBoundingClientRect().width ||
             node.parentElement?.getBoundingClientRect().width ||
             widthRaw
-        const maxHeight = window.innerHeight * 0.5
+        // Default cap is half the viewport; a slide/block can raise it via
+        // the --mermaid-max-height custom property (e.g. the launch diagram).
+        const requestedMax = getComputedStyle(node).getPropertyValue(
+            '--mermaid-max-height',
+        ).trim()
+        const parsedMax = Number.parseFloat(requestedMax)
+        const unit = requestedMax.replace(/^[\d.]+/, '').trim()
+        const maxHeight =
+            Number.isFinite(parsedMax) && unit.startsWith('vh')
+                ? (window.innerHeight * parsedMax) / 100
+                : Number.isFinite(parsedMax) && unit === 'px'
+                  ? parsedMax
+                  : window.innerHeight * 0.5
         const naturalHeight = (renderedWidth * heightRaw) / widthRaw
         const resolvedHeight =
             Number.isFinite(naturalHeight) && naturalHeight > 0
