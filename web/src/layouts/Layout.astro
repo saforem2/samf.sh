@@ -450,16 +450,24 @@ const fontFaceCss = [
                 border: 0.125ch solid var(--background2);
                 z-index: 3;
                 user-select: none;
-                opacity: 0.55;
-                transition: opacity 0.15s ease-out;
+                /* Controls own a reserved row above the SVG, so hiding them
+                   at rest is free: visibility flips, the row keeps its
+                   height, and nothing shifts on hover. */
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.15s ease-out, visibility 0s linear 0.15s;
             }
             .mermaid-viewport:hover .mermaid-controls,
             .mermaid-viewport:focus-within .mermaid-controls {
                 opacity: 1;
+                visibility: visible;
+                transition: opacity 0.15s ease-out, visibility 0s;
             }
             @media (hover: none), (pointer: coarse) {
+                /* No hover on touch — keep the row visible, as before. */
                 .mermaid-controls {
                     opacity: 1;
+                    visibility: visible;
                 }
             }
             .mermaid-control-group {
