@@ -1,7 +1,7 @@
 ---
 interface Props {
-    kind: 'loss' | 'loss-zoom' | 'hellaswag' | 'arc_easy' | 'arc_challenge' | 'winogrande'
-    fallback: string
+    kind: 'loss' | 'loss-zoom' | 'mds-loss' | 'optimizer-loss' | 'optimizer-grad' | 'hellaswag-history' | 'hellaswag' | 'arc_easy' | 'arc_challenge' | 'winogrande'
+    fallback?: string
     label: string
     compact?: boolean
 }
@@ -9,7 +9,7 @@ const { kind, fallback, label, compact = false } = Astro.props
 ---
 
 <div class:list={['sc26-chart', { compact }]} data-sc26-chart={kind}>
-    <img src={fallback} alt={label} />
+    {fallback && <img src={fallback} alt={label} />}
     <div class="canvas-frame" hidden>
         <canvas role="img" aria-label={label}></canvas>
     </div>

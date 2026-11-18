@@ -1,6 +1,7 @@
 import Chart from 'chart.js/auto'
 import type { Plugin } from 'chart.js'
-import { evaluations, loss } from './sc26-chart-data'
+import { evaluations, loss, mdsHellaswag } from './sc26-chart-data'
+import { mdsStages, optimizerHistories } from './sc26-backup-data'
 
 const family = 'mIosevka-QP Web'
 const colors = ['#2196f3', '#ef5350', '#ae81ff', '#ffa726', '#4caf50']
@@ -23,11 +24,20 @@ function dataset(label: string, color: string, rows: number[][], column: number,
 function mount(root: HTMLElement, canvas: HTMLCanvasElement, frame: HTMLElement, animate: boolean) {
     const zoom = root.dataset.sc26Chart === 'loss-zoom'
     const isLoss = zoom || root.dataset.sc26Chart === 'loss'
-    const task = tasks.indexOf(root.dataset.sc26Chart ?? '')
+    const mds = root.dataset.sc26Chart === 'mds-loss'
+    const optLoss = root.dataset.sc26Chart === 'optimizer-loss'
+    const optGrad = root.dataset.sc26Chart === 'optimizer-grad'
+    const optimizer = optLoss || optGrad
+    const history = root.dataset.sc26Chart === 'hellaswag-history'
+    const task = history ? 0 : tasks.indexOf(root.dataset.sc26Chart ?? '')
     const compact = root.classList.contains('compact')
     const color = getComputedStyle(root).getPropertyValue('--foreground0').trim() || '#838383'
-    const font = { family, size: compact ? 20 : 23 }
-    const datasets = isLoss
+    const font = { family, size: compact ? 20 : 23, weight: 400 as const }
+    const datasets = mds
+        ? mdsStages.map((rows, i) => dataset(['Pre-train', 'Continued pre-train', 'Math + code'][i], [colors[0], '#008fa8', colors[2]][i], rows, 1, 0))
+        : optimizer
+        ? optimizerHistories.map((run, i) => dataset(['LAMB', 'Muon', 'AdamW', 'SophiaG'][i], [colors[2], colors[0], colors[3], colors[1]][i], optGrad ? run.grad : run.loss, 1, 0))
+        : isLoss
         ? Object.values(loss).map((rows, i) => ({
               ...dataset(labels[i], colors[i], rows, 1, 0),
               borderWidth: i >= 3 ? 5 : 4,
@@ -39,9 +49,9 @@ function mount(root: HTMLElement, canvas: HTMLCanvasElement, frame: HTMLElement,
               pointBorderWidth: 1,
           })).filter((_, i) => !zoom || i >= 3)
         : evaluations.map((run, i) => ({
-              ...dataset(run.label, colors[[0, 1, 2, 4][i]], run.rows, task + 1, compact ? 3 : 6),
+              ...dataset(run.label, colors[[0, 1, 2, 4][i]], history && i === 0 ? mdsHellaswag : run.rows, task + 1, compact ? 3 : 6),
               pointStyle: (['crossRot', 'circle', 'rect', 'triangle'] as const)[i],
-          })).filter((_, i) => compact || i === 0 || i === 3)
+          })).filter((_, i) => history || compact || i === 0 || i === 3)
 
     let progress = 1
     const reveal: Plugin<'line'> = {
@@ -95,19 +105,21 @@ function mount(root: HTMLElement, canvas: HTMLCanvasElement, frame: HTMLElement,
     const chart = new Chart(canvas, {
         type: 'line',
         data: { datasets },
-        plugins: isLoss ? [reveal] : !compact && task === 0 ? [compare] : [],
+        plugins: isLoss ? [reveal] : !history && !compact && task === 0 ? [compare] : [],
         options: {
             responsive: true, maintainAspectRatio: false, animation: false,
             interaction: { mode: 'nearest', intersect: false },
             plugins: {
                 legend: { display: !compact, labels: { color, font, usePointStyle: !isLoss } },
-                title: { display: compact, text: titles[task], color, font },
+                title: { display: compact, text: titles[task], color, font: { ...font, weight: 700 } },
                 tooltip: { titleFont: font, bodyFont: font },
             },
             scales: {
-                x: { ...axis, type: 'linear', min: 0, max: zoom ? 0.6 : undefined, title: { display: !compact, text: 'Tokens consumed (trillions)', color, font } },
+                x: { ...axis, type: 'linear', min: 0, max: zoom ? 0.6 : optimizer ? 1.5 : undefined, title: { display: !compact, text: 'Tokens consumed (trillions)', color, font } },
                 y: { ...axis, min: isLoss ? 2 : undefined, max: isLoss ? 4.5 : undefined,
-                    title: { display: !compact, text: isLoss ? 'Training loss' : 'HellaSwag accuracy', color, font } },
+                    type: optimizer || mds ? 'logarithmic' : 'linear',
+                    title: { display: !compact, text: optGrad ? 'Gradient norm' : isLoss || mds || optLoss ? 'Training loss' : 'HellaSwag accuracy', color, font },
+                },
             },
         },
     })
@@ -129,7 +141,9 @@ function mount(root: HTMLElement, canvas: HTMLCanvasElement, frame: HTMLElement,
 }
 
 async function initialize() {
-    await document.fonts.load('19px "' + family + '"')
+    await Promise.all(
+        [400, 700].map((weight) => document.fonts.load(weight + ' 23px "' + family + '"')),
+    )
     for (const root of document.querySelectorAll<HTMLElement>('[data-sc26-chart]')) {
         const canvas = root.querySelector('canvas')
         const frame = canvas?.parentElement

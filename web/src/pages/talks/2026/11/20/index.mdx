@@ -90,18 +90,72 @@ Set the machine and software context once. Aurora is one of the largest non-NVID
 
 <Slide id="portable-stack">
 
-## One TorchTitan recipe across systems
+## One training program across vendors
 
-```mermaid
-%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
-flowchart LR
-    A["TorchTitan recipe"] --> B["ezpz launch"]
-    B --> C["Aurora · Intel XPU"]
-    B --> D["Polaris · NVIDIA CUDA"]
-    B --> E["Frontier · AMD ROCm"]
+<div class="sc-launch-grid">
+
+<div>
+
+```python
+# demo.py
+import torch
+import ezpz
+rank = ezpz.setup_torch()
+size = ezpz.get_world_size()
+dev = ezpz.get_torch_device()
+layer = torch.nn.Linear(128, 10)
+model = ezpz.wrap_model(layer.to(dev))
+print(f"Rank {rank}/{size}")
 ```
 
-<p class="sc-detail">The launcher sets up ranks and devices. The recipe defines the training step.</p>
+```bash
+$ ezpz launch python3 demo.py
+Rank 0/24
+Rank 1/24
+```
+
+</div>
+
+<figure class="sc-launch-figure">
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
+flowchart LR
+    EZ{"<span style='font-weight:700'>ezpz launch</span>"}
+    EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
+    EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
+    EZ --> PM["<i>SLURM · NVIDIA</i><br/><span style='font-weight:700'>Perlmutter</span>"]
+    EZ --> FRONTIER["<i>SLURM · AMD</i><br/><span style='font-weight:700'>Frontier</span>"]
+    EZ --> MAC["<span style='font-weight:700'>Multi-CPU</span>"]
+    EZ --> MPS["<i>MPS · Apple</i><br/><span style='font-weight:700'>Multi-MPS*</span>"]
+
+    classDef hub        fill:var(--background1),stroke:var(--foreground2),color:var(--foreground0),stroke-width:1.8px
+    linkStyle 0 stroke:#3b82f6,stroke-width:1.8px
+    linkStyle 1 stroke:#10b981,stroke-width:1.8px
+    linkStyle 2 stroke:#06b6d4,stroke-width:1.8px
+    linkStyle 3 stroke:#ef4444,stroke-width:1.8px
+    linkStyle 4 stroke:#a78bfa,stroke-width:1.8px
+    linkStyle 5 stroke:#f59e0b,stroke-width:1.8px
+    classDef aurora     fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
+    classDef polaris    fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
+    classDef perlmutter fill:#06b6d408,stroke:#06b6d4,color:#06b6d4,stroke-width:1.5px
+    classDef frontier   fill:#ef444408,stroke:#ef4444,color:#ef4444,stroke-width:1.5px
+    classDef mac        fill:#a78bfa08,stroke:#a78bfa,color:#a78bfa,stroke-width:1.5px
+    classDef mps        fill:#f59e0b08,stroke:#f59e0b,color:#d97706,stroke-width:1.5px
+    class EZ hub
+    class AURORA aurora
+    class POLARIS polaris
+    class PM perlmutter
+    class FRONTIER frontier
+    class MAC mac
+    class MPS mps
+```
+
+<figcaption><a href="https://github.com/saforem2/ezpz"><code>ezpz</code></a> picks the backend.</figcaption>
+
+</figure>
+
+</div>
 
 <SpeakerNotes>
 The interface is the point. The training program does not branch on the vendor. ezpz discovers the scheduler and builds the distributed environment. TorchTitan supplies FSDP, tensor and pipeline parallelism, and distributed checkpointing. Our work lives in an experiments/ezpz fork while we push reusable pieces upstream.
@@ -135,33 +189,6 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 <SpeakerNotes>
 This is the same production snapshot on a narrower token axis. The two 20B trajectories ran with different batch sizes.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="sample-efficiency">
-
-## Both checkpoints scored about 56% on HellaSwag
-
-<div class="checkpoint-comparison" role="img" aria-label="20B scored 56.2 percent at 302 billion tokens. The 2B reference scored 55.6 percent at 3.52 trillion tokens.">
-    <div class="checkpoint-row checkpoint-20b">
-        <span>20B · 56.2%</span>
-        <div class="checkpoint-bar"><div style="width: 8.58%"></div></div>
-        <strong>302B tokens</strong>
-    </div>
-    <div class="checkpoint-row checkpoint-2b">
-        <span>2B reference · 55.6%</span>
-        <div class="checkpoint-bar"><div></div></div>
-        <strong>3.52T tokens</strong>
-    </div>
-</div>
-
-<p class="checkpoint-verdict"><strong>11.7×</strong> fewer training tokens for the 20B checkpoint</p>
-
-<SpeakerNotes>
-The plotted comparison uses the October data snapshot. The 2B MDS checkpoint scored 0.5555 at 3.520T tokens and the first sampled 20B checkpoint at or above that score was 0.5624 at 0.302T tokens. The ratio is 11.7 across these sampled checkpoints. This is a token comparison against one reference checkpoint.
-
-70 seconds. Cumulative: 4:50.
 </SpeakerNotes>
 
 </Slide>
@@ -212,17 +239,31 @@ The dangerous migration failure was not a crash. The reported loss looked plausi
 
 <Slide id="auto-retry">
 
-## Launcher retry recovered 3 of 4 failures
+## A successful launcher exit could hide a dead run
 
-<div class="recovery-comparison">
-    <div><span>Two weeks before retry</span><strong>9 lost</strong></div>
-    <div><span>Two weeks with retry</span><strong>3 recovered</strong><span>1 lost</span></div>
-</div>
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '24px'}, 'flowchart': {'rankSpacing': 78, 'nodeSpacing': 62, 'padding': 18}}}%%
+flowchart LR
+    RUN["Run training"] -->|"Idle watchdog<br/>30 min without output"| CHECK{"Check exit"}
+    CHECK -->|Clean exit| DONE["Done"]
+    CHECK -->|Cannot retry| STOP["Stop"]
+    CHECK -.->|Bad host: swap spare| RUN
 
-<p class="sc-detail">When training stalls, <code>ezpz launch --auto-retry</code> can restart it from the last checkpoint.</p>
+    classDef launchC fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
+    classDef checkC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef doneC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef stopC fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    class RUN launchC
+    class CHECK checkC
+    class DONE doneC
+    class STOP stopC
+    linkStyle 3 stroke:#e05560,color:#e05560
+```
+
+<p class="sc-detail">When training stalls, <code class="sc-cli">{'ezpz launch --auto-retry'}</code> can restart it from the last checkpoint.</p>
 
 <SpeakerNotes>
-These are observed bad-node failure events in two consecutive two-week windows. The counts differ between windows, so report the outcomes directly. When output stalls, the launcher terminates the wedged launch, classifies the exit, swaps a bad host if a spare is available, and resumes from a checkpoint.
+Job 8481645 showed that the outer wrapper could mask a failed training exit. The incident log records nine earlier losses and three recovered failures, but does not provide the total jobs launched in each window. When output stalls, the launcher terminates the wedged launch, classifies the exit, swaps a bad host if a spare is available, and resumes from a checkpoint.
 
 60 seconds.
 </SpeakerNotes>
@@ -269,32 +310,112 @@ Stop here. Leave the links on screen for questions.
 
 ## Backup: HellaSwag accuracy by checkpoint
 
-<div class="hellaswag-history">
-    <svg class="theme-plot" viewBox="0 38 289 190" role="img" aria-label="HellaSwag accuracy versus tokens for four production runs, including the full 2B MDS reference series and the 20B TorchTitan series">
-        <image href="/talks/2026/10/30/figures/eval-inflight.svg" width="579.089063" height="484.236" />
-    </svg>
-    <div class="hellaswag-key">
-        <strong>Tokens consumed (trillions)</strong>
-        <span>Open circles · 2B MDS reference</span>
-        <span>Triangles · 20B TorchTitan 512N</span>
-        <span>Squares · 2B TorchTitan 512N</span>
-        <span>Diamonds · 2B TorchTitan 256N</span>
-    </div>
+<SC26Chart kind="hellaswag-history" fallback="/talks/2026/10/30/figures/eval-inflight.svg" label="HellaSwag accuracy by checkpoint, including 28 2B MDS evaluations and three TorchTitan runs" />
+
+</Slide>
+
+<Slide id="optimizer-backup">
+
+## Backup: SophiaG at 50M tokens per batch
+
+<div class="sc-eval-grid">
+    <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss and gradient norm versus tokens" />
+    <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus tokens" />
 </div>
 
 </Slide>
 
+<Slide id="raw-mds-loss">
+
+## Backup: 2B MDS loss across three training stages
+
+<SC26Chart kind="mds-loss" fallback="/talks/2026-06-03/figures/loss-2b-reference.svg" label="2B MDS training loss across three training stages" />
+
+</Slide>
+
+<Slide id="mds-tt-overlay">
+
+## Backup: 2B MDS and TorchTitan loss
+
+<img class="sc-reference-figure theme-plot" src="/talks/2026-06-03/figures/loss-2b-reference-with-tt.svg" alt="2B MDS and TorchTitan loss" />
+
+</Slide>
+
+<Slide id="sync-workflow">
+
+## Backup: Bit-exact upstream-sync gate
+
+```mermaid
+flowchart TB
+    A["<i>start</i><br/><span style='font-weight:700'>upstream @ HEAD</span>"] --> B["<i>resync · 50 steps · deterministic</i><br/><span style='font-weight:700'>smoke test</span>"]
+    B --> D{"bit-exact?"}
+    D -->|✅| C["<i>diff = 0</i><br/><span style='font-weight:700'>✓ ship</span>"]
+    D -.->|❌️| F["<i>diff &ne; 0</i><br/><span style='font-weight:700'>bisect + fix</span>"]
+    F -.-> B
+
+    classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
+    classDef stage  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef ship   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef gate   fill:#8a8a8a18,stroke:#9a9a9a,color:#838383,stroke-width:1.5px
+    classDef bad    fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    class A source
+    class B stage
+    class D gate
+    class C ship
+    class F bad
+```
+
+</Slide>
+
+<Slide id="recovery-scopes">
+
+## Backup: Recovery at job, node, and process scope
+
+```mermaid
+flowchart TB
+    subgraph job["📋 JOB scope — PBS · hours"]
+        JOB_TXT["<i>crash / walltime</i> →<br/><span style='font-weight:700'>chained resubmit</span>"]
+        subgraph node["🖥 NODE scope — failover wrapper · minutes"]
+            NODE_TXT["<i>bad host detected</i> →<br/><span style='font-weight:700'>swap from spare pool</span>"]
+            subgraph proc["⏱ PROCESS scope — ezpz launch · seconds"]
+                PROC_TXT["<i>stdout idle ≥ N s</i> →<br/><span style='font-weight:700'>kill + backoff</span>"]
+            end
+        end
+    end
+
+    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
+    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
+    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
+    classDef procTxt fill:transparent,stroke:none,color:#1da811
+    class JOB_TXT jobTxt
+    class NODE_TXT nodeTxt
+    class PROC_TXT procTxt
+    class job jobC
+    class node nodeC
+    class proc procC
+```
+
+</Slide>
+
 <style is:global>{`
+    #auto-retry code.sc-cli {
+        font-variant-ligatures: none;
+        font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
+    }
+    .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.5rem; align-items: center; }
+    .sc-launch-grid > div { min-width: 0; }
+    .sc-launch-figure { min-width: 0; margin: 0; }
+    .sc-launch-figure figcaption { text-align: left; }
+    #portable-stack .sc-launch-grid pre { font-size: clamp(1rem, 1.6vw, 1.85rem); }
+    #portable-stack .sc-launch-grid .mermaid svg { max-height: 54vh !important; }
+    .sc-reference-figure { display: block; width: 100%; max-height: 68vh; object-fit: contain; }
+    @media (max-width: 700px) { .sc-launch-grid { grid-template-columns: 1fr; } }
+
     .hellaswag-history { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: center; gap: 1.3rem; }
     .hellaswag-history svg { width: min(100%, 94vh); height: auto; aspect-ratio: 289 / 190; overflow: hidden; }
     .hellaswag-key { display: grid; gap: 0.5em; font-size: clamp(1rem, 2.15vw, 1.8rem); color: var(--foreground0); }
-    .checkpoint-comparison { display: grid; gap: clamp(1rem, 3.4vh, 2rem); margin-block: clamp(1.5rem, 6vh, 4rem); color: var(--foreground0); }
-    .checkpoint-row { display: grid; grid-template-columns: minmax(10ch, 12ch) minmax(0, 1fr) max-content; gap: 0.6em; align-items: center; font-size: clamp(1rem, 2.6vw, 2.2rem); line-height: 1.15; }
-    .checkpoint-bar { height: 0.8em; border-inline-start: 2px solid var(--foreground2); }
-    .checkpoint-bar > div { height: 100%; background: var(--sc-cyan); }
-    .checkpoint-20b .checkpoint-bar > div { background: var(--sc-green); }
-    .checkpoint-verdict { color: var(--foreground0); font-size: clamp(1rem, 2.65vw, 2.25rem); }
-    .checkpoint-verdict strong { color: var(--sc-green); font-size: 1.6em; }
 
     @layer components {
         body {
