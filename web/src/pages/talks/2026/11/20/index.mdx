@@ -367,6 +367,44 @@ Comparison slide. State diagrams compress the loop naturally; labels get long if
 
 </Slide>
 
+<Slide id="auto-retry-fig5" data-draft="compare">
+
+## Compare: paper figure 5 (LR)
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '19px'}, 'flowchart': {'nodeSpacing': 34, 'rankSpacing': 44, 'padding': 12}}}%%
+flowchart LR
+    START(( )) --> LAUNCH
+    LAUNCH["<span style='font-weight:700'>LAUNCH</span><br/><code>ezpz launch --auto-retry</code>"]
+    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer · match crash patterns<br/>SIGTERM: idle watchdog (exit 124)"]
+    DONE["<span style='font-weight:700'>DONE</span><br/>rc = 0<br/>successful run"]
+    STOP["<span style='font-weight:700'>STOP</span><br/>spares exhausted<br/>stuck before training"]
+    LAUNCH -->|"run + monitor"| CLASSIFY
+    CLASSIFY -->|"rc = 0"| DONE
+    CLASSIFY -->|"no retry possible"| STOP
+    CLASSIFY -.->|"bad node<br/>swap spare + retry"| LAUNCH
+
+    classDef launchC fill:#f6f2fd,stroke:#6741b7,color:#1e3340,stroke-width:1.5px
+    classDef classifyC fill:#fff8e1,stroke:#ef6c00,color:#1e3340,stroke-width:1.5px
+    classDef doneC fill:#f1f9f2,stroke:#2e7d32,color:#1e3340,stroke-width:1.5px
+    classDef stopC fill:#fff5f5,stroke:#c62828,color:#1e3340,stroke-width:1.5px
+    classDef startC fill:#616161,stroke:#616161,color:#616161
+    class START startC
+    class LAUNCH launchC
+    class CLASSIFY classifyC
+    class DONE doneC
+    class STOP stopC
+    linkStyle 3 stroke:#c62828,color:#c62828,stroke-dasharray:6 5
+```
+
+<p class="sc-figcaption">Fig. 5. The <code class="sc-cli">{'ezpz launch --auto-retry'}</code> state machine. Each inner run’s exit is reclassified (parse trailer, match crash patterns, classify SIGTERM); bad-node SIGTERMs trigger a spare-swap and retry, while the idle-output watchdog (exit 124) and stuck-startup guard add the terminal outcomes the original bash wrapper lacked.</p>
+
+<SpeakerNotes>
+Comparison slide. Literal LR reproduction of the paper's Fig. 5 (failover-state-machine) — same nodes, labels, colors, and the dashed bad-node loop back to launch — laid out horizontally instead of vertically.
+</SpeakerNotes>
+
+</Slide>
+
 <Slide id="auto-retry-cards" data-draft="compare">
 
 ## Compare: outcome cards
@@ -1295,6 +1333,14 @@ flowchart TB
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);
         line-height: 1.25;
     }
+    .sc-figcaption {
+        color: var(--foreground1);
+        font-size: clamp(0.72rem, 1.35vw, 1.05rem);
+        line-height: 1.35;
+        max-width: 96ch;
+        margin-top: 0.5lh;
+    }
+    .sc-figcaption code { font-size: 0.95em; }
     #production-result img.production-loss {
         display: block;
         width: 100%;
