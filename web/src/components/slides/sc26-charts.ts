@@ -10,20 +10,23 @@ const themeFontFamily = () => {
     return raw || 'ui-monospace, Menlo, Monaco, monospace'
 }
 const family = themeFontFamily()
-// Series colors come from the active theme's accent variables (--blue, --red, …)
-// instead of hard-coded hex. Canvas needs concrete srgb/rgb values, so each
-// custom property is painted through a 1×1 canvas and read back as rgb().
-// Slide 4 series colors, theme-aware. MDS reference is muted grey; the two
-// 2B TorchTitan chains: 256N solid pink, 512N dashed blue; stage-2 segments
-// repeat the stage-1 hue/dash. 20B chains: 256N purple dotted, 512N green solid.
+// Series colors come from the active theme's accent variables instead of
+// hard-coded hex. Canvas needs concrete srgb/rgb values, so each custom
+// property is painted through a 1×1 canvas and read back as rgb().
+// Dash grammar is consistent across model sizes: 256N = solid, 512N = dotted,
+// MDS reference = dashed muted grey. Hues track family, not size:
+//   MDS  → --foreground2 (dashed grey)
+//   TT   → 2B = --accent (pink-ish) family? no — 256N uses --accent, 512N uses --blue
+//   256N → --accent (2B) / --orange (20B)  [solid]
+//   512N → --blue   (2B) / --green  (20B)  [dotted]
 const paletteVars = [
-    '--foreground1',
-    '--pink',
-    '--blue',
-    '--orange',
-    '--green',
+    '--foreground2',  // MDS
+    '--accent',       // 2B TT 256N
+    '--blue',         // 2B TT 512N
+    '--orange',       // 20B TT 256N
+    '--green',        // 20B TT 512N
 ] as const
-const paletteFallback = ['#3f4652', '#ea76cb', '#2196f3', '#ff7900', '#4caf50']
+const paletteFallback = ['#6b7280', '#e0559a', '#2196f3', '#ff7900', '#4caf50']
 function withAlpha(rgb: string, alpha: number) {
     const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
     return m ? `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})` : rgb
@@ -88,7 +91,6 @@ function mount(
     root: HTMLElement,
     canvas: HTMLCanvasElement,
     frame: HTMLElement,
-    animate: boolean,
 ) {
     const isLoss = root.dataset.sc26Chart === 'loss'
     const fullLoss = root.dataset.sc26Chart === 'loss'
@@ -170,22 +172,24 @@ function mount(
             ? Object.values(loss)
                   .map((rows, i) => ({
                       // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                      // MDS faint dashed grey reference · 2B 256N solid pink · 2B 512N dashed blue ·
-                      // 20B 256N dotted orange · 20B 512N solid green
-                      ...dataset(labels[i], i === 0 ? withAlpha(colors[0], 0.6) : [colors[0], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
-                      borderWidth: i === 0 ? 3.25 : i >= 3 ? 5 : 4,
-                      borderDash: ([[3, 5], [], [12, 7], [2, 6], []] as number[][])[i],
+                      // MDS dashed grey · 2B 256N solid accent · 2B 512N dotted blue ·
+                      // 20B 256N solid orange · 20B 512N dotted green
+                      ...dataset(labels[i], i === 0 ? withAlpha(colors[0], 0.75) : withAlpha(colors[i], i === 1 || i === 3 ? 0.62 : 1), rows, 1, 0),
+                      borderWidth: i === 0 ? 3 : i >= 3 ? 5 : 4,
+                      borderDash: ([[7, 6], [], [10, 4, 1.5, 4], [], [10, 4, 1.5, 4]] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
-                      // Loss chart reveal sequence: MDS first, then the 2B TT
-                      // pair, then the 20B runs (with the inset) on the last step.
-                      hidden: fullLoss && i >= 0,
+                      // Loss chart reveal sequence: MDS is the resting state,
+                      // first press adds the 2B TT pair, second adds the 20B runs
+                      // and the inset.
+                      hidden: fullLoss && i >= 1,
                       sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
                   }))
             : evaluations
                   .map((run, i) => ({
-                      // Same family as the production-loss chart: MDS = grey dashed
-                      // crosses, 2B 256N = pink, 2B 512N = blue (dashed), 20B 512N = green.
+                      // Eval panels share the production-loss family:
+                      // MDS = dashed grey, 2B 256N = solid accent, 2B 512N = dotted blue,
+                      // 20B 512N = dotted green.
                       ...dataset(
                           run.label,
                           i === 0 ? colors[0] : [colors[1], colors[2], colors[4]][(i - 1) % 3],
@@ -193,7 +197,7 @@ function mount(
                           task + 1,
                           compact ? 3 : 6,
                       ),
-                      borderDash: i === 0 || i === 2 ? [10, 6] : [],
+                      borderDash: i === 0 ? [7, 6] : i === 2 ? [10, 4, 1.5, 4] : [],
                       borderWidth: i === 0 ? 2 : 2.6,
                       pointStyle: (
                           ['crossRot', 'circle', 'rect', 'triangle'] as const
@@ -201,24 +205,36 @@ function mount(
                   }))
                   .filter((_, i) => compact || i === 0 || i === 1 || i === 2 || i === 3)
 
-    let progress = 1
+    // Per-stage reveal: one clip width per dataset group (MDS, 2B, 20B).
+    // 0 = not yet revealed, 0..1 easing in, 1 = fully drawn.
+    const stageProgress = [0, 0, 0]
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const easeOutQuad = (t: number) => 1 - (1 - t) ** 2
+    const datasetStage = (i: number) => (i === 0 ? 1 : i <= 2 ? 2 : 3)
     const reveal: Plugin<'line'> = {
         id: 'sc26Reveal',
-        beforeDatasetsDraw({ ctx, chartArea }) {
+        beforeDatasetsDraw() {
+            // Clipping happens per dataset in beforeDatasetDraw.
+        },
+        beforeDatasetDraw({ ctx, chartArea }, args) {
+            const stage = datasetStage(args.index)
+            const p = Math.max(0, Math.min(1, stageProgress[stage - 1]))
             ctx.save()
             ctx.beginPath()
             ctx.rect(
                 chartArea.left,
                 chartArea.top,
-                chartArea.width * progress,
+                chartArea.width * p,
                 chartArea.height,
             )
             ctx.clip()
         },
+        afterDatasetDraw({ ctx }) {
+            ctx.restore()
+        },
         afterDatasetsDraw(chart) {
             const { ctx, scales, chartArea } = chart
-            ctx.restore()
-            if (progress < 1) return
+            if (stageProgress.some((p) => p < 1)) return
             ctx.save()
             ctx.fillStyle = color
             ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px ' + family
@@ -448,24 +464,25 @@ function mount(
                 title: '20B',
                 late: true,
                 entries: [
+                    { label: 'TT (512N)', stroke: colors[4], dash: '8 3 1.5 3' },
+                    { label: 'TT (256N)', stroke: withAlpha(colors[3], 0.62) },
                     null,
-                    { label: 'TT (256N)', stroke: colors[3], dash: '2 6' },
-                    { label: 'TT (512N)', stroke: colors[4] },
                 ],
             },
             {
                 title: '2B',
                 late: false,
                 entries: [
-                    { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.6), dash: '3 5' },
-                    { label: 'TT (256N)', stroke: colors[1] },
-                    { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
+                    { label: 'TT (512N)', stroke: colors[2], dash: '8 3 1.5 3' },
+                    { label: 'TT (256N)', stroke: withAlpha(colors[1], 0.62) },
+                    { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.75), dash: '7 6' },
                 ],
             },
         ]
         for (const col of columnDefs) {
             const group = document.createElement('div')
             group.className = 'sc26-legend-col'
+            group.classList.add('sc26-legend-col')
             group.dataset.stage = col.late ? '3' : '1'
             copyCid(group)
             const head = document.createElement('div')
@@ -476,18 +493,37 @@ function mount(
             col.entries.forEach((entry, row) => {
                 const cell = document.createElement('div')
                 cell.className = 'sc26-legend-cell'
-                // Stage mapping: 2B column (col.late=false) → MDS row 1, TT rows 2;
-                // 20B column → stage 3.
-                const stage = col.late ? 3 : row === 0 ? 1 : 2
+                // Stage mapping: 2B column rows are TT512/TT256 (stage 2) then MDS (stage 1);
+                // 20B column rows are all stage 3.
+                const stage = col.late ? 3 : row === 2 ? 1 : 2
                 cell.dataset.stage = String(stage)
                 copyCid(cell)
                 if (entry) {
                     const swatch = document.createElement('span')
                     swatch.className = 'sc26-legend-swatch'
                     copyCid(swatch)
-                    // inline styles beat Astro's scoped stylesheet, which sets a
-                    // fallback border-bottom on the class with higher specificity.
-                    swatch.style.cssText += `;display:inline-block;width:2em;height:0;flex:0 0 2em;border-bottom:4px ${entry.dash ? 'dashed' : 'solid'} ${entry.stroke};`
+                    // inline SVG so multi-segment dash patterns (dot-dash) render
+                    // exactly as the canvas series do; CSS border-style can't express that.
+                    swatch.style.cssText += ';display:inline-block;width:2em;height:0.75em;flex:0 0 2em;'
+                    swatch.innerHTML = ''
+                    const NS = 'http://www.w3.org/2000/svg'
+                    const svg = document.createElementNS(NS, 'svg')
+                    svg.setAttribute('viewBox', '0 0 32 8')
+                    svg.setAttribute('width', '100%')
+                    svg.setAttribute('height', '100%')
+                    svg.setAttribute('aria-hidden', 'true')
+                    const line = document.createElementNS(NS, 'line')
+                    line.setAttribute('x1', '0')
+                    line.setAttribute('y1', '4')
+                    line.setAttribute('x2', '32')
+                    line.setAttribute('y2', '4')
+                    line.setAttribute('stroke', entry.stroke)
+                    line.setAttribute('stroke-width', '3')
+                    if (entry.dash) {
+                        line.setAttribute('stroke-dasharray', entry.dash.split(' ').map((n) => String(Number(n) * 1.1)).join(' '))
+                    }
+                    svg.appendChild(line)
+                    swatch.appendChild(svg)
                     cell.appendChild(swatch)
                     const label = document.createElement('span')
                     label.className = 'sc26-legend-label'
@@ -507,9 +543,9 @@ function mount(
         const holder = document.createElement('div')
         holder.className = 'sc26-inset'
         holder.dataset.stage = '3'
-        // The deck steps fragments in DOM order; three zero-size sentinel spans mark
-        // the reveal stages (1 = MDS, 2 = 2B TT pair, 3 = 20B pair + inset).
-        for (const n of [1, 2, 3]) {
+        // The deck steps fragments in DOM order. Stage 1 (MDS) is the resting view;
+        // each sentinel advances one stage: 2 = 2B TT pair, 3 = 20B pair + inset.
+        for (const n of [2, 3]) {
             const sentinel = document.createElement('span')
             sentinel.className = 'fragment sc26-fragment-stage'
             sentinel.dataset.stage = String(n)
@@ -518,28 +554,57 @@ function mount(
             frame.appendChild(sentinel)
         }
         const sentinels = () => Array.from(frame.querySelectorAll<HTMLElement>('.sc26-fragment-stage'))
-        const stage = () => sentinels().filter((el) => el.hasAttribute('data-visible')).length
+        // Stage 0 is the resting view: MDS only. Each sentinel pressed adds one.
+        const stage = () => sentinels().filter((el) => el.hasAttribute('data-visible')).length + 1
         const syncStages = () => {
             const n = stage()
             for (const el of frame.querySelectorAll<HTMLElement>('[data-stage]')) {
+                const st = Number(el.dataset.stage)
                 if (el.classList.contains('sc26-inset')) {
-                    el.classList.toggle('sc26-on', n >= Number(el.dataset.stage))
+                    el.classList.toggle('sc26-on', n >= st)
+                } else if (el.classList.contains('sc26-legend-col')) {
+                    // Column visibility is driven by its cells; keep it in the flow
+                    // iff any cell will show.
+                    const anyVisible = Array.from(el.querySelectorAll('[data-stage]')).some(
+                        (cell) => Number((cell as HTMLElement).dataset.stage) <= n,
+                    )
+                    el.style.display = anyVisible ? '' : 'none'
                 } else {
-                    el.style.display = Number(el.dataset.stage) <= n ? '' : 'none'
+                    el.style.display = st <= n ? '' : 'none'
                 }
             }
-            legendEl.style.display = n >= 1 ? '' : 'none'
+            legendEl.style.display = ''
             let dirty = false
             chart.data.datasets.forEach((ds, i) => {
                 const dsStage = (ds as { sc26Stage?: number }).sc26Stage ?? 0
-                const show = dsStage === 0 || dsStage <= n
-                if (chart.isDatasetVisible(i) !== show) {
-                    chart.setDatasetVisibility(i, show)
+                const want = dsStage === 0 || dsStage <= n
+                if (chart.isDatasetVisible(i) !== want) {
+                    chart.setDatasetVisibility(i, want)
                     dirty = true
                 }
             })
             if (dirty) chart.update('none')
-            chart.draw()
+            // Animate the newly-revealed stage(s): ease a per-stage clip from 0→1.
+            const targets = [0, 1, 2].map((i) => (n >= i + 1 ? 1 : 0))
+            const startVals = [...stageProgress]
+            if (reduceMotion) {
+                stageProgress.splice(0, 3, ...targets)
+                chart.draw()
+            } else {
+                const duration = 2100
+                const start = performance.now()
+                const from = startVals.slice()
+                const tick = (time: number) => {
+                    const t = Math.min(1, (time - start) / duration)
+                    const e = easeOutQuad(t)
+                    for (let i = 0; i < 3; i++) {
+                        stageProgress[i] = from[i] + (targets[i] - from[i]) * e
+                    }
+                    chart.draw()
+                    if (t < 1) requestAnimationFrame(tick)
+                }
+                requestAnimationFrame(tick)
+            }
             // The reveal changes legend width; re-anchor it to the plot's top-right.
             // (placeLegend is declared below; defer if we're still in init.)
             if (placeLegendRef) placeLegendRef()
@@ -557,12 +622,37 @@ function mount(
             data: {
                 datasets: [
                     {
+                        label: 'MDS',
+                        data: loss.C_2B_MDS.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
+                        borderColor: withAlpha(colors[0], 0.75),
+                        backgroundColor: withAlpha(colors[0], 0.75),
+                        borderWidth: 1.5,
+                        borderDash: [7, 6],
+                        pointRadius: 0,
+                    },
+                    {
+                        label: '2B 256N',
+                        data: loss.C_2B_256.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
+                        borderColor: withAlpha(colors[1], 0.62),
+                        backgroundColor: withAlpha(colors[1], 0.62),
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                    },
+                    {
+                        label: '2B 512N',
+                        data: loss.C_2B_512.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
+                        borderColor: colors[2],
+                        backgroundColor: colors[2],
+                        borderWidth: 1.5,
+                        borderDash: [10, 4, 1.5, 4],
+                        pointRadius: 0,
+                    },
+                    {
                         label: '20B 256N',
                         data: loss.C_20B_256.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: colors[3],
-                        backgroundColor: colors[3],
+                        borderColor: withAlpha(colors[3], 0.62),
+                        backgroundColor: withAlpha(colors[3], 0.62),
                         borderWidth: 2,
-                        borderDash: [10, 6],
                         pointRadius: 0,
                     },
                     {
@@ -571,6 +661,7 @@ function mount(
                         borderColor: colors[4],
                         backgroundColor: colors[4],
                         borderWidth: 2,
+                        borderDash: [10, 4, 1.5, 4],
                         pointRadius: 0,
                     },
                 ],
@@ -648,23 +739,6 @@ function mount(
     resizeObserver.observe(frame)
     placeLegend()
     root.dataset.ready = ''
-    if (
-        animate &&
-        isLoss &&
-        !matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-        const start = performance.now()
-        const draw = (time: number) => {
-            if (!Chart.getChart(canvas)) return
-            const t = Math.min(1, (time - start) / 2600)
-            progress = 1 - (1 - t) ** 2
-            chart.draw()
-            if (t < 1) requestAnimationFrame(draw)
-        }
-        progress = 0
-        chart.draw()
-        requestAnimationFrame(draw)
-    }
     return chart
 }
 
@@ -686,10 +760,10 @@ async function initialize() {
             if (!slide.hasAttribute('data-current')) return
             observer.disconnect()
             try {
-                let chart = mount(root, canvas, frame, true)
+                let chart = mount(root, canvas, frame)
                 new MutationObserver(() => {
                     chart.destroy()
-                    chart = mount(root, canvas, frame, false)
+                    chart = mount(root, canvas, frame)
                 }).observe(document.documentElement, {
                     attributes: true,
                     attributeFilter: ['data-webtui-theme'],

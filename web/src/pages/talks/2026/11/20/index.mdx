@@ -104,6 +104,9 @@ Set the machine and software context once. Aurora is one of the largest non-NVID
 
 <div>
 
+🍋 `ezpz`: Write once, run _anywhere_.  
+[[&#xe65b; github](https://github.com/saforem2/ezpz)] [[ezpz.cool](https://ezpz.cool)]
+
 ```python
 # demo.py
 import torch
@@ -153,7 +156,7 @@ flowchart LR
     class MPS mps
 ```
 
-<figcaption><a href="https://github.com/saforem2/ezpz"><code>ezpz</code></a> picks the backend.</figcaption>
+<figcaption><a href="https://ezpz.cool"><code>ezpz</code></a> automatically picks the backend and handles the distributed launch + setup. See <a href="https://ezpz.cool/cli/launch/">🚀 <code>ezpz launch</code></a>.</figcaption>
 
 </figure>
 
@@ -350,7 +353,7 @@ flowchart TB
     .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.5rem; align-items: center; }
     .sc-launch-grid > div { min-width: 0; }
     .sc-launch-figure { min-width: 0; margin: 0; }
-    .sc-launch-figure figcaption { text-align: left; }
+    .sc-launch-figure figcaption { text-align: left; font-size: clamp(0.72rem, 1.05vw, 0.95rem); line-height: 1.2; margin-top: 0.15em; }
     /* Theme-aware hub (pele writes inline styles, so beat them with !important). */
     #portable-stack .mermaid .pele-node.hub { color: var(--foreground0); }
     #portable-stack .mermaid .pele-node.hub polygon,
@@ -654,9 +657,11 @@ flowchart TB
     }
 
     #portable-stack pre {
-        border: 1px solid var(--sc-rule);
-        border-left: 4px solid var(--sc-cyan);
+        /* frame comes from the astro-code ::before rule; a local border would double it */
         box-shadow: none;
+    }
+    #portable-stack pre.astro-code::before {
+        border: 2px solid oklch(from var(--lang-badge, var(--material-pink)) l c h / 0.5);
     }
 
     .code-caption {
