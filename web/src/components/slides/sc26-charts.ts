@@ -426,14 +426,15 @@ function mount(
                 },
                 y: {
                     ...axis,
-                    // Loss axes start at 2 (detail lives between 2 and 8). Grad-norm
-                    // axis spans from its floor up to the 50 clip used in the data;
-                    // log scale with ticks at 1/2/10/50 keeps the divergences visible
-                    // without flattening the 0.2–5 band the healthy runs live in.
+                    // Loss axes start at 2.33 (optimizer-loss data floors at 2.62)
+                    // so the low end is not wasted. Grad-norm axis spans from its
+                    // floor up to the 50 clip used in the data; log scale with ticks
+                    // at 1/2/10/50 keeps the divergences visible without flattening
+                    // the 0.2–5 band the healthy runs live in.
                     min: optimizer
                         ? optGrad
                             ? 0.2
-                            : 2
+                            : 2.33
                         : isLoss
                           ? 2
                           : undefined,
