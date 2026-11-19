@@ -21,6 +21,8 @@ const { kind, fallback, label, compact = false } = Astro.props
     .compact > img { max-height: 28vh; }
     .canvas-frame { position: relative; height: clamp(250px, 75vh, 850px); min-width: 0; }
     .sc26-inset { position: absolute; left: 17.5%; top: 12%; width: 25%; height: 33%; z-index: 2; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--foreground3) 60%, transparent); box-shadow: 0 1px 8px rgba(0, 0, 0, 0.28); background: var(--background0); overflow: hidden; }
+    .sc26-inset.fragment { opacity: 0; pointer-events: none; transition: opacity 260ms ease; z-index: 3; }
+    .sc26-inset.fragment[data-visible] { opacity: 1; }
     .sc26-inset canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
     /* Two-column legend (2B block / 20B block) for the production-loss chart. */
     .sc26-legend { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 2; display: flex; align-items: baseline; gap: 1.6rem; padding: 0.3em 0.9em; width: max-content; font-family: var(--code-font-family, var(--font-family)); white-space: nowrap; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--foreground3) 55%, transparent); background: color-mix(in srgb, var(--background0) 82%, transparent); }

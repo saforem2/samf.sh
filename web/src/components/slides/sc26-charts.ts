@@ -244,7 +244,7 @@ function mount(
         beforeDatasetsDraw({ ctx, scales, chartArea }) {
             if (!fullLoss) return
             const inset = frame.querySelector<HTMLElement>('.sc26-inset')
-            if (!inset) return
+            if (!inset || !inset.hasAttribute('data-visible')) return
             const frameRect = frame.getBoundingClientRect()
             const ir = inset.getBoundingClientRect()
             const canvasRect = canvas.getBoundingClientRect()
@@ -472,7 +472,10 @@ function mount(
         // Wrap the inset canvas in its own sized box; a bare canvas would be
         // stretched by chart.js's resize observer to the frame's full size.
         const holder = document.createElement('div')
-        holder.className = 'sc26-inset'
+        holder.className = 'sc26-inset fragment'
+        // The deck controls fragment visibility via [data-visible]; watch it so
+        // the on-canvas guide lines redraw in step with the inset reveal.
+        new MutationObserver(() => chart.draw()).observe(holder, { attributes: true, attributeFilter: ['data-visible'] })
         copyCid(holder)
         frame.appendChild(holder)
         const insetCanvas = document.createElement('canvas')
