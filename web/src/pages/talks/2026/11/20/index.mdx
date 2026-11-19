@@ -475,9 +475,11 @@ Stop here. Leave the links on screen for questions.
 
 ## Backup: SophiaG at 50M tokens per batch
 
+<p class="sc-backup-legend">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
+
 <div class="sc-eval-grid">
-    <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss and gradient norm versus tokens" />
-    <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus tokens" />
+    <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss versus consumed tokens, W&B filters applied" />
+    <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus consumed tokens, W&B filters applied" />
 </div>
 
 </Slide>

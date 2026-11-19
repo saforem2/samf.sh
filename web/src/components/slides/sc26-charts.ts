@@ -1,7 +1,8 @@
 import Chart from 'chart.js/auto'
 import type { Plugin } from 'chart.js'
 import { evaluations, loss, mdsHellaswag } from './sc26-chart-data'
-import { mdsStages, optimizerHistories } from './sc26-backup-data'
+import { mdsStages } from './sc26-backup-data'
+import { optimizerHistories } from './sc26-optimizer-data'
 
 const family = 'mIosevka-QP Web'
 // Series colors come from the active theme's accent variables (--blue, --red, …)
@@ -32,19 +33,49 @@ const reference = evaluations[0].rows[0]
 const match = evaluations[3].rows.find((row) => row[1] >= reference[1])!
 const ratio = (reference[0] / match[0]).toFixed(1)
 
+
+// W&B's default line-plot smoothing ("Time weighted EMA") applies a
+// debias-corrected EMA weighted by elapsed x-distance, normalized by the x-range:
+//   weight = min(sqrt(smoothingParam), 0.999)
+//   last   = last * weight^(dx / xRange * VIEWPORT_SCALE) + y
+// W&B does not publish VIEWPORT_SCALE; we use 1000 (points across a ~1000-px
+// panel) so the smoothing strength is comparable to the default panel. Docs:
+// https://docs.wandb.ai/models/app/features/panels/line-plot/smoothing
+const WAND_SMOOTHING = 0.6
+const WAND_VIEWPORT_SCALE = 1000
+function twema(rows: { x: number; y: number }[], w = WAND_SMOOTHING) {
+    if (!rows.length) return rows
+    const weight = Math.min(Math.sqrt(w), 0.999)
+    const xMin = rows[0].x
+    const xMax = rows[rows.length - 1].x
+    const range = Math.max(xMax - xMin, 1e-9)
+    let last = 0
+    let debias = 0
+    return rows.map((row, i) => {
+        const prevX = i > 0 ? rows[i - 1].x : row.x
+        const dx = Math.max(row.x - prevX, 0)
+        const adj = Math.pow(weight, (dx / range) * WAND_VIEWPORT_SCALE)
+        last = last * adj + row.y
+        debias = debias * adj + 1
+        return { x: row.x, y: last / debias }
+    })
+}
+
 function dataset(
     label: string,
     color: string,
     rows: number[][],
     column: number,
     pointRadius: number,
+    smooth = false,
 ) {
+    const data = rows.map((row) => ({ x: row[0] / 1000, y: row[column] }))
     return {
         label,
-        data: rows.map((row) => ({ x: row[0] / 1000, y: row[column] })),
+        data: smooth ? twema(data) : data,
         borderColor: color,
         backgroundColor: color,
-        borderWidth: 2.6,
+        borderWidth: smooth ? 3 : 2.6,
         pointRadius,
         pointHoverRadius: 6,
     }
@@ -124,28 +155,24 @@ function mount(
           )
         : optimizer
           ? optimizerHistories.map((run, i) =>
-                // Gradient norms are sampled at ~11M-token bins, so a line
-                // interpolates between points that were never measured; plot
-                // points only. The loss curves stay lines (dense + smooth).
-                optGrad
-                    ? {
-                          ...dataset(
-                              ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                              [colors[2], colors[0], colors[4], colors[1]][i],
-                              run.grad,
-                              1,
-                              3,
-                          ),
-                          showLine: false,
-                      }
-                    : dataset(
-                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                          [colors[2], colors[0], colors[4], colors[1]][i],
-                          run.loss,
-                          1,
-                          0,
-                      ),
-            )
+                // W&B full-fidelity view: faint raw trace + smoothed line on top.
+                [
+                    dataset(
+                        ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
+                        withAlpha([colors[2], colors[0], colors[4], colors[1]][i], 0.18),
+                        optGrad ? run.grad : run.loss,
+                        1,
+                        0,
+                    ),
+                    dataset(
+                        ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
+                        [colors[2], colors[0], colors[4], colors[1]][i],
+                        optGrad ? run.grad : run.loss,
+                        1,
+                        0,
+                        true,
+                    ),
+                ]).flat()
           : isLoss
             ? Object.values(loss)
                   .map((rows, i) => ({
@@ -262,11 +289,17 @@ function mount(
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
+            layout: { padding: { top: compact ? 4 : 14 } },
             interaction: { mode: 'nearest', intersect: false },
             plugins: {
                 legend: {
                     display: !compact,
-                    labels: { color, font, usePointStyle: !isLoss },
+                    labels: {
+                        color,
+                        font,
+                        usePointStyle: !isLoss,
+                        filter: (item) => !item.text.endsWith(' (raw)'),
+                    },
                 },
                 title: {
                     display: compact,
@@ -281,7 +314,7 @@ function mount(
                     ...axis,
                     type: 'linear',
                     min: 0,
-                    max: zoom ? 0.6 : optimizer ? 1.5 : undefined,
+                    max: zoom ? 0.6 : undefined,
                     title: {
                         ...axisTitle,
                         text: 'Tokens consumed (trillions)',
