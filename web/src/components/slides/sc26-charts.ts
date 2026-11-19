@@ -236,25 +236,8 @@ function mount(
             if (stageProgress.some((p) => p < 1)) return
             ctx.save()
             ctx.fillStyle = color
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px ' + family
-            datasets.forEach((series, index) => {
-                const point = [...series.data]
-                    .reverse()
-                    .find(({ x }) => x <= 0.6)
-                if (!point || !chart.isDatasetVisible(index)) return
-                const label = index === 0 ? '256 nodes' : '512 nodes'
-                const x = Math.min(
-                    scales.x.getPixelForValue(point.x) + 14,
-                    chartArea.right - ctx.measureText(label).width,
-                )
-                // In stage 2 the two 2B curves sit ~0.05 loss apart; a bigger
-                // vertical split keeps the labels off each other's line.
-                const both2B = chart.isDatasetVisible(1) && chart.isDatasetVisible(2)
-                const y =
-                    scales.y.getPixelForValue(point.y) +
-                    (index === 0 ? (both2B ? -20 : -12) : (both2B ? 26 : 18))
-                ctx.fillText(label, x, y)
-            })
+            // (End-of-curve labels removed: truncated x<=0.6T 2B series are
+            // fully inside the plot and need no annotation; the legend carries identity.)
             ctx.restore()
         },
     }
