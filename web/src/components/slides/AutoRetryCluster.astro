@@ -17,8 +17,14 @@
                     checkpoint.</canvas
                 >
                 <figcaption class="diagram-key">
-                    <span><i class="key-batch"></i>Batch shards</span>
-                    <span><i class="key-gradients"></i>Gradients</span>
+                    <span class="key-shards" aria-hidden="true">
+                        <i style="--c: #e69f00"></i><i style="--c: #56b4e9"
+                        ></i><i style="--c: #009e73"></i><i style="--c: #f0e442"
+                        ></i><i style="--c: #0072b2"></i><i style="--c: #d55e00"
+                        ></i><i style="--c: #cc79a7"></i><i style="--c: #999999"
+                        ></i>
+                    </span>
+                    <span>Batch shards 0–7</span>
                     <span><i class="key-recovery"></i>Checkpoint / spare</span>
                 </figcaption>
             </figure>
@@ -157,11 +163,16 @@
         block-size: 0.65em;
         background: var(--key-color);
     }
-    .key-batch {
-        --key-color: var(--sc-cyan, var(--blue));
+    .key-shards {
+        display: inline-flex;
+        gap: 3px;
+        align-items: center;
     }
-    .key-gradients {
-        --key-color: var(--sc-purple, var(--accent));
+    .key-shards i {
+        inline-size: 0.62em;
+        block-size: 0.62em;
+        background: var(--c);
+        display: inline-block;
     }
     .key-recovery {
         --key-color: var(--sc-green, var(--green));

@@ -27,7 +27,7 @@ interface Palette {
 const scenes: Scene[] = [
     {
         id: 'batch',
-        duration: 2200,
+        duration: 3400,
         kicker: 'Training · step 3003',
         title: 'One batch, eight hosts',
         detail: 'Each host receives a shard and computes its gradients.',
@@ -36,7 +36,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'sync',
-        duration: 2400,
+        duration: 3800,
         kicker: 'Training · step 3003',
         title: 'The collective completes',
         detail: 'Gradients go out and return synchronized across all eight hosts.',
@@ -45,7 +45,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'save',
-        duration: 1800,
+        duration: 3200,
         kicker: 'Checkpoint',
         title: 'Save the finished step',
         detail: 'The trainer saves checkpoint 3003 to shared storage.',
@@ -54,7 +54,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'stall',
-        duration: 3900,
+        duration: 6800,
         kicker: 'Training · step 3004',
         title: 'One host goes silent',
         detail: 'Seven hosts reach the collective. The eighth stops responding.',
@@ -63,7 +63,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'timeout',
-        duration: 2100,
+        duration: 3000,
         kicker: 'Watchdog',
         title: 'No output for 30 min',
         detail: 'The idle watchdog ends the attempt with exit 124.',
@@ -72,7 +72,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'swap',
-        duration: 3000,
+        duration: 4200,
         kicker: 'Retry',
         title: 'Rotate in a spare',
         detail: 'A blind retry replaces the first active host with a spare.',
@@ -81,7 +81,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'restore',
-        duration: 2800,
+        duration: 4200,
         kicker: 'Relaunch',
         title: 'Reload the checkpoint',
         detail: 'The trainer restores checkpoint 3003 on the new host list.',
@@ -90,7 +90,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'resume',
-        duration: 2600,
+        duration: 3800,
         kicker: 'Training · step 3004',
         title: 'The collective completes',
         detail: 'All eight hosts participate and step 3004 completes.',
@@ -99,7 +99,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'done',
-        duration: 1200,
+        duration: 2200,
         kicker: 'Training resumed',
         title: 'Back to training',
         detail: 'The replacement host joins the same distributed run.',
@@ -122,6 +122,18 @@ const ranks = [
     { x: 355, y: 337, name: 'host-046' },
     { x: 490, y: 337, name: 'host-047' },
     { x: 625, y: 337, name: 'host-048' },
+]
+
+/** Okabe-Ito colorblind-safe palette, one hue per batch shard (rank order). */
+const shardColors = [
+    '#E69F00',
+    '#56B4E9',
+    '#009E73',
+    '#F0E442',
+    '#0072B2',
+    '#D55E00',
+    '#CC79A7',
+    '#999999',
 ]
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -242,28 +254,34 @@ function host(
     ctx.restore()
 }
 
-function batchGrid(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    color: string,
-) {
+function batchGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
     const tile = 21
     const gap = 3
     const left = x - (tile * 4 + gap * 3) / 2
     const top = y - (tile * 2 + gap) / 2
     ctx.save()
-    ctx.fillStyle = color
-    ctx.strokeStyle = color
     ctx.lineWidth = 1
     for (let row = 0; row < 2; row++) {
         for (let column = 0; column < 4; column++) {
+            const index = row * 4 + column
             const tileX = left + column * (tile + gap)
             const tileY = top + row * (tile + gap)
-            ctx.globalAlpha = 0.27 + ((row + column) % 3) * 0.12
+            ctx.globalAlpha = 0.32
+            ctx.fillStyle = shardColors[index]
             ctx.fillRect(tileX, tileY, tile, tile)
-            ctx.globalAlpha = 0.85
+            ctx.globalAlpha = 0.95
+            ctx.strokeStyle = shardColors[index]
             ctx.strokeRect(tileX, tileY, tile, tile)
+            ctx.globalAlpha = 1
+            ctx.fillStyle = '#0b0b0b'
+            ctx.font = '700 12px ' + ctx.canvas.dataset.font
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(
+                String(index),
+                tileX + tile / 2,
+                tileY + tile / 2 + 0.5,
+            )
         }
     }
     ctx.restore()
@@ -357,15 +375,27 @@ function alongRoute(
     return { x: rank.x + distance - verticalLength, y: busY }
 }
 
-function packet(ctx: CanvasRenderingContext2D, point: Point, color: string) {
+function packet(
+    ctx: CanvasRenderingContext2D,
+    point: Point,
+    color: string,
+    label?: string,
+) {
     ctx.save()
     ctx.fillStyle = color
     ctx.strokeStyle = color
-    ctx.globalAlpha = 0.5
-    ctx.fillRect(point.x - 9, point.y - 9, 18, 18)
+    ctx.globalAlpha = 0.28
+    ctx.fillRect(point.x - 10, point.y - 10, 20, 20)
     ctx.globalAlpha = 1
     ctx.lineWidth = 1.5
     ctx.strokeRect(point.x - 9, point.y - 9, 18, 18)
+    if (label !== undefined) {
+        ctx.fillStyle = color
+        ctx.font = '700 11px ' + ctx.canvas.dataset.font
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(label, point.x, point.y + 0.5)
+    }
     ctx.restore()
 }
 
@@ -483,9 +513,9 @@ function draw(
     if (swapping) curve(ctx, sparePath, palette.green, 0.75)
 
     // The eight batch cells travel to the eight hosts.
-    batchGrid(ctx, 69, 255, palette.cyan)
+    batchGrid(ctx, 69, 255)
     label(ctx, 'batch', 69, 331, palette.text, compact ? 30 : 25, 700)
-    label(ctx, '8 shards', 69, 354, palette.muted, compact ? 25 : 20)
+    label(ctx, '8 shards', 69, 354, palette.muted, compact ? 22 : 17)
 
     // This box represents the collective operation, not a dedicated server.
     ctx.save()
@@ -508,17 +538,49 @@ function draw(
     )
     for (let i = 0; i < 8; i++) {
         ctx.save()
-        ctx.fillStyle = i < collectiveProgress ? signal : palette.muted
+        const arrivedCount =
+            id === 'stall'
+                ? Math.min(7, Math.floor(p * 17))
+                : collectiveProgress
+        if (id === 'sync' || id === 'resume' || id === 'stall') {
+            // Map pip i -> the i-th *healthy* shard so colours line up with senders.
+            const shardIndex = id === 'stall' ? (i === 0 ? -1 : i) : i
+            ctx.fillStyle =
+                i < arrivedCount && shardIndex >= 0
+                    ? shardColors[shardIndex]
+                    : palette.muted
+        } else {
+            ctx.fillStyle = i < collectiveProgress ? signal : palette.muted
+        }
         ctx.globalAlpha = i < collectiveProgress ? 0.95 : 0.24
         ctx.fillRect(767 + i * 17, 263, 10, 10)
         ctx.restore()
     }
+    const arrived =
+        id === 'stall' ? Math.min(7, Math.floor(p * 17)) : collectiveProgress
     const count = stopped
         ? compact
             ? 'stopped'
             : 'attempt stopped'
-        : collectiveProgress + ' / 8'
+        : arrived + ' / 8 in'
     label(ctx, count, 833, 292, palette.text, compact ? 27 : 18, 700)
+
+    if (id === 'stall') {
+        // Seven healthy hosts tick waiting-for-you clocks; the stalled one is frozen red.
+        for (let i = 1; i < ranks.length; i++) {
+            const label_ = readableClock(p * 1800)
+            const iy = ranks[i].y < busY ? ranks[i].y - 34 : ranks[i].y + 88
+            label(
+                ctx,
+                label_,
+                ranks[i].x,
+                iy,
+                palette.muted,
+                compact ? 18 : 15,
+                700,
+            )
+        }
+    }
 
     let idleLabel = 'output flowing'
     let idleColor = palette.muted
@@ -633,14 +695,14 @@ function draw(
                 0.7 * (1 - moved * 0.75),
             )
         } else if (!(badHost && (swapping || swapped))) {
-            const color =
+            const hostColor =
                 badHost && failed
                     ? palette.red
                     : gradient
                       ? palette.purple
-                      : palette.cyan
+                      : shardColors[index]
             const opacity = stopped ? 0.3 : failed && !badHost ? 0.45 : 0.95
-            host(ctx, rank.x, rank.y, 80, color, opacity)
+            host(ctx, rank.x, rank.y, 80, hostColor, opacity)
         }
         if (badHost && spareInSlot)
             host(ctx, rank.x, rank.y, 80, palette.green, 1)
@@ -666,7 +728,12 @@ function draw(
         ranks.forEach((rank, index) => {
             const progress = delayed(p, index)
             if (progress > 0 && progress < 1)
-                packet(ctx, alongRoute(rank, progress, 'in'), palette.cyan)
+                packet(
+                    ctx,
+                    alongRoute(rank, progress, 'in'),
+                    shardColors[index],
+                    String(index),
+                )
         })
     }
 
@@ -675,21 +742,56 @@ function draw(
             if (id === 'stall' && index === 0) return
             const outbound = delayed(id === 'stall' ? p * 1.85 : p / 0.6, index)
             if (outbound > 0 && outbound < 1)
-                packet(ctx, alongRoute(rank, outbound, 'out'), palette.purple)
+                packet(
+                    ctx,
+                    alongRoute(rank, outbound, 'out'),
+                    shardColors[index],
+                    String(index),
+                )
             if (id !== 'stall' && p >= 0.6) {
                 const inbound = delayed((p - 0.6) / 0.4, index)
                 if (inbound > 0 && inbound < 1)
                     packet(
                         ctx,
                         alongRoute(rank, 1 - inbound, 'out'),
-                        palette.purple,
+                        shardColors[index],
+                        String(index),
                     )
             }
         })
     }
 
-    if (id === 'save' && p < 0.8)
-        packet(ctx, cubic(...checkpointPath, smooth(p / 0.8)), palette.green)
+    if (id === 'save') {
+        if (p < 0.8)
+            packet(
+                ctx,
+                cubic(...checkpointPath, smooth(p / 0.8)),
+                palette.green,
+            )
+        const written = Math.min(1, p / 0.8)
+        const mb = Math.round(412 * written)
+        const barX = 767,
+            barY = 474,
+            barW = 118,
+            barH = 5
+        ctx.save()
+        ctx.fillStyle = palette.muted
+        ctx.globalAlpha = 0.35
+        ctx.fillRect(barX, barY, barW, barH)
+        ctx.globalAlpha = 1
+        ctx.fillStyle = palette.green
+        ctx.fillRect(barX, barY, barW * written, barH)
+        ctx.restore()
+        label(
+            ctx,
+            mb + ' / 412 MB',
+            barX + barW / 2,
+            barY + 17,
+            palette.muted,
+            compact ? 16 : 13,
+            600,
+        )
+    }
     if (id === 'restore') {
         const q = clamp(p / 0.45)
         if (q < 1) packet(ctx, cubic(...restorePath, smooth(q)), palette.green)
