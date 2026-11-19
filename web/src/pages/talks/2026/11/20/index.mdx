@@ -181,17 +181,6 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 </Slide>
 
-<Slide id="loss-zoom">
-
-## The first 600B tokens of 20B training
-
-<SC26Chart kind="loss-zoom" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="Early training loss for the 256-node and 512-node AuroraGPT 20B runs" />
-
-<SpeakerNotes>
-This is the same production snapshot on a narrower token axis. The two 20B trajectories ran with different batch sizes.
-</SpeakerNotes>
-
-</Slide>
 
 <Slide id="three-failures">
 
@@ -220,9 +209,6 @@ On Sunspot at 6,144 sequences per batch, the gradient norm went nonfinite one st
 
 ```mermaid
 flowchart LR
-    A["<i>the migration gate</i><br/><span style='font-weight:700'>same checkpoint · batch<br/>· RNG · step</span>"] --> B["<i>both stacks</i><br/><span style='font-weight:700'>reference + migrated<br/>one training step</span>"] --> D{"loss & grads<br/><br/>bit for bit?"}
-    D -->|✅ diff = 0| C["<i>migration accepted</i><br/><span style='font-weight:700'>✓ ship</span>"]
-    D -.->|❌ diff ≠ 0| F["<i>loss looked fine</i><br/><span style='font-weight:700'>bits disagree — bisect</span>"]
     F -.-> B
 
     classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px

@@ -20,6 +20,8 @@ const { kind, fallback, label, compact = false } = Astro.props
     .sc26-chart > img { display: block; width: 100%; max-height: 61vh; object-fit: contain; }
     .compact > img { max-height: 28vh; }
     .canvas-frame { position: relative; height: clamp(200px, 56vh, 680px); min-width: 0; }
+    .sc26-inset { position: absolute; right: 26%; bottom: 53%; width: 21%; height: 30%; z-index: 2; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--foreground3) 60%, transparent); box-shadow: 0 1px 8px rgba(0, 0, 0, 0.28); background: var(--background0); overflow: hidden; }
+    .sc26-inset canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
     /* Portrait phones (e.g. 402x874 iPhone, ratio < 0.9): the fixed
        clamp() height left ~55% of the slide empty. Let the frame grow to
        fill whatever vertical room the flex column has left after the

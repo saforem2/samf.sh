@@ -8,28 +8,26 @@ const family = 'mIosevka-QP Web'
 // Series colors come from the active theme's accent variables (--blue, --red, …)
 // instead of hard-coded hex. Canvas needs concrete srgb/rgb values, so each
 // custom property is painted through a 1×1 canvas and read back as rgb().
+// Slide 4 series colors, theme-aware. MDS reference is muted grey; the two
+// 2B TorchTitan chains are pink dotted (256N) and solid blue (512N); stage-2
+// segments share the stage-1 hue. 20B chains: 256N dashed purple, 512N green.
 const paletteVars = [
+    '--foreground3',
+    '--pink',
     '--blue',
-    '--red',
     '--purple',
-    '--orange',
     '--green',
 ] as const
-const paletteFallback = ['#2196f3', '#ef5350', '#ae81ff', '#ffa726', '#4caf50']
+const paletteFallback = ['#838383', '#ea76cb', '#2196f3', '#9a76ce', '#4caf50']
 function withAlpha(rgb: string, alpha: number) {
     const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
     return m ? `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})` : rgb
 }
 const tasks = ['hellaswag', 'arc_easy', 'arc_challenge', 'winogrande']
 const titles = ['HellaSwag', 'ARC-Easy', 'ARC-Challenge', 'Winogrande']
-// 2B TT stage-2 (dolmino) chains continue the stage-1 curves to ~6.9T tokens;
-// they are drawn dashed in the same hue as their stage-1 counterpart.
+// 2B TT stage-2 (dolmino) chains continue the stage-1 curves to ~6.9T tokens.
 const labels = [
     '2B MDS',
-    '2B TT 256N',
-    '2B TT 512N',
-    '20B TT 256N',
-    '20B TT 512N',
     '2B 256N s1',
     '2B 512N s1',
     '2B 256N s2',
@@ -97,6 +95,7 @@ function mount(
 ) {
     const zoom = root.dataset.sc26Chart === 'loss-zoom'
     const isLoss = zoom || root.dataset.sc26Chart === 'loss'
+    const fullLoss = root.dataset.sc26Chart === 'loss'
     const mds = root.dataset.sc26Chart === 'mds-loss'
     const optLoss = root.dataset.sc26Chart === 'optimizer-loss'
     const optGrad = root.dataset.sc26Chart === 'optimizer-grad'
@@ -128,6 +127,8 @@ function mount(
     const colors = paletteVars.map((name, i) =>
         readVar(name, paletteFallback[i]),
     )
+    // Optimizer panel needs its own hues so it doesn't collide with the loss chart.
+    const optColors = [readVar('--blue', '#2196f3'), readVar('--foreground3', '#838383'), readVar('--green', '#4caf50'), readVar('--pink', '#ea76cb')]
     // Canvas is sized by CSS (maintainAspectRatio: false), so derive the
     // label size from the rendered width instead of a fixed px value.
     // Reference width 620px ~ the full slide figure column; clamped so the
@@ -167,14 +168,14 @@ function mount(
                 [
                     dataset(
                         ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
-                        withAlpha([colors[2], colors[0], colors[4], colors[1]][i], 0.18),
+                        withAlpha(optColors[i], 0.18),
                         optGrad ? run.grad : run.loss,
                         1,
                         0,
                     ),
                     dataset(
                         ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                        [colors[2], colors[0], colors[4], colors[1]][i],
+                        optColors[i],
                         optGrad ? run.grad : run.loss,
                         1,
                         0,
@@ -184,30 +185,16 @@ function mount(
           : isLoss
             ? Object.values(loss)
                   .map((rows, i) => ({
-                      ...dataset(labels[i], colors[i], rows, 1, 0),
-                      borderWidth: i >= 3 ? 5 : 4,
-                      borderDash: i === 0 || i === 3 ? [12, 7] : [],
-                      pointStyle:
-                          i === 3
-                              ? ('rectRot' as const)
-                              : ('triangle' as const),
-                      pointRadius:
-                          i >= 3
-                              ? rows.map((_, index) =>
-                                    index % Math.ceil(rows.length / 8) === 0
-                                        ? 5
-                                        : 0,
-                                )
-                              : 0,
-                      ...dataset(labels[i], [colors[0], colors[1], colors[3], colors[1], colors[3], colors[2], colors[4]][i], rows, 1, 0),
+                      // Index 0..6: MDS, 2B 256N s1, 2B 512N s1, 2B 256N s2, 2B 512N s2, 20B 256N, 20B 512N.
+                      // MDS dotted grey; 2B 256N solid pink; 2B 512N dashed blue;
+                      // stage-2 continuations repeat the stage-1 hue with a longer dash;
+                      // 20B 256N dashed purple; 20B 512N solid green.
+                      ...dataset(labels[i], [colors[0], colors[1], colors[2], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
                       borderWidth: i >= 5 ? 5 : 4,
-                      // Match the 10/21 figure convention: solid = 256N, dashed = 512N
-                      // (MDS reference dashed as before).
-                      borderDash: i === 0 || i === 2 || i === 4 ? [12, 7] : [],
+                      borderDash: ([[2, 6], [], [12, 7], [8, 5], [16, 6], [12, 7], []] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
                   }))
-                  .filter((_, i) => !zoom || i >= 3)
                   .filter((_, i) => !zoom || i >= 5)
             : evaluations
                   .map((run, i) => ({
@@ -263,6 +250,32 @@ function mount(
             ctx.restore()
         },
     }
+    // Stage boundaries for the full production-loss view: a dashed vertical at
+    // the 4.674T transition where the 2B chains switch to the dolmino mix, and
+    // a boxed inset reproducing the old dedicated early-training slide.
+    const stageTransition = 4.67378 // trillion tokens, from agpt-2b-progress.json (stage 2 prior_tokens)
+    const stageMarks: Plugin<'line'> = {
+        id: 'sc26StageMarks',
+        afterDatasetsDraw({ ctx, scales, chartArea }) {
+            if (!fullLoss) return
+            const x = scales.x.getPixelForValue(stageTransition)
+            ctx.save()
+            ctx.setLineDash([6, 5])
+            ctx.strokeStyle = withAlpha(readVar('--foreground1', color), 0.7)
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.moveTo(x, chartArea.top)
+            ctx.lineTo(x, chartArea.bottom)
+            ctx.stroke()
+            ctx.setLineDash([])
+            ctx.fillStyle = color
+            ctx.font = '500 ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) + 'px "' + family + '"'
+            ctx.textAlign = 'right'
+            ctx.textBaseline = 'bottom'
+            ctx.fillText('stage 1 → 2', x - 8, chartArea.bottom - 6)
+            ctx.restore()
+        },
+    }
     const compare: Plugin<'line'> = {
         id: 'sc26Compare',
         afterDatasetsDraw({ ctx, scales }) {
@@ -296,7 +309,7 @@ function mount(
         type: 'line',
         data: { datasets },
         plugins: isLoss
-            ? [reveal]
+            ? zoom ? [reveal] : [reveal, stageMarks]
             : !history && !compact && task === 0
               ? [compare]
               : [],
@@ -329,7 +342,11 @@ function mount(
                     color,
                     font: { ...font, weight: 700 },
                 },
-                tooltip: { titleFont: font, bodyFont: font },
+                tooltip: {
+                    titleFont: font,
+                    bodyFont: font,
+                    filter: (item) => !item.dataset.label.endsWith(' (raw)'),
+                },
             },
             scales: {
                 x: {
@@ -344,8 +361,12 @@ function mount(
                 },
                 y: {
                     ...axis,
-                    min: isLoss ? 2 : undefined,
-                    max: isLoss ? 4.5 : undefined,
+                    // Loss axes start at 2 (detail lives between 2 and 8). Grad-norm
+                    // axis spans from its floor up to the 50 clip used in the data;
+                    // log scale with ticks at 1/2/10/50 keeps the divergences visible
+                    // without flattening the 0.2–5 band the healthy runs live in.
+                    min: optimizer ? (optGrad ? 0.2 : 2) : isLoss ? 2 : undefined,
+                    max: optGrad ? 50 : optLoss ? 8 : isLoss ? 4.5 : undefined,
                     type: optimizer || mds ? 'logarithmic' : 'linear',
                     title: {
                         ...axisTitle,
@@ -359,6 +380,62 @@ function mount(
             },
         },
     })
+    // Full-loss view: overlay a second, small chart in the empty lower-right
+    // region showing the first 600B tokens for the two 20B chains — this is the
+    // old standalone "loss-zoom" slide, folded in as an inset.
+    if (fullLoss) {
+        // Wrap the inset canvas in its own sized box; a bare canvas would be
+        // stretched by chart.js's resize observer to the frame's full size.
+        const holder = document.createElement('div')
+        holder.className = 'sc26-inset'
+        for (const attr of frame.getAttributeNames()) {
+            if (attr.startsWith('data-astro-cid-')) holder.setAttribute(attr, '')
+        }
+        frame.appendChild(holder)
+        const insetCanvas = document.createElement('canvas')
+        holder.appendChild(insetCanvas)
+        const insetChart = new Chart(insetCanvas, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: '20B 256N',
+                        data: loss.C_20B_256.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
+                        borderColor: colors[3],
+                        backgroundColor: colors[3],
+                        borderWidth: 2,
+                        borderDash: [10, 6],
+                        pointRadius: 0,
+                    },
+                    {
+                        label: '20B 512N',
+                        data: loss.C_20B_512.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
+                        borderColor: colors[4],
+                        backgroundColor: colors[4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: false },
+                    tooltip: { titleFont: font, bodyFont: font },
+                },
+                layout: { padding: { top: 2, right: 6, bottom: 0, left: 2 } },
+                scales: {
+                    x: { type: 'linear', min: 0, max: 0.6, ticks: { color, font: { family, size: Math.max(9, Math.round(baseSize * 0.55)) }, maxTicksLimit: 4, padding: 2 }, grid: { color: grid } },
+                    y: { type: 'linear', min: 2, max: 4.5, ticks: { color, font: { family, size: Math.max(9, Math.round(baseSize * 0.55)) }, maxTicksLimit: 4, padding: 2 }, grid: { color: grid } },
+                },
+            },
+        })
+        void insetChart
+    }
+
     // Fonts are baked into option objects, so resizing the container does not
     // rescale them on its own. Recompute on width changes and push the new
     // sizes in place (no destroy/recreate, so the reveal animation and theme
