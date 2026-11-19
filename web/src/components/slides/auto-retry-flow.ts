@@ -708,6 +708,38 @@ function draw(
         )
     }
 
+    // Fill each host from its own delivery state, never from the scene id
+    // alone: neutral until a colored packet actually lands on it. Shards
+    // arrive during 'batch' (per-host arrival time); the averaged gradient
+    // (purple) comes back during 'sync'/'resume' at delayed((p - 0.6) / 0.4).
+    // Once purple, a host stays purple: every later scene inherits the last
+    // completed all-reduce.
+    const sceneOrder = [
+        'batch',
+        'sync',
+        'save',
+        'stall',
+        'timeout',
+        'swap',
+        'restore',
+        'resume',
+        'done',
+    ]
+    const order = sceneOrder.indexOf(id)
+    const hostColorFor = (i: number) => {
+        if (id === 'batch')
+            return delayed(p, i) >= 1 ? palette.shards[i] : palette.muted
+        // Flip each host only when its all-reduce packet lands (delayed()
+        // already staggers ranks), so purple sweeps through one host at a time.
+        if (id === 'sync')
+            return delayed((p - 0.6) / 0.4, i) >= 1
+                ? palette.purple
+                : palette.shards[i]
+        // From 'save' onward the previous all-reduce has landed, so hosts
+        // stay purple through the failure and the retry.
+        if (order >= 2) return palette.purple
+        return palette.muted
+    }
     // Draw hosts above their connections so the lines don't cross the blocks.
     ranks.forEach((rank, index) => {
         const badHost = index === 0
@@ -722,13 +754,17 @@ function draw(
                 0.7 * (1 - moved * 0.75),
             )
         } else if (!(badHost && (swapping || swapped))) {
+            const delivered =
+                id === 'batch' ? delayed(p, index) >= 1 : order >= 1
             const hostColor =
-                badHost && failed
-                    ? palette.red
-                    : gradient
-                      ? palette.purple
-                      : palette.shards[index]
-            const opacity = stopped ? 0.3 : failed && !badHost ? 0.45 : 0.95
+                badHost && failed ? palette.red : hostColorFor(index)
+            const opacity = stopped
+                ? 0.3
+                : failed && !badHost
+                  ? 0.45
+                  : delivered
+                    ? 0.95
+                    : 0.55
             host(ctx, rank.x, rank.y, 80, hostColor, opacity)
         }
         if (badHost && spareInSlot)
