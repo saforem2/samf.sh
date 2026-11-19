@@ -119,7 +119,6 @@ function mount(
     }
     const color = readVar('--foreground0', '#838383')
     const grid = withAlpha(readVar('--foreground3', '#838383'), 0.25)
-    const teal = readVar('--teal', '#008fa8')
     const colors = paletteVars.map((name, i) =>
         readVar(name, paletteFallback[i]),
     )
@@ -232,7 +231,7 @@ function mount(
             ctx.restore()
         },
         afterDatasetsDraw(chart) {
-            const { ctx, scales, chartArea } = chart
+            const { ctx } = chart
             if (stageProgress.some((p) => p < 1)) return
             ctx.save()
             ctx.fillStyle = color
