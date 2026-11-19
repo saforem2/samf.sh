@@ -372,11 +372,11 @@ Comparison slide. State diagrams compress the loop naturally; labels get long if
 ## Compare: paper figure 5 (LR)
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '19px'}, 'flowchart': {'nodeSpacing': 34, 'rankSpacing': 44, 'padding': 12, 'wrappingWidth': 640}}}%%
+%%{init: {'themeVariables': {'fontSize': '44px'}, 'flowchart': {'nodeSpacing': 80, 'rankSpacing': 44, 'padding': 26, 'wrappingWidth': 520}}}%%
 flowchart LR
     START(( )) --> LAUNCH
     LAUNCH["<span style='font-weight:700'>LAUNCH</span><br/><code>ezpz launch --auto-retry</code>"]
-    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer · match crash patterns<br/>SIGTERM: idle watchdog (exit 124)"]
+    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer ·<br/>match crash patterns<br/>SIGTERM: idle watchdog (exit 124)"]
     DONE["<span style='font-weight:700'>DONE</span><br/>rc = 0<br/>successful run"]
     STOP["<span style='font-weight:700'>STOP</span><br/>spares exhausted<br/>stuck before training"]
     LAUNCH -->|"run + monitor"| CLASSIFY
@@ -1338,7 +1338,13 @@ flowchart TB
         font-size: clamp(0.72rem, 1.35vw, 1.05rem);
         line-height: 1.35;
         max-width: 96ch;
-        margin-top: 0.5lh;
+        margin-top: 0.8lh;
+    }
+    /* LR Fig. 5 is intrinsically wide (~5.5:1); let it use the full height
+       the stabilizer allows instead of the shared 43vh cap. */
+    #auto-retry-fig5 .mermaid {
+        margin-block: 0.3lh;
+        --mermaid-max-height: 78vh;
     }
     .sc-figcaption code { font-size: 0.95em; }
     #production-result img.production-loss {
