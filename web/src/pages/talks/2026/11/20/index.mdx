@@ -44,7 +44,8 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 <p class="title-thesis">Training, validation, and recovery at scale</p>
 
 <div class="title-authors">
-    <span><strong>Sam Foreman</strong> · Nathan Nichols · Varuni Sastry · Sam Wheeler · Khalid Hossain</span>
+    <span class="title-lead"><strong>Sam Foreman</strong></span>
+    <span>Nathan Nichols · Varuni Sastry · Sam Wheeler · Khalid Hossain</span>
     <span>Huihuo Zheng · Murali Emani · Filippo Simini · Marieme Ngom · Ethan Wong · Venkatram Vishwanath</span>
 </div>
 
@@ -562,6 +563,15 @@ flowchart TB
     }
 
     .title-authors strong { color: #fff; }
+
+    .title-authors .title-lead {
+        color: #fff;
+        font-size: 2em;
+        font-weight: 750;
+        letter-spacing: -0.01em;
+        line-height: 1.15;
+        margin-bottom: 0.1rem;
+    }
 
     .title-conf-line,
     .title-url {
