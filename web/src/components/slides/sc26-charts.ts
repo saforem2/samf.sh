@@ -293,11 +293,18 @@ function mount(
             interaction: { mode: 'nearest', intersect: false },
             plugins: {
                 legend: {
-                    display: !compact,
+                    // The optimizer backup slide renders two panels of the same
+                    // four optimizers; only the loss panel carries the legend.
+                    display: !compact && !optGrad,
+                    position: 'top',
+                    align: 'center',
                     labels: {
                         color,
-                        font,
-                        usePointStyle: !isLoss,
+                        font: { family, size: Math.max(11, Math.round(font.size * 0.72)), weight: 500 },
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        padding: 14,
+                        usePointStyle: optimizer,
                         filter: (item) => !item.text.endsWith(' (raw)'),
                     },
                 },
