@@ -12,18 +12,16 @@ const themeFontFamily = () => {
     return raw || 'ui-monospace, Menlo, Monaco, monospace'
 }
 const family = themeFontFamily()
-// Series colors come from the active theme's accent variables instead of
+// Series colors come from the active theme's palette variables instead of
 // hard-coded hex. Canvas needs concrete srgb/rgb values, so each custom
 // property is painted through a 1×1 canvas and read back as rgb().
 // Dash grammar is consistent across model sizes: 256N = solid, 512N = dotted,
 // MDS reference = dashed muted grey. Hues track family, not size:
 //   MDS  → --foreground2 (dashed grey)
-//   TT   → 2B = --accent (pink-ish) family? no — 256N uses --accent, 512N uses --blue
-//   256N → --accent (2B) / --orange (20B)  [solid]
-//   512N → --blue   (2B) / --green  (20B)  [dotted]
+//   256N = --pink (2B) / --orange (20B); 512N = --blue (2B) / --green (20B)
 const paletteVars = [
     '--foreground2', // MDS
-    '--accent', // 2B TT 256N
+    '--pink', // 2B TT 256N
     '--blue', // 2B TT 512N
     '--orange', // 20B TT 256N
     '--green', // 20B TT 512N
@@ -183,7 +181,7 @@ function mount(
         : isLoss
           ? Object.values(loss).map((rows, i) => ({
                 // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                // MDS dashed grey · 2B 256N solid accent · 2B 512N dotted blue ·
+                // MDS dashed grey · 2B 256N solid pink · 2B 512N dotted blue ·
                 // 20B 256N solid orange · 20B 512N dotted green
                 ...dataset(
                     labels[i],
@@ -214,7 +212,7 @@ function mount(
           : evaluations
                 .map((run, i) => ({
                     // Eval panels share the production-loss family:
-                    // MDS = dashed grey, 2B 256N = solid accent, 2B 512N = dotted blue,
+                    // MDS = dashed grey, 2B 256N = solid pink, 2B 512N = dotted blue,
                     // 20B 512N = dotted green.
                     ...dataset(
                         run.label,
