@@ -1152,6 +1152,28 @@ flowchart TB
         width: 100% !important;
         max-height: 43vh !important;
     }
+    /* The bit-exact flowchart is wider than it is tall, so at phone width its
+       height collapses to ~120px and the slide reads as a few stray pixels in
+       the middle of a mostly-empty column. Let narrow viewports use a taller
+       box and vertically centre the column so the diagram and takeaway fill
+       the screen instead of bunching at the top. */
+    @media (max-width: 768px) {
+        #bit-exact .slide-inner {
+            justify-content: center;
+            gap: 0.5lh;
+        }
+        #bit-exact .mermaid {
+            --mermaid-max-height: 38vh;
+            margin-block: 0;
+        }
+        #bit-exact .mermaid svg {
+            height: auto !important;
+            max-height: 38vh !important;
+        }
+        #bit-exact .sc-detail {
+            font-size: 1.05rem;
+        }
+    }
     /* The vendor diagram is a tall TB flowchart: let it use the full height
        of the slide's right column instead of the 43vh cap used elsewhere. */
     #portable-stack .sc-launch-grid .mermaid {
@@ -1254,7 +1276,20 @@ flowchart TB
         }
     }
     @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
-        .sc-fill-grid { grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 0.5rem; }
+        #optimizer-backup .sc-fill-grid {
+            grid-template-columns: minmax(0, 1fr);
+            grid-auto-rows: auto;
+            gap: 0.75rem;
+            flex: 1 1 auto;
+            min-height: 0;
+            align-content: start;
+        }
+        #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame {
+            height: auto;
+            flex: 0 0 auto;
+            min-height: 0;
+            aspect-ratio: 4 / 3;
+        }
     }
     .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
 `}</style>
