@@ -1,0 +1,488 @@
+---
+const outcomes = [
+    { state: 'done', title: 'Done', detail: 'Clean exit' },
+    {
+        state: 'retry',
+        title: 'Swap host and relaunch',
+        detail: 'Bad-node failure and a spare',
+    },
+    {
+        state: 'stop',
+        title: 'Stop with an error',
+        detail: 'No spare or retries left',
+    },
+]
+---
+
+<div class="retry-replay" data-auto-retry>
+    <div class="retry-command">
+        <span aria-hidden="true">$</span>
+        <code>ezpz launch --auto-retry</code>
+    </div>
+
+    <div class="retry-flow">
+        <div class="retry-node" data-node="run">
+            <strong>Run training</strong>
+            <span>Watchdog stops a silent attempt after 30 min.</span>
+        </div>
+        <div class="attempt-edge" aria-hidden="true">
+            <span>Attempt ends</span>
+        </div>
+        <div class="retry-node" data-node="check">
+            <strong>Check exit</strong>
+            <span
+                >Compare launcher status with trainer exit and crash logs.</span
+            >
+        </div>
+        <ul class="retry-outcomes" aria-label="Example outcomes">
+            {
+                outcomes.map(({ state, title, detail }) => (
+                    <li class="retry-node" data-node={state}>
+                        <strong>{title}</strong>
+                        <span>{detail}</span>
+                    </li>
+                ))
+            }
+        </ul>
+        <div class="retry-return" data-node="return">
+            <span aria-hidden="true">↰</span>
+            <span
+                >Relaunch → trainer loads its last checkpoint → training resumes</span
+            >
+        </div>
+    </div>
+
+    <div class="retry-example" data-replay-footer hidden>
+        <div class="retry-trace">
+            <span class="trace-label">Example attempt</span>
+            <span role="status" aria-atomic="true" data-message></span>
+        </div>
+        <div
+            class="retry-controls"
+            data-replay-controls
+            role="group"
+            aria-label="Replay controls">
+            <button type="button" data-prev aria-label="Previous step">←</button
+            >
+            <button type="button" data-play>Play replay</button>
+            <button type="button" data-next aria-label="Next step">→</button>
+            <span data-position aria-hidden="true"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { mountReplay } from './slide-replay'
+
+    const frames = [
+        {
+            state: 'run',
+            message: 'Training at step 3004. Checkpoint 3003 is on disk.',
+            duration: 1400,
+        },
+        {
+            state: 'idle',
+            message: 'Output stalls. The watchdog stops the attempt at 30:00.',
+            duration: 1800,
+        },
+        {
+            state: 'check',
+            message:
+                'Watchdog exit 124. The stalled attempt is eligible for retry.',
+            duration: 2200,
+        },
+        {
+            state: 'retry',
+            message:
+                'Rotate host-042 out of the active pool. Relaunch with spare-007.',
+            duration: 2000,
+        },
+        {
+            state: 'resumed',
+            message: 'The trainer loads checkpoint 3003 and reruns step 3004.',
+            duration: 0,
+        },
+    ]
+
+    for (const replay of document.querySelectorAll<HTMLElement>(
+        '[data-auto-retry]',
+    )) {
+        mountReplay(replay, frames)
+    }
+</script>
+
+<style>
+    .retry-replay {
+        --rail: color-mix(in srgb, var(--foreground0) 34%, var(--background0));
+        --run: var(--sc-purple, var(--accent));
+        --check: var(--sc-orange, var(--orange));
+        --done: var(--sc-green, var(--green));
+        --retry: var(--sc-cyan, var(--blue));
+        --stop: var(--sc-pink, var(--red));
+        --fork: 1.6em;
+        border: 1px solid var(--rail);
+        background: var(--background0);
+        color: var(--foreground0);
+        font-size: clamp(0.98rem, 1.8vw, 1.45rem);
+        line-height: 1.25;
+    }
+
+    .retry-command {
+        display: flex;
+        gap: 0.65em;
+        align-items: baseline;
+        padding: 0.48em 0.85em;
+        border-block-end: 1px solid var(--rail);
+        background: var(--background1);
+        font-weight: 700;
+    }
+
+    .retry-command span {
+        color: var(--run);
+    }
+
+    .retry-command code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font-size: inherit;
+        font-variant-ligatures: none;
+    }
+
+    .retry-flow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 4.7em minmax(0, 1.2fr) minmax(
+                0,
+                1.65fr
+            );
+        align-items: center;
+        padding: 0.8em;
+    }
+
+    .retry-node {
+        --signal: var(--run);
+        position: relative;
+        display: grid;
+        align-content: center;
+        gap: 0.24em;
+        min-inline-size: 0;
+        padding: 0.5em 0.7em;
+        border: 1px solid var(--rail);
+        border-inline-start: 3px solid var(--signal);
+        transition:
+            background-color 220ms ease,
+            border-color 220ms ease;
+    }
+
+    .retry-node strong {
+        line-height: 1.12;
+    }
+
+    .retry-node span {
+        font-size: 0.83em;
+        line-height: 1.22;
+    }
+
+    [data-node='check'] {
+        --signal: var(--check);
+    }
+    [data-node='done'] {
+        --signal: var(--done);
+    }
+    [data-node='retry'] {
+        --signal: var(--retry);
+    }
+    [data-node='stop'] {
+        --signal: var(--stop);
+    }
+
+    .attempt-edge {
+        position: relative;
+        border-block-start: 1px solid var(--rail);
+        color: var(--foreground0);
+        text-align: center;
+    }
+
+    .attempt-edge span {
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: 0.45em;
+        font-size: 0.65em;
+    }
+
+    .attempt-edge::after {
+        position: absolute;
+        inset-inline-end: 2px;
+        inset-block-start: -0.18em;
+        width: 0.32em;
+        height: 0.32em;
+        border-block-start: 1px solid currentColor;
+        border-inline-end: 1px solid currentColor;
+        content: '';
+        transform: rotate(45deg);
+    }
+
+    .retry-replay[data-state='check'] .attempt-edge::before {
+        position: absolute;
+        inset: -1px 0 auto;
+        border-block-start: 2px solid var(--check);
+        content: '';
+        transform-origin: left;
+        animation: trace-edge 420ms ease-out;
+    }
+
+    .retry-outcomes {
+        display: grid;
+        grid-template-rows: repeat(3, 1fr);
+        gap: 0.38em;
+        margin: 0;
+        padding: 0 0 0 var(--fork);
+        list-style: none;
+    }
+
+    .retry-outcomes > .retry-node {
+        margin: 0;
+        padding-inline-start: 0.7em;
+        text-indent: 0;
+    }
+
+    .retry-outcomes li::before,
+    .retry-outcomes li::after {
+        position: absolute;
+        content: '';
+    }
+
+    .retry-outcomes li::before {
+        inset-block-start: 50%;
+        inset-inline-end: 100%;
+        width: calc(var(--fork) / 2);
+        border-block-start: 1px solid var(--rail);
+    }
+
+    .retry-outcomes li:nth-child(2)::before {
+        width: var(--fork);
+    }
+
+    .retry-replay[data-state='retry'] [data-node='retry']::before {
+        border-color: var(--retry);
+        border-block-start-width: 2px;
+        transform-origin: left;
+        animation: trace-edge 420ms ease-out;
+    }
+
+    @keyframes trace-edge {
+        from {
+            transform: scaleX(0);
+        }
+    }
+
+    .retry-outcomes li::after {
+        inset-inline-end: calc(100% + var(--fork) / 2);
+        border-inline-end: 1px solid var(--rail);
+    }
+
+    .retry-outcomes li:first-child::after {
+        inset-block: 50% -0.4em;
+    }
+
+    .retry-outcomes li:nth-child(2)::after {
+        inset-block: -1px;
+    }
+
+    .retry-outcomes li:last-child::after {
+        inset-block: -0.4em 50%;
+    }
+
+    .retry-return {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 0.6em;
+        align-items: baseline;
+        margin-block-start: 0.8em;
+        padding: 0.44em 0.65em;
+        border-block-start: 1px dashed var(--rail);
+        font-size: 0.83em;
+    }
+
+    .retry-return > :first-child {
+        color: var(--retry);
+        font-weight: 700;
+    }
+
+    .retry-replay[data-state='idle'] [data-node='run'] {
+        --signal: var(--check);
+    }
+
+    .retry-replay[data-state='resumed'] [data-node='run'] {
+        --signal: var(--done);
+    }
+
+    .retry-replay:is(
+            [data-state='run'],
+            [data-state='idle'],
+            [data-state='resumed']
+        )
+        [data-node='run'],
+    .retry-replay[data-state='check'] [data-node='check'],
+    .retry-replay[data-state='retry'] [data-node='retry'] {
+        border-color: var(--signal);
+        background-color: color-mix(
+            in srgb,
+            var(--signal) 10%,
+            var(--background0)
+        );
+    }
+
+    .retry-replay[data-state='resumed'] .retry-return {
+        border-color: var(--retry);
+        background-color: color-mix(
+            in srgb,
+            var(--retry) 10%,
+            var(--background0)
+        );
+    }
+
+    .retry-example {
+        border-block-start: 1px solid var(--rail);
+        background: var(--background1);
+        font-family: var(--code-font-family, var(--font-family));
+        font-size: 0.78em;
+    }
+
+    .retry-example:not([hidden]) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.35em 1em;
+        padding: 0.55em 1em;
+    }
+
+    .retry-trace {
+        display: grid;
+        flex: 1 1 26ch;
+        gap: 0.12em;
+    }
+
+    .trace-label {
+        font-weight: 700;
+        color: var(--retry);
+    }
+
+    [data-message] {
+        line-height: 1.25;
+        min-block-size: 2lh;
+    }
+
+    .retry-controls {
+        display: flex;
+        gap: 0.45em;
+        align-items: center;
+    }
+
+    .retry-controls button {
+        min-inline-size: 2.55em;
+        min-block-size: max(2em, 32px);
+        block-size: auto;
+        margin: 0;
+        padding: 0.15em 0.45em;
+        border: 1px solid var(--rail);
+        background: var(--background0);
+        color: var(--foreground0);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .retry-controls button[data-play] {
+        min-inline-size: 12ch;
+        font-weight: 700;
+    }
+
+    .retry-controls button[aria-disabled='true'] {
+        color: var(--foreground2);
+        cursor: default;
+    }
+
+    .retry-controls button:not([aria-disabled='true']):hover {
+        border-color: var(--foreground0);
+    }
+
+    .retry-controls button:focus-visible {
+        outline: 2px solid var(--foreground0);
+        outline-offset: 2px;
+    }
+
+    @media screen and (max-width: 760px) {
+        .retry-flow {
+            grid-template-columns: 1fr;
+        }
+
+        .attempt-edge {
+            min-block-size: 1.5em;
+            margin-inline-start: 0.85em;
+            padding-inline-start: 0.6em;
+            border-block-start: 0;
+            border-inline-start: 1px solid var(--rail);
+            text-align: start;
+        }
+
+        .attempt-edge span {
+            position: static;
+        }
+
+        .attempt-edge::after {
+            inset-block-start: auto;
+            inset-block-end: 2px;
+            inset-inline: -0.19em auto;
+            transform: rotate(135deg);
+        }
+
+        .retry-replay[data-state='check'] .attempt-edge::before {
+            inset: 0 auto 0 -1px;
+            border-block-start: 0;
+            border-inline-start: 2px solid var(--check);
+            animation: none;
+        }
+
+        .retry-outcomes {
+            display: grid;
+            grid-template-rows: none;
+            padding-block-start: 0.42em;
+        }
+
+        .retry-outcomes li:first-child::after {
+            inset-block-start: -0.45em;
+        }
+
+        .retry-outcomes li:nth-child(2)::before {
+            width: calc(var(--fork) / 2);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .retry-node {
+            transition: none;
+        }
+
+        .attempt-edge::before,
+        .retry-outcomes li::before {
+            animation: none !important;
+        }
+    }
+
+    @media print {
+        .retry-replay {
+            font-size: inherit;
+        }
+
+        .retry-example:not([hidden]) {
+            display: none;
+        }
+
+        .retry-node {
+            background: var(--background0) !important;
+            border-color: var(--rail) !important;
+            border-inline-start-color: var(--signal) !important;
+        }
+    }
+</style>

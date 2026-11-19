@@ -1,0 +1,369 @@
+<div class="retry-illustration" data-training-replay>
+    <div class="command-bar">
+        <span aria-hidden="true">$</span>
+        <code>ezpz launch --auto-retry</code>
+    </div>
+    <div class="illustration-body">
+        <div class="diagram-column">
+            <figure class="training-figure">
+                <canvas
+                    width="960"
+                    height="520"
+                    data-training-canvas
+                    role="img"
+                    aria-label="Illustration of eight training hosts, a gradient collective, a checkpoint, and a spare host."
+                    >Eight training hosts exchange gradients. After a stall, a
+                    spare replaces one host and the trainer reloads a
+                    checkpoint.</canvas
+                >
+                <figcaption class="diagram-key">
+                    <span><i class="key-batch"></i>Batch shards</span>
+                    <span><i class="key-gradients"></i>Gradients</span>
+                    <span><i class="key-recovery"></i>Checkpoint / spare</span>
+                </figcaption>
+            </figure>
+        </div>
+        <aside class="retry-story">
+            <div class="story-content" aria-live="polite" aria-atomic="true">
+                <span class="story-label" data-kicker>Training</span>
+                <h3 data-title>One step, eight hosts</h3>
+                <p data-detail
+                    >Each host processes a shard. Gradients synchronize before
+                    the step can finish.</p
+                >
+                <p class="story-note" data-note
+                    >The completed step is saved to a checkpoint.</p
+                >
+            </div>
+            <p class="story-footnote"
+                >Illustrative run · 30 minutes compressed</p
+            >
+        </aside>
+    </div>
+    <div class="event-bar">
+        <div class="event-trace">
+            <strong>Example attempt</strong>
+            <span data-event>step 3003 · distributing batch shards</span>
+        </div>
+        <div class="replay-controls" data-controls hidden>
+            <button type="button" data-previous aria-label="Previous scene"
+                >←</button
+            >
+            <button type="button" data-play>Play</button>
+            <button type="button" data-next aria-label="Next scene">→</button>
+            <input
+                type="range"
+                data-seek
+                min="0"
+                max="1000"
+                step="1"
+                value="0"
+                aria-label="Seek through the retry animation"
+                aria-valuetext="Training step"
+            />
+            <span data-progress aria-hidden="true">1 / 9</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { initTrainingReplay } from './auto-retry-flow'
+
+    for (const root of document.querySelectorAll<HTMLElement>(
+        '[data-training-replay]',
+    )) {
+        initTrainingReplay(root)
+    }
+</script>
+
+<style>
+    .retry-illustration {
+        --rule: color-mix(in srgb, var(--foreground0) 28%, var(--background0));
+        border: 1px solid var(--rule);
+        background: var(--background0);
+        color: var(--foreground0);
+        font-size: clamp(1rem, 1.8vw, 1.45rem);
+        line-height: 1.3;
+    }
+
+    .command-bar {
+        display: flex;
+        gap: 0.65em;
+        align-items: baseline;
+        padding: 0.35em 0.85em;
+        border-block-end: 1px solid var(--rule);
+        background: var(--background1);
+        font-family: var(--code-font-family, var(--font-family));
+        font-weight: 700;
+    }
+
+    .command-bar span {
+        color: var(--sc-purple, var(--accent));
+    }
+
+    .command-bar code {
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font-size: inherit;
+        font-variant-ligatures: none;
+    }
+
+    .illustration-body {
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(14ch, 0.85fr);
+        align-items: center;
+        gap: clamp(1rem, 2.5vw, 2.5rem);
+        padding: 0.2em 0.85em 0.25em;
+    }
+
+    .diagram-column {
+        min-inline-size: 0;
+    }
+
+    .training-figure {
+        margin: 0;
+    }
+
+    canvas {
+        display: block;
+        inline-size: 100%;
+        block-size: auto;
+        aspect-ratio: 24 / 13;
+    }
+
+    .diagram-key {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.25em 1.6ch;
+        margin-block-start: 0.2em;
+        color: var(--foreground1);
+        font-family: var(--code-font-family, var(--font-family));
+        font-size: 0.7em;
+        font-style: normal;
+        text-align: center;
+    }
+
+    .diagram-key span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55ch;
+        white-space: nowrap;
+    }
+
+    .diagram-key i {
+        inline-size: 0.65em;
+        block-size: 0.65em;
+        background: var(--key-color);
+    }
+    .key-batch {
+        --key-color: var(--sc-cyan, var(--blue));
+    }
+    .key-gradients {
+        --key-color: var(--sc-purple, var(--accent));
+    }
+    .key-recovery {
+        --key-color: var(--sc-green, var(--green));
+    }
+
+    .event-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4em 1em;
+        padding: 0.45em 1em;
+        border-block-start: 1px solid var(--rule);
+        background: var(--background1);
+        font-family: var(--code-font-family, var(--font-family));
+        font-size: 0.78em;
+    }
+
+    .event-trace {
+        display: grid;
+        flex: 1 1 25ch;
+        gap: 0.12em;
+        min-inline-size: 0;
+    }
+
+    .event-trace strong {
+        color: var(--sc-cyan, var(--blue));
+    }
+
+    [data-event] {
+        min-block-size: 1lh;
+        line-height: 1.25;
+    }
+
+    .replay-controls:not([hidden]) {
+        display: flex;
+        align-items: center;
+        flex: 1 1 27ch;
+        gap: 0.45em;
+        min-inline-size: 0;
+        max-inline-size: 28rem;
+    }
+
+    .replay-controls button {
+        block-size: auto;
+        min-block-size: max(2em, 34px);
+        min-inline-size: 2.5em;
+        margin: 0;
+        padding: 0.15em 0.5em;
+        border: 1px solid var(--rule);
+        background: var(--background0);
+        color: var(--foreground0);
+        font: inherit;
+        cursor: pointer;
+    }
+
+    .replay-controls button[data-play] {
+        min-inline-size: 8ch;
+        font-weight: 700;
+    }
+
+    .replay-controls button[aria-disabled='true'] {
+        color: var(--foreground2);
+        cursor: default;
+    }
+
+    .replay-controls button:focus-visible,
+    .replay-controls input:focus-visible {
+        outline: 2px solid var(--foreground0);
+        outline-offset: 2px;
+    }
+
+    .replay-controls input[type='range'] {
+        --range-track-color: color-mix(
+            in srgb,
+            var(--foreground0) 28%,
+            var(--background0)
+        );
+        --range-thumb-color: var(--sc-cyan, var(--blue));
+        --range-thumb-color-focus: var(--foreground0);
+        flex: 1 1 auto;
+        min-inline-size: 4em;
+        margin: 0 0.4ch;
+        accent-color: var(--sc-cyan, var(--blue));
+    }
+
+    .replay-controls [data-progress] {
+        flex: none;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .retry-story {
+        display: flex;
+        flex-direction: column;
+        align-self: stretch;
+        justify-content: center;
+        min-inline-size: 0;
+        border-inline-start: 1px solid var(--rule);
+        padding-inline-start: 1.5ch;
+    }
+
+    .story-content {
+        min-block-size: 10.2em;
+    }
+
+    .story-label {
+        display: block;
+        margin-block-end: 0.45em;
+        color: var(--sc-cyan, var(--blue));
+        font-family: var(--code-font-family, var(--font-family));
+        font-size: 0.72em;
+        font-weight: 700;
+    }
+
+    .retry-illustration:is([data-scene='stall'], [data-scene='timeout'])
+        .story-label {
+        color: var(--sc-orange, var(--orange));
+    }
+
+    .retry-illustration:is(
+            [data-scene='swap'],
+            [data-scene='restore'],
+            [data-scene='resume'],
+            [data-scene='done']
+        )
+        .story-label {
+        color: var(--sc-green, var(--green));
+    }
+
+    .story-content h3 {
+        margin: 0 0 0.5em;
+        color: var(--foreground0);
+        font-size: 1.15em;
+        line-height: 1.15;
+    }
+
+    .story-content p {
+        margin: 0 0 0.7em;
+        font-size: 0.84em;
+        line-height: 1.3;
+    }
+
+    .story-content .story-note,
+    .story-footnote {
+        color: var(--foreground1);
+        font-size: 0.7em;
+        line-height: 1.3;
+    }
+
+    .story-footnote {
+        margin: 0;
+        padding-block-start: 0.6em;
+        border-block-start: 1px solid var(--rule);
+        font-family: var(--code-font-family, var(--font-family));
+    }
+
+    @media screen and (max-width: 760px) {
+        .illustration-body {
+            grid-template-columns: 1fr;
+            gap: 0.8em;
+        }
+
+        .retry-story {
+            grid-row: 1;
+            border-inline-start: 0;
+            border-block-end: 1px solid var(--rule);
+            padding: 0 0 0.65em;
+        }
+
+        .story-content {
+            min-block-size: 8em;
+        }
+
+        .story-content h3 {
+            font-size: 1em;
+        }
+
+        .story-content p {
+            margin-block-end: 0.3em;
+        }
+
+        .story-footnote {
+            display: none;
+        }
+
+        [data-event] {
+            min-block-size: 2lh;
+        }
+    }
+
+    @media screen and (max-width: 360px) {
+        .story-content {
+            min-block-size: 10em;
+        }
+    }
+
+    @media print {
+        .replay-controls:not([hidden]) {
+            display: none;
+        }
+        .retry-illustration {
+            font-size: inherit;
+        }
+    }
+</style>

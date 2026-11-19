@@ -8,6 +8,8 @@ location: 'SC26 · 4th Annual Trillion Parameter Workshop · W181abc'
 locationUrl: 'https://sc26.conference-program.com/presentation/?id=ws_tpw126&sess=sess149'
 ---
 
+import AutoRetryCluster from '@/components/slides/AutoRetryCluster.astro'
+import AutoRetryReplay from '@/components/slides/AutoRetryReplay.astro'
 import SC26Chart from '@/components/slides/SC26Chart.astro'
 import Slide from '@/components/slides/Slide.astro'
 import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
@@ -61,24 +63,30 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 <Slide id="aurora">
 
-## Aurora pre-training spans multiple allocations
+## Aurora, at production scale
 
-<p class="sc-lead"><strong>10,624 nodes</strong> · <strong>127,488 XPU tiles</strong> at full machine scale</p>
+<div class="aurora-layout">
 
-```mermaid
-%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
-flowchart LR
-    subgraph A["PBS allocation 1"]
-        T["Train on Aurora"]
-    end
-    T --> S["Checkpoint on shared storage"]
-    S --> R
-    subgraph B["PBS allocation 2"]
-        R["Resume at the saved step"]
-    end
-```
+<div>
 
-<p class="sc-detail">A restart restores the model, optimizer, data position, and random state.</p>
+<div class="hero-number">10,624</div>
+<div class="hero-label">nodes · full machine<br />127,488 XPU tiles</div>
+<p class="hero-context">HPE Cray EX · Intel GPU MAX 1550 · Slingshot-11 · ALCF<sup>1</sup></p>
+
+</div>
+
+<div class="aurora-contract">
+
+<div><span class="contract-label">JOBS</span><p>Wall-clock allocations end mid-run — training spans many of them.</p></div>
+<div><span class="contract-label">STORAGE</span><p>Checkpoints land on shared Lustre; the next allocation reads them back.</p></div>
+<div><span class="contract-label">RESTARTS</span><p>Model, optimizer, data position, and RNG state all resume from the last checkpoint.</p></div>
+<div><span class="contract-label">STACK</span><p>SYCL and oneCCL below PyTorch, not CUDA and NCCL.</p></div>
+
+</div>
+
+</div>
+
+<p class="takeaway-line"><span>So:</span> pre-training here is a sequence of bounded jobs, not one uninterrupted run.</p>
 
 <SpeakerNotes>
 Set the machine and software context once. Aurora is one of the largest non-NVIDIA GPU systems in production. The important difference for this talk is the stack: SYCL and oneCCL below PyTorch, not CUDA and NCCL. We also inherit the usual HPC constraints: shared storage, scheduled allocations, and restarts across job boundaries.
@@ -122,12 +130,12 @@ Rank 1/24
 %%{init: {'themeVariables': {'fontSize': '22px'}, 'flowchart': {'nodeSpacing': 40, 'rankSpacing': 36, 'padding': 10}}}%%
 flowchart LR
     EZ{"<span style='font-weight:700'>ezpz launch</span>"}
-    EZ --> AURORA["<i>PBS · Intel</i><br/><span style='font-weight:700'>Aurora</span>"]
-    EZ --> POLARIS["<i>PBS · NVIDIA</i><br/><span style='font-weight:700'>Polaris</span>"]
-    EZ --> PM["<i>SLURM · NVIDIA</i><br/><span style='font-weight:700'>Perlmutter</span>"]
-    EZ --> FRONTIER["<i>SLURM · AMD</i><br/><span style='font-weight:700'>Frontier</span>"]
+    EZ --> AURORA["<span style='font-weight:700'>Aurora</span><br/><i>PBS · Intel</i>"]
+    EZ --> POLARIS["<span style='font-weight:700'>Polaris</span><br/><i>PBS · NVIDIA</i>"]
+    EZ --> PM["<span style='font-weight:700'>Perlmutter</span><br/><i>SLURM · NVIDIA</i>"]
+    EZ --> FRONTIER["<span style='font-weight:700'>Frontier</span><br/><i>SLURM · AMD</i>"]
     EZ --> MAC["<span style='font-weight:700'>Multi-CPU</span>"]
-    EZ --> MPS["<i>MPS · Apple</i><br/><span style='font-weight:700'>Multi-MPS*</span>"]
+    EZ --> MPS["<span style='font-weight:700'>Multi-MPS*</span><br/><i>MPS · Apple</i>"]
 
     classDef hub        fill:none,stroke:currentColor,color:currentColor,stroke-width:1.8px
     linkStyle 0 stroke:#3b82f6,stroke-width:1.8px
@@ -181,17 +189,17 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 </Slide>
 
-
 <Slide id="three-failures">
 
 ## Three failures changed the stack
 
 <ol class="failure-list">
-    <li class="failure-cyan"><strong>Silent loss reporting</strong><span>the curve looked healthy</span><em>bit-exact regression exposed it</em></li>
-    <li class="failure-pink"><strong>80B instability</strong><span>loss still looked finite</span><em>gradient norm went nonfinite one step earlier</em></li>
-    <li class="failure-orange"><strong>Silent job death</strong><span>the allocation stayed active</span><em>nine runs lost in two weeks</em></li>
+    <li class="failure-cyan"><strong>Silent loss reporting</strong><span>the curve looked healthy</span><em>bit-exact regression exposed it</em><span class="failure-link">→ slide 6</span></li>
+    <li class="failure-pink"><strong>80B instability</strong><span>loss still looked finite</span><em>gradient norm went nonfinite one step earlier</em><span class="failure-link">→ optimizer stability</span></li>
+    <li class="failure-orange"><strong>Silent job death</strong><span>the allocation stayed active</span><em>nine runs lost in two weeks</em><span class="failure-link">→ slide 7</span></li>
 </ol>
 
+<p class="takeaway-line"><span>Each one</span> was invisible to the metric we were watching. The fix was a sharper check at the layer where the failure hid.</p>
 
 <SpeakerNotes>
 These are the three concrete failures behind the rest of the talk. They sit at different layers: reporting correctness, training stability, and operations. In every case, the first symptom was misleading. The narrow fix came from strengthening the check at the layer where the failure could hide.
@@ -209,6 +217,9 @@ On Sunspot at 6,144 sequences per batch, the gradient norm went nonfinite one st
 
 ```mermaid
 flowchart LR
+    A["<span style='font-weight:700'>same inputs</span><br/>ckpt · batch · RNG"] --> B["<span style='font-weight:700'>one step</span><br/>reference vs migrated"] --> D{"bits match?"}
+    D -->|✅| C["<span style='font-weight:700'>✓ ship</span>"]
+    D -.->|❌| F["<span style='font-weight:700'>bisect</span>"]
     F -.-> B
 
     classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
@@ -233,189 +244,14 @@ The dangerous migration failure was not a crash. The reported loss looked plausi
 
 </Slide>
 
-<Slide id="auto-retry">
+<Slide id="auto-retry-cluster" data-draft="compare">
 
-## A successful launcher exit could hide a dead run
+## One stalled host holds up the step
 
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '24px'}, 'flowchart': {'rankSpacing': 78, 'nodeSpacing': 62, 'padding': 18}}}%%
-flowchart LR
-    RUN["Run training"] -->|"Idle watchdog<br/>30 min without output"| CHECK{"Check exit"}
-    CHECK -->|Clean exit| DONE["Done"]
-    CHECK -->|Cannot retry| STOP["Stop"]
-    CHECK -.->|Bad host: swap spare| RUN
-
-    classDef launchC fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
-    classDef checkC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
-    classDef doneC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
-    classDef stopC fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
-    class RUN launchC
-    class CHECK checkC
-    class DONE doneC
-    class STOP stopC
-    linkStyle 3 stroke:#e05560,color:#e05560
-```
-
-<p class="sc-detail">When training stalls, <code class="sc-cli">{'ezpz launch --auto-retry'}</code> can restart it from the last checkpoint.</p>
+<AutoRetryCluster />
 
 <SpeakerNotes>
-Job 8481645 showed that the outer wrapper could mask a failed training exit. The incident log records nine earlier losses and three recovered failures, but does not provide the total jobs launched in each window. When output stalls, the launcher terminates the wedged launch, classifies the exit, swaps a bad host if a spare is available, and resumes from a checkpoint.
-
-60 seconds.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auto-retry-eventmodeling" data-draft="compare">
-
-## Compare: eventmodeling sequence
-
-
-tf 01 cmd LaunchTraining
-tf 02 evt TrainingLaunched
-tf 03 pcr IdleWatchdog
-tf 04 evt TrainingStalled
-tf 05 cmd SwapSpareHost
-tf 06 evt HostSwapped
-tf 07 cmd ResumeTraining
-tf 08 evt TrainingResumed
-
-gwt 05
-  given evt TrainingStalled
-  when cmd SwapSpareHost
-  then evt HostSwapped
-gwt 07
-  given evt HostSwapped
-  when cmd ResumeTraining
-  then evt TrainingResumed
-
-note 04 {
-  Idle for 30m
-}
-note 05 {
-  Bad host: drain + swap
-}
-```
-
-<p class="sc-detail">The same story as event-sourcing: launch → stall → swap → resume. It shows ordering, but not the three-way decision.</p>
-
-<SpeakerNotes>
-Note: pele parses this as eventmodeling. The branch is not a first-class concept; it's implicit in the frame sequence.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auto-retry-sequence" data-draft="compare">
-
-## Compare: sequence with retry path
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Launcher
-    participant T as Trainer
-    participant S as Spare host
-    L->>T: ezpz launch
-    Note over T: no stdout/stderr for 30 min
-    L->>T: send SIGTERM
-    alt clean exit
-        L-->>L: mark run complete
-    else bad host, spare available
-        L->>S: drain current host, schedule spare
-        S->>T: resume from last checkpoint
-    else no retry possible
-        L-->>L: stop, report failure
-    end
-```
-
-<p class="sc-detail">Best fit if the audience should see <em>who</em> does <em>what</em>: launcher, trainer, watchdog, spare host.</p>
-
-<SpeakerNotes>
-Comparison slide. Shows actor boundaries and the branch. Linear flow is readable; parallel reset is implicit.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auto-retry-state" data-draft="compare">
-
-## Compare: state machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> Running: ezpz launch
-    Running --> Stalled: 30 min without output
-    Stalled --> CheckExit: watchdog terminates
-    CheckExit --> Done: clean exit
-    CheckExit --> Running: bad host → spare, resume checkpoint
-    CheckExit --> Stopped: cannot retry
-    Done --> [*]
-    Stopped --> [*]
-```
-
-<p class="sc-detail">The most precise model of the behavior, but the visual weight goes to graph topology rather than the operational consequence.</p>
-
-<SpeakerNotes>
-Comparison slide. State diagrams compress the loop naturally; labels get long if you try to keep the operational detail.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auto-retry-fig5" data-draft="compare">
-
-## Compare: paper figure 5 (LR)
-
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '46px'}, 'flowchart': {'nodeSpacing': 72, 'rankSpacing': 68, 'padding': 32, 'wrappingWidth': 520}}}%%
-flowchart LR
-    START(( )) --> LAUNCH
-    LAUNCH["<span style='font-weight:700'>LAUNCH</span><br/><code>ezpz launch</code><br/><code>--auto-retry</code>"]
-    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer<br/>match crash patterns<br/>SIGTERM: idle watchdog<br/>(exit 124)"]
-    DONE["<span style='font-weight:700'>DONE</span><br/>rc = 0<br/>successful run"]
-    STOP["<span style='font-weight:700'>STOP</span><br/>spares exhausted<br/>stuck before<br/>training"]
-    LAUNCH -->|"run + monitor"| CLASSIFY
-    CLASSIFY -->|"rc = 0"| DONE
-    CLASSIFY -->|"no retry possible"| STOP
-    CLASSIFY -.->|"bad node<br/>swap spare + retry"| LAUNCH
-
-    classDef launchC fill:#f6f2fd,stroke:#6741b7,color:#1e3340,stroke-width:1.5px
-    classDef classifyC fill:#fff8e1,stroke:#ef6c00,color:#1e3340,stroke-width:1.5px
-    classDef doneC fill:#f1f9f2,stroke:#2e7d32,color:#1e3340,stroke-width:1.5px
-    classDef stopC fill:#fff5f5,stroke:#c62828,color:#1e3340,stroke-width:1.5px
-    classDef startC fill:#616161,stroke:#616161,color:#616161
-    class START startC
-    class LAUNCH launchC
-    class CLASSIFY classifyC
-    class DONE doneC
-    class STOP stopC
-    linkStyle 3 stroke:#c62828,color:#c62828,stroke-dasharray:6 5
-```
-
-<p class="sc-figcaption">Fig. 5. The <code class="sc-cli">{'ezpz launch --auto-retry'}</code> state machine. Each inner run’s exit is reclassified (parse trailer, match crash patterns, classify SIGTERM); bad-node SIGTERMs trigger a spare-swap and retry, while the idle-output watchdog (exit 124) and stuck-startup guard add the terminal outcomes the original bash wrapper lacked.</p>
-
-<SpeakerNotes>
-Comparison slide. Literal LR reproduction of the paper's Fig. 5 (failover-state-machine) — same nodes, labels, colors, and the dashed bad-node loop back to launch — laid out horizontally instead of vertically.
-</SpeakerNotes>
-
-</Slide>
-
-<Slide id="auto-retry-cards" data-draft="compare">
-
-## Compare: outcome cards
-
-> [!WARNING] No output for 30 minutes
-> The watchdog terminates the launcher and reads the exit status it was handed — which can be “successful” even though the trainer died.
-
-> [!SUCCESS] Done
-> Clean exit — the status came from the trainer. Nothing to retry.
-
-> [!NOTE] Bad host → swap spare
-> Drain the host, swap in a spare, and `ezpz launch --auto-retry` resumes from the last checkpoint.
-
-> [!ERROR] Stop
-> No spare, or the retry budget is spent. Surface it loudly; do not silently succeed.
-
-<SpeakerNotes>
-Comparison slide. Uses the site's built-in callout components, not a one-off card layout. Reads well as a risk ladder: warning, success, retry, stop.
+Illustrative replay. The healthy step saves checkpoint 3003. On step 3004, one host stalls and the collective waits. The replay compresses 30 minutes of silence. The watchdog exits with 124, and the retry rotates in a spare before the trainer restores checkpoint 3003.
 </SpeakerNotes>
 
 </Slide>
@@ -452,15 +288,7 @@ Stop here. Leave the links on screen for questions.
     <SC26Chart compact kind="winogrande" fallback="/talks/2026/10/30/figures/eval-panel-winogrande.svg" label="Winogrande accuracy versus trillion tokens" />
 </div>
 
-<p class="sc-backup-legend">Accuracy vs. trillion tokens. Cross = 2B MDS, circle = 2B 256N, square = 2B 512N, triangle = 20B 512N.</p>
-
-</Slide>
-
-<Slide id="hellaswag-backup">
-
-## Backup: HellaSwag accuracy by checkpoint
-
-<SC26Chart kind="hellaswag-history" fallback="/talks/2026/10/30/figures/eval-inflight.svg" label="HellaSwag accuracy by checkpoint, including 28 2B MDS evaluations and three TorchTitan runs" />
+<p class="sc-backup-legend">Accuracy vs. trillion tokens. Dashed grey = 2B MDS reference · pink = 2B 256N · blue dashed = 2B 512N · green = 20B 512N.</p>
 
 </Slide>
 
@@ -468,47 +296,12 @@ Stop here. Leave the links on screen for questions.
 
 ## Backup: SophiaG at 50M tokens per batch
 
-<p class="sc-backup-legend">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
-
 <div class="sc-fill-grid">
     <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss versus consumed tokens, W&B filters applied" />
     <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus consumed tokens, W&B filters applied" />
 </div>
 
 <p class="sc-backup-legend sc-fill-caption">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
-
-</Slide>
-
-<Slide id="raw-mds-loss">
-
-## Backup: 2B MDS loss across three training stages
-
-<SC26Chart kind="mds-loss" fallback="/talks/2026-06-03/figures/loss-2b-reference.svg" label="2B MDS training loss across three training stages" />
-
-</Slide>
-
-<Slide id="mds-tt-overlay">
-
-## Backup: 2B MDS and TorchTitan loss
-
-<img class="sc-reference-figure theme-plot" src="/talks/2026-06-03/figures/loss-2b-reference-with-tt.svg" alt="2B MDS and TorchTitan loss" />
-
-</Slide>
-
-<Slide id="bit-exact-fork">
-
-## Backup: reference vs migrated stack, one step
-
-```mermaid
-%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
-flowchart LR
-    A["Same checkpoint,<br/>batch, and RNG state"] --> B["Reference stack<br/>one training step"]
-    A --> C["Migrated stack<br/>one training step"]
-    B --> D["Compare loss and<br/>gradients bit for bit"]
-    C --> D
-```
-
-<p class="sc-detail">The fork behind the gate on slide 7: identical inputs, two stacks, bit-for-bit comparison.</p>
 
 </Slide>
 
@@ -560,10 +353,6 @@ flowchart TB
 </Slide>
 
 <style is:global>{`
-    #auto-retry code.sc-cli {
-        font-variant-ligatures: none;
-        font-feature-settings: "liga" 0, "calt" 0, "dlig" 0;
-    }
     .sc-launch-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 1.5rem; align-items: center; }
     .sc-launch-grid > div { min-width: 0; }
     .sc-launch-figure { min-width: 0; margin: 0; }
@@ -574,12 +363,7 @@ flowchart TB
     #portable-stack .mermaid .pele-node.hub rect { fill: var(--background1) !important; stroke: var(--foreground2) !important; }
     #portable-stack .mermaid .pele-node.hub .pele-label { fill: var(--foreground0) !important; }
     #portable-stack .sc-launch-grid pre { font-size: clamp(1rem, 1.6vw, 1.85rem); }
-    .sc-reference-figure { display: block; width: 100%; max-height: 68vh; object-fit: contain; }
     @media (max-width: 700px) { .sc-launch-grid { grid-template-columns: 1fr; } }
-
-    .hellaswag-history { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: center; gap: 1.3rem; }
-    .hellaswag-history svg { width: min(100%, 94vh); height: auto; aspect-ratio: 289 / 190; overflow: hidden; }
-    .hellaswag-key { display: grid; gap: 0.5em; font-size: clamp(1rem, 2.15vw, 1.8rem); color: var(--foreground0); }
 
     @layer components {
         body {
@@ -615,7 +399,7 @@ flowchart TB
     #three-failures,
     #bit-exact,
     #stability,
-    #auto-retry,
+    #auto-retry-cluster,
     #lessons,
     #thanks {
         --sc-cyan: #00779f;
@@ -635,7 +419,7 @@ flowchart TB
         #three-failures,
         #bit-exact,
         #stability,
-        #auto-retry,
+        #auto-retry-cluster,
         #lessons,
         #thanks
     ) {
@@ -961,6 +745,15 @@ flowchart TB
         align-self: center;
         text-align: right;
     }
+    .failure-list .failure-link {
+        grid-column: 3;
+        grid-row: 3;
+        justify-self: end;
+        color: var(--foreground2);
+        font-size: 0.55em;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
 
     .failure-rule {
         margin-top: 1rem;
@@ -1192,7 +985,7 @@ flowchart TB
     }
     @media (min-width: 701px) {
         :is(#aurora, #portable-stack, #production-result, #sample-efficiency,
-            #three-failures, #bit-exact, #stability, #auto-retry, #lessons, #thanks)
+            #three-failures, #bit-exact, #stability, #auto-retry-cluster, #lessons, #thanks)
             .slide-inner h2 {
             font-size: clamp(2rem, 4vw, 3.5rem);
             line-height: 1.06;
@@ -1253,11 +1046,11 @@ flowchart TB
         background: url('/talks/2026-10-21/figures/aurora-hero.jpg') center / cover no-repeat;
     }
     #title-slide .title-aurora { position: absolute; width: 1px; height: 1px; opacity: 0; }
-    :is(#aurora, #bit-exact, #auto-retry, #recovery-scopes) .mermaid {
+    :is(#aurora, #bit-exact, #recovery-scopes) .mermaid {
         --mermaid-max-height: 43vh;
         margin-block: 0.9rem;
     }
-    :is(#aurora, #bit-exact, #auto-retry, #recovery-scopes) .mermaid svg {
+    :is(#aurora, #bit-exact, #recovery-scopes) .mermaid svg {
         width: 100% !important;
         max-height: 43vh !important;
     }
@@ -1321,20 +1114,6 @@ flowchart TB
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);
         line-height: 1.25;
     }
-    .sc-figcaption {
-        color: var(--foreground1);
-        font-size: clamp(0.72rem, 1.35vw, 1.05rem);
-        line-height: 1.35;
-        max-width: 96ch;
-        margin-top: 0.8lh;
-    }
-    /* LR Fig. 5 is intrinsically wide (~5.5:1); let it use the full height
-       the stabilizer allows instead of the shared 43vh cap. */
-    #auto-retry-fig5 .mermaid {
-        margin-block: 0.3lh;
-        --mermaid-max-height: 78vh;
-    }
-    .sc-figcaption code { font-size: 0.95em; }
     #production-result img.production-loss {
         display: block;
         width: 100%;
@@ -1348,7 +1127,7 @@ flowchart TB
        clamped so panels stay readable rather than full-bleed. */
     #optimizer-backup .sc-fill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1.6rem; }
     #optimizer-backup .sc-fill-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: auto; --sc26-frame-min: 0px; }
-    #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { height: clamp(360px, 62vh, 640px); flex: 0 0 auto; min-height: 0; }
+    #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { height: clamp(340px, 52vh, 560px); flex: 0 0 auto; min-height: 0; }
     .sc-fill-caption { flex: 0 0 auto; margin-top: 0.4lh; font-size: clamp(0.72rem, 1.1vw, 0.95rem); line-height: 1.35; }
     @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
         /* Phone portrait: grid of half-width panels leaves the slide mostly
@@ -1375,8 +1154,6 @@ flowchart TB
             flex: 1 1 0;
             min-height: 0;
         }
-        /* Static reference SVGs: use the portrait height budget rather than the 68vh desktop cap. */
-        .sc-reference-figure { max-height: 74vh; margin-inline: auto; }
     }
     @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
         .sc-fill-grid { grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 0.5rem; }
