@@ -194,7 +194,7 @@ function mount(
                     1,
                     0,
                 ),
-                borderWidth: i === 0 ? 3 : i >= 3 ? 5 : 4,
+                borderWidth: i === 0 ? 4 : i >= 3 ? 6.5 : 5,
                 borderDash: (
                     [
                         [7, 6],
