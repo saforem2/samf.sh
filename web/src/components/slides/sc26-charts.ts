@@ -164,11 +164,11 @@ function mount(
             ? Object.values(loss)
                   .map((rows, i) => ({
                       // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                      // MDS dotted grey · 2B 256N solid pink · 2B 512N dashed blue ·
+                      // MDS solid grey · 2B 256N dotted pink · 2B 512N dashed blue ·
                       // 20B 256N dotted purple · 20B 512N solid green
                       ...dataset(labels[i], [colors[0], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
                       borderWidth: i >= 3 ? 5 : 4,
-                      borderDash: ([[2, 6], [], [12, 7], [2, 6], []] as number[][])[i],
+                      borderDash: ([[], [2, 6], [12, 7], [2, 6], []] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
                   }))
@@ -430,44 +430,57 @@ function mount(
         const legendEl = document.createElement('div')
         legendEl.className = 'sc26-legend'
         copyCid(legendEl)
-        const mkGroup = (title: string, entries: { label: string; stroke: string; dash?: string }[]) => {
-            const col = document.createElement('div')
-            col.className = 'sc26-legend-col'
-            copyCid(col)
+        // Row-aligned grid: an empty leading cell keeps 20B on the same rows as 2B.
+        const legendRows: (
+            | { label: string; stroke: string; dash?: string }
+            | null
+        )[][] = [
+            [{ label: 'MDS (256N)', stroke: colors[0] }, null],
+            [
+                { label: 'TT (256N)', stroke: colors[1], dash: '2 6' },
+                { label: 'TT (256N)', stroke: colors[3], dash: '2 6' },
+            ],
+            [
+                { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
+                { label: 'TT (512N)', stroke: colors[4] },
+            ],
+        ]
+        for (const [title, col] of [['2B', 0], ['20B', 1]] as const) {
             const head = document.createElement('div')
             head.className = 'sc26-legend-head'
+            head.style.gridColumn = String(col + 1)
+            head.style.gridRow = '1'
             head.textContent = title
             copyCid(head)
-            col.appendChild(head)
-            for (const e of entries) {
-                const row = document.createElement('div')
-                row.className = 'sc26-legend-row'
-                copyCid(row)
+            legendEl.appendChild(head)
+        }
+        legendRows.forEach((row, i) => {
+            row.forEach((entry, col) => {
+                const cell = document.createElement('div')
+                cell.className = 'sc26-legend-cell'
+                cell.style.gridColumn = String(col + 1)
+                cell.style.gridRow = String(i + 2)
+                copyCid(cell)
+                if (!entry) {
+                    cell.setAttribute('aria-hidden', 'true')
+                    legendEl.appendChild(cell)
+                    return
+                }
                 const swatch = document.createElement('span')
                 swatch.className = 'sc26-legend-swatch'
                 copyCid(swatch)
                 // inline styles beat Astro's scoped stylesheet, which sets a
                 // fallback border-bottom on the class with higher specificity.
-                swatch.style.cssText += `;display:inline-block;width:2.1em;height:0;flex:0 0 2.1em;border-bottom:3px ${e.dash ? 'dashed' : 'solid'} ${e.stroke};`
-                row.appendChild(swatch)
+                swatch.style.cssText += `;display:inline-block;width:2.1em;height:0;flex:0 0 2.1em;border-bottom:3px ${entry.dash ? 'dashed' : 'solid'} ${entry.stroke};`
+                cell.appendChild(swatch)
                 const label = document.createElement('span')
                 label.className = 'sc26-legend-label'
                 copyCid(label)
-                label.textContent = e.label
-                row.appendChild(label)
-                col.appendChild(row)
-            }
-            return col
-        }
-        legendEl.appendChild(mkGroup('2B', [
-            { label: 'MDS (reference)', stroke: colors[0], dash: '2 6' },
-            { label: '256N (dolmino)', stroke: colors[1] },
-            { label: '512N (dolmino)', stroke: colors[2], dash: '12 7' },
-        ]))
-        legendEl.appendChild(mkGroup('20B', [
-            { label: '256N', stroke: colors[3], dash: '2 6' },
-            { label: '512N', stroke: colors[4] },
-        ]))
+                label.textContent = entry.label
+                cell.appendChild(label)
+                legendEl.appendChild(cell)
+            })
+        })
         frame.appendChild(legendEl)
         // Wrap the inset canvas in its own sized box; a bare canvas would be
         // stretched by chart.js's resize observer to the frame's full size.
@@ -522,6 +535,23 @@ function mount(
         void insetChart
     }
 
+    // Pin the caller-supplied module-level legend into the plot area's top-right
+    // corner; the legend is position:absolute in the frame, so we convert the
+    // chart area into frame-relative coordinates and offset by the legend size.
+    const placeLegend = () => {
+        const legend = frame.querySelector<HTMLElement>('.sc26-legend')
+        if (!legend) return
+        const frameRect = frame.getBoundingClientRect()
+        const canvasRect = canvas.getBoundingClientRect()
+        const area = chart.chartArea
+        if (!area) return
+        const right = canvasRect.left - frameRect.left + area.right
+        const top = canvasRect.top - frameRect.top + area.top
+        legend.style.left = 'auto'
+        legend.style.transform = 'none'
+        legend.style.left = `${Math.max(0, right - legend.offsetWidth - 8)}px`
+        legend.style.top = `${top + 6}px`
+    }
     // Fonts are baked into option objects, so resizing the container does not
     // rescale them on its own. Recompute on width changes and push the new
     // sizes in place (no destroy/recreate, so the reveal animation and theme
@@ -552,8 +582,10 @@ function mount(
         lastWidth = width
         applyFontSize(fontSizeFor(width, frameHeight()))
         chart.update('none')
+        placeLegend()
     })
     resizeObserver.observe(frame)
+    placeLegend()
     root.dataset.ready = ''
     if (
         animate &&
