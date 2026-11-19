@@ -627,7 +627,9 @@ function mount(
             } else {
                 // Reveal duration per stage; later stages (the 20B pair is its
                 // own clip) get a slower draw so the eye can follow the pair.
-                const stageDurations = [2100, 2100, 9000]
+                // Timed to be narrated over: MDS first, the 2B pair next,
+                // then the 20B pair crawls in last so the audience can follow.
+                const stageDurations = [3200, 3200, 12000]
                 const start = performance.now()
                 const from = startVals.slice()
                 const active = [0, 1, 2].map((i) => from[i] !== targets[i])
