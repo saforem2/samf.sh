@@ -169,9 +169,9 @@ The interface is the point. The training program does not branch on the vendor. 
 
 ## AuroraGPT production loss
 
-<SC26Chart kind="loss" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="Five AuroraGPT training-loss trajectories versus tokens consumed" />
+<SC26Chart kind="loss" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="AuroraGPT training-loss trajectories versus tokens consumed, including 2B stage-2 dolmino continuations" />
 
-<p class="sc-detail"><strong>20B:</strong> 256 and 512 nodes. <strong>2B reference:</strong> 7.77T tokens.</p>
+<p class="sc-detail"><strong>2B stage 2</strong> continues past 4.67T on the dolmino mix: <strong>6.08T</strong> (256N) and <strong>6.93T</strong> (512N). <strong>2B reference:</strong> 7.77T tokens.</p>
 
 <SpeakerNotes>
 The completed 2B run is our reference: 7.77 trillion tokens. We migrated the production path to TorchTitan and ezpz rather than carrying the old Megatron-DeepSpeed fork forward. The August production snapshot shows the 20B loss trajectories alongside the 2B reference. The 7.77T number is the completed 2B total.
@@ -219,15 +219,25 @@ On Sunspot at 6,144 sequences per batch, the gradient norm went nonfinite one st
 ## Bit-exact checks exposed a loss reporting bug
 
 ```mermaid
-%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
 flowchart LR
-    A["Same checkpoint,<br/>batch, and RNG state"] --> B["Reference stack<br/>one training step"]
-    A --> C["Migrated stack<br/>one training step"]
-    B --> D["Compare loss and<br/>gradients bit for bit"]
-    C --> D
+    A["<i>the migration gate</i><br/><span style='font-weight:700'>same checkpoint · batch<br/>· RNG · step</span>"] --> B["<i>both stacks</i><br/><span style='font-weight:700'>reference + migrated<br/>one training step</span>"] --> D{"loss & grads<br/><br/>bit for bit?"}
+    D -->|✅ diff = 0| C["<i>migration accepted</i><br/><span style='font-weight:700'>✓ ship</span>"]
+    D -.->|❌ diff ≠ 0| F["<i>loss looked fine</i><br/><span style='font-weight:700'>bits disagree — bisect</span>"]
+    F -.-> B
+
+    classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
+    classDef stage  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
+    classDef ship   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
+    classDef gate   fill:#8a8a8a18,stroke:#9a9a9a,color:#838383,stroke-width:1.5px
+    classDef bad    fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    class A source
+    class B stage
+    class D gate
+    class C ship
+    class F bad
 ```
 
-<p class="sc-detail">The run looked healthy. The step outputs disagreed.</p>
+<p class="sc-detail">The run looked healthy. The step outputs disagreed — so exact parity became the migration gate, not a post-hoc plot comparison.</p>
 
 <SpeakerNotes>
 The dangerous migration failure was not a crash. The reported loss looked plausible and decreased normally. Aggregate curves could not catch it. A controlled, bit-exact comparison on the same checkpoint, batch, RNG state, and step did. That changed the acceptance criterion for the migrated stack: exact parity first, long-run similarity second.
@@ -274,9 +284,6 @@ Job 8481645 showed that the outer wrapper could mask a failed training exit. The
 
 ## Compare: eventmodeling sequence
 
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '20px'}}}%%
-eventmodeling
 
 tf 01 cmd LaunchTraining
 tf 02 evt TrainingLaunched
@@ -477,10 +484,12 @@ Stop here. Leave the links on screen for questions.
 
 <p class="sc-backup-legend">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
 
-<div class="sc-eval-grid">
+<div class="sc-fill-grid">
     <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss versus consumed tokens, W&B filters applied" />
     <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus consumed tokens, W&B filters applied" />
 </div>
+
+<p class="sc-backup-legend sc-fill-caption">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
 
 </Slide>
 
@@ -500,29 +509,20 @@ Stop here. Leave the links on screen for questions.
 
 </Slide>
 
-<Slide id="sync-workflow">
+<Slide id="bit-exact-fork">
 
-## Backup: Bit-exact upstream-sync gate
+## Backup: reference vs migrated stack, one step
 
 ```mermaid
-flowchart TB
-    A["<i>start</i><br/><span style='font-weight:700'>upstream @ HEAD</span>"] --> B["<i>resync · 50 steps · deterministic</i><br/><span style='font-weight:700'>smoke test</span>"]
-    B --> D{"bit-exact?"}
-    D -->|✅| C["<i>diff = 0</i><br/><span style='font-weight:700'>✓ ship</span>"]
-    D -.->|❌️| F["<i>diff &ne; 0</i><br/><span style='font-weight:700'>bisect + fix</span>"]
-    F -.-> B
-
-    classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
-    classDef stage  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
-    classDef ship   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
-    classDef gate   fill:#8a8a8a18,stroke:#9a9a9a,color:#838383,stroke-width:1.5px
-    classDef bad    fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
-    class A source
-    class B stage
-    class D gate
-    class C ship
-    class F bad
+%%{init: {'themeCSS': '.nodeLabel{font-size:25px!important} .edgeLabel{font-size:20px!important}'}}%%
+flowchart LR
+    A["Same checkpoint,<br/>batch, and RNG state"] --> B["Reference stack<br/>one training step"]
+    A --> C["Migrated stack<br/>one training step"]
+    B --> D["Compare loss and<br/>gradients bit for bit"]
+    C --> D
 ```
+
+<p class="sc-detail">The fork behind the gate on slide 7: identical inputs, two stacks, bit-for-bit comparison.</p>
 
 </Slide>
 
@@ -1357,6 +1357,13 @@ flowchart TB
         margin: 0;
     }
     .sc-eval-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.1rem; }
+    /* Charts take the space the heading and caption leave behind, and the
+       block back to .slide-inner default centering. The frame height is
+       clamped so panels stay readable rather than full-bleed. */
+    #optimizer-backup .sc-fill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1.6rem; }
+    #optimizer-backup .sc-fill-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: auto; --sc26-frame-min: 0px; }
+    #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { height: clamp(360px, 62vh, 640px); flex: 0 0 auto; min-height: 0; }
+    .sc-fill-caption { flex: 0 0 auto; margin-top: 0.4lh; font-size: clamp(0.72rem, 1.1vw, 0.95rem); line-height: 1.35; }
     @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
         /* Phone portrait: grid of half-width panels leaves the slide mostly
            empty. Stack to one column with equal flexible rows and let each
@@ -1384,6 +1391,9 @@ flowchart TB
         }
         /* Static reference SVGs: use the portrait height budget rather than the 68vh desktop cap. */
         .sc-reference-figure { max-height: 74vh; margin-inline: auto; }
+    }
+    @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
+        .sc-fill-grid { grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 0.5rem; }
     }
     .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
 `}</style>

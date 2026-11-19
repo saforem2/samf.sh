@@ -22,12 +22,20 @@ function withAlpha(rgb: string, alpha: number) {
 }
 const tasks = ['hellaswag', 'arc_easy', 'arc_challenge', 'winogrande']
 const titles = ['HellaSwag', 'ARC-Easy', 'ARC-Challenge', 'Winogrande']
+// 2B TT stage-2 (dolmino) chains continue the stage-1 curves to ~6.9T tokens;
+// they are drawn dashed in the same hue as their stage-1 counterpart.
 const labels = [
     '2B MDS',
     '2B TT 256N',
     '2B TT 512N',
     '20B TT 256N',
     '20B TT 512N',
+    '2B 256N s1',
+    '2B 512N s1',
+    '2B 256N s2',
+    '2B 512N s2',
+    '20B 256N',
+    '20B 512N',
 ]
 const reference = evaluations[0].rows[0]
 const match = evaluations[3].rows.find((row) => row[1] >= reference[1])!
@@ -191,9 +199,16 @@ function mount(
                                         : 0,
                                 )
                               : 0,
+                      ...dataset(labels[i], [colors[0], colors[1], colors[3], colors[1], colors[3], colors[2], colors[4]][i], rows, 1, 0),
+                      borderWidth: i >= 5 ? 5 : 4,
+                      // Match the 10/21 figure convention: solid = 256N, dashed = 512N
+                      // (MDS reference dashed as before).
+                      borderDash: i === 0 || i === 2 || i === 4 ? [12, 7] : [],
+                      pointRadius: 0,
                       pointBorderWidth: 1,
                   }))
                   .filter((_, i) => !zoom || i >= 3)
+                  .filter((_, i) => !zoom || i >= 5)
             : evaluations
                   .map((run, i) => ({
                       ...dataset(
