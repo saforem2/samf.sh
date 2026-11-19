@@ -124,12 +124,23 @@ const ranks = [
     { x: 625, y: 337, name: 'host-048' },
 ]
 
-/** Okabe-Ito colorblind-safe palette, one hue per batch shard (rank order). */
+/** Readable text color for a shard fill (dark text on light hues, white on dark). */
+function shardTextColor(hex: string) {
+    const [r, g, b] = [1, 3, 5].map(
+        (i) => parseInt(hex.slice(i, i + 2), 16) / 255,
+    )
+    const lin = (v: number) =>
+        v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    return L > 0.35 ? '#0b0b0b' : '#f5f5f5'
+}
+
+/** Okabe-Ito-inspired palette, one hue per batch shard (rank order). */
 const shardColors = [
     '#E69F00',
     '#56B4E9',
     '#009E73',
-    '#F0E442',
+    '#8A6D00',
     '#0072B2',
     '#D55E00',
     '#CC79A7',
@@ -273,7 +284,7 @@ function batchGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
             ctx.strokeStyle = shardColors[index]
             ctx.strokeRect(tileX, tileY, tile, tile)
             ctx.globalAlpha = 1
-            ctx.fillStyle = '#0b0b0b'
+            ctx.fillStyle = shardTextColor(shardColors[index])
             ctx.font = '700 12px ' + ctx.canvas.dataset.font
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
