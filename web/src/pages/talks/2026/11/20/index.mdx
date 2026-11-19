@@ -372,13 +372,13 @@ Comparison slide. State diagrams compress the loop naturally; labels get long if
 ## Compare: paper figure 5 (LR)
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '44px'}, 'flowchart': {'nodeSpacing': 80, 'rankSpacing': 44, 'padding': 26, 'wrappingWidth': 520}}}%%
+%%{init: {'themeVariables': {'fontSize': '46px'}, 'flowchart': {'nodeSpacing': 72, 'rankSpacing': 68, 'padding': 32, 'wrappingWidth': 520}}}%%
 flowchart LR
     START(( )) --> LAUNCH
-    LAUNCH["<span style='font-weight:700'>LAUNCH</span><br/><code>ezpz launch --auto-retry</code>"]
-    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer ·<br/>match crash patterns<br/>SIGTERM: idle watchdog (exit 124)"]
+    LAUNCH["<span style='font-weight:700'>LAUNCH</span><br/><code>ezpz launch</code><br/><code>--auto-retry</code>"]
+    CLASSIFY["<span style='font-weight:700'>CLASSIFY EXIT</span><br/>parse exit trailer<br/>match crash patterns<br/>SIGTERM: idle watchdog<br/>(exit 124)"]
     DONE["<span style='font-weight:700'>DONE</span><br/>rc = 0<br/>successful run"]
-    STOP["<span style='font-weight:700'>STOP</span><br/>spares exhausted<br/>stuck before training"]
+    STOP["<span style='font-weight:700'>STOP</span><br/>spares exhausted<br/>stuck before<br/>training"]
     LAUNCH -->|"run + monitor"| CLASSIFY
     CLASSIFY -->|"rc = 0"| DONE
     CLASSIFY -->|"no retry possible"| STOP
