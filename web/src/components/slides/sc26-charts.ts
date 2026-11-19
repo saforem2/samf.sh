@@ -1,7 +1,6 @@
 import Chart from 'chart.js/auto'
 import type { Plugin } from 'chart.js'
-import { evaluations, loss, mdsHellaswag } from './sc26-chart-data'
-import { mdsStages } from './sc26-backup-data'
+import { evaluations, loss } from './sc26-chart-data'
 import { optimizerHistories } from './sc26-optimizer-data'
 
 const family = 'mIosevka-QP Web'
@@ -9,32 +8,24 @@ const family = 'mIosevka-QP Web'
 // instead of hard-coded hex. Canvas needs concrete srgb/rgb values, so each
 // custom property is painted through a 1×1 canvas and read back as rgb().
 // Slide 4 series colors, theme-aware. MDS reference is muted grey; the two
-// 2B TorchTitan chains are pink dotted (256N) and solid blue (512N); stage-2
-// segments share the stage-1 hue. 20B chains: 256N dashed purple, 512N green.
+// 2B TorchTitan chains: 256N solid pink, 512N dashed blue; stage-2 segments
+// repeat the stage-1 hue/dash. 20B chains: 256N purple dotted, 512N green solid.
 const paletteVars = [
-    '--foreground3',
+    '--foreground1',
     '--pink',
     '--blue',
     '--purple',
     '--green',
 ] as const
-const paletteFallback = ['#838383', '#ea76cb', '#2196f3', '#9a76ce', '#4caf50']
+const paletteFallback = ['#3f4652', '#ea76cb', '#2196f3', '#9a76ce', '#4caf50']
 function withAlpha(rgb: string, alpha: number) {
     const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
     return m ? `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})` : rgb
 }
 const tasks = ['hellaswag', 'arc_easy', 'arc_challenge', 'winogrande']
 const titles = ['HellaSwag', 'ARC-Easy', 'ARC-Challenge', 'Winogrande']
-// 2B TT stage-2 (dolmino) chains continue the stage-1 curves to ~6.9T tokens.
-const labels = [
-    '2B MDS',
-    '2B 256N s1',
-    '2B 512N s1',
-    '2B 256N s2',
-    '2B 512N s2',
-    '20B 256N',
-    '20B 512N',
-]
+// Stage-2 (dolmino) continuations are merged into the stage-1 series (see sc26-chart-data).
+const labels = ['2B MDS', '2B 256N', '2B 512N', '20B 256N', '20B 512N']
 const reference = evaluations[0].rows[0]
 const match = evaluations[3].rows.find((row) => row[1] >= reference[1])!
 const ratio = (reference[0] / match[0]).toFixed(1)
@@ -93,15 +84,12 @@ function mount(
     frame: HTMLElement,
     animate: boolean,
 ) {
-    const zoom = root.dataset.sc26Chart === 'loss-zoom'
-    const isLoss = zoom || root.dataset.sc26Chart === 'loss'
+    const isLoss = root.dataset.sc26Chart === 'loss'
     const fullLoss = root.dataset.sc26Chart === 'loss'
-    const mds = root.dataset.sc26Chart === 'mds-loss'
     const optLoss = root.dataset.sc26Chart === 'optimizer-loss'
     const optGrad = root.dataset.sc26Chart === 'optimizer-grad'
     const optimizer = optLoss || optGrad
-    const history = root.dataset.sc26Chart === 'hellaswag-history'
-    const task = history ? 0 : tasks.indexOf(root.dataset.sc26Chart ?? '')
+    const task = tasks.indexOf(root.dataset.sc26Chart ?? '')
     const compact = root.classList.contains('compact')
     // Resolve any CSS <color> (oklch(), color-mix(), vars, …) to an rgb() string
     // both canvas and chart.js's (hex/rgb/hsl-only) color parser accept: paint
@@ -152,17 +140,7 @@ function mount(
     const baseSize = fontSizeFor(frameWidth(), frameHeight())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }
-    const datasets = mds
-        ? mdsStages.map((rows, i) =>
-              dataset(
-                  ['Pre-train', 'Continued pre-train', 'Math + code'][i],
-                  [colors[0], teal, colors[2]][i],
-                  rows,
-                  1,
-                  0,
-              ),
-          )
-        : optimizer
+    const datasets = optimizer
           ? optimizerHistories.map((run, i) =>
                 // W&B full-fidelity view: faint raw trace + smoothed line on top.
                 [
@@ -185,31 +163,33 @@ function mount(
           : isLoss
             ? Object.values(loss)
                   .map((rows, i) => ({
-                      // Index 0..6: MDS, 2B 256N s1, 2B 512N s1, 2B 256N s2, 2B 512N s2, 20B 256N, 20B 512N.
-                      // MDS dotted grey; 2B 256N solid pink; 2B 512N dashed blue;
-                      // stage-2 continuations repeat the stage-1 hue with a longer dash;
-                      // 20B 256N dashed purple; 20B 512N solid green.
-                      ...dataset(labels[i], [colors[0], colors[1], colors[2], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
-                      borderWidth: i >= 5 ? 5 : 4,
-                      borderDash: ([[2, 6], [], [12, 7], [8, 5], [16, 6], [12, 7], []] as number[][])[i],
+                      // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
+                      // MDS dotted grey · 2B 256N solid pink · 2B 512N dashed blue ·
+                      // 20B 256N dotted purple · 20B 512N solid green
+                      ...dataset(labels[i], [colors[0], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
+                      borderWidth: i >= 3 ? 5 : 4,
+                      borderDash: ([[2, 6], [], [12, 7], [2, 6], []] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
                   }))
-                  .filter((_, i) => !zoom || i >= 5)
             : evaluations
                   .map((run, i) => ({
+                      // Same family as the production-loss chart: MDS = grey dashed
+                      // crosses, 2B 256N = pink, 2B 512N = blue (dashed), 20B 512N = green.
                       ...dataset(
                           run.label,
-                          colors[[0, 1, 2, 4][i]],
-                          history && i === 0 ? mdsHellaswag : run.rows,
+                          i === 0 ? colors[0] : [colors[1], colors[2], colors[4]][(i - 1) % 3],
+                          run.rows,
                           task + 1,
                           compact ? 3 : 6,
                       ),
+                      borderDash: i === 0 || i === 2 ? [10, 6] : [],
+                      borderWidth: i === 0 ? 2 : 2.6,
                       pointStyle: (
                           ['crossRot', 'circle', 'rect', 'triangle'] as const
                       )[i],
                   }))
-                  .filter((_, i) => history || compact || i === 0 || i === 3)
+                  .filter((_, i) => compact || i === 0 || i === 1 || i === 2 || i === 3)
 
     let progress = 1
     const reveal: Plugin<'line'> = {
@@ -228,7 +208,7 @@ function mount(
         afterDatasetsDraw(chart) {
             const { ctx, scales, chartArea } = chart
             ctx.restore()
-            if (!zoom || progress < 1) return
+            if (progress < 1) return
             ctx.save()
             ctx.fillStyle = color
             ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px "' + family + '"'
@@ -250,29 +230,82 @@ function mount(
             ctx.restore()
         },
     }
-    // Stage boundaries for the full production-loss view: a dashed vertical at
-    // the 4.674T transition where the 2B chains switch to the dolmino mix, and
-    // a boxed inset reproducing the old dedicated early-training slide.
-    const stageTransition = 4.67378 // trillion tokens, from agpt-2b-progress.json (stage 2 prior_tokens)
-    const stageMarks: Plugin<'line'> = {
+    // Stage boundaries for the full production-loss view. MDS cumulative-token
+    // milestones from the 10/21 figure (τ in trillions): stage 1 -> 2 at 4.674,
+    // stage 2 -> 3 at 7.064, and the 7.771T MDS endpoint. 2B v2 chains branch at
+    // stage 2; the 20B runs stopped in stage 1.
+    // Inset guide: outline the zoomed x-range [0, 0.6T] on the main chart and
+    // connect its right edge to the inset panel, so the magnification reads as
+    // a callout rather than a random floating axis.
+    // The inset position is driven by CSS (sc26-inset: left/top/width/height as
+    // fractions of the frame), so the box is resolved in pixel terms there.
+    const insetGuide: Plugin<'line'> = {
+        id: 'sc26InsetGuide',
+        beforeDatasetsDraw({ ctx, scales, chartArea }) {
+            if (!fullLoss) return
+            const inset = frame.querySelector<HTMLElement>('.sc26-inset')
+            if (!inset) return
+            const frameRect = frame.getBoundingClientRect()
+            const ir = inset.getBoundingClientRect()
+            const canvasRect = canvas.getBoundingClientRect()
+            const x0 = scales.x.getPixelForValue(0)
+            const x1 = scales.x.getPixelForValue(0.6)
+            const y0 = chartArea.top
+            const y1 = chartArea.bottom
+            // Chart.js draws in CSS pixels (it pre-scales the context by DPR), so
+            // convert the inset's frame-relative position straight into canvas CSS px.
+            const cx0 = ir.left - canvasRect.left
+            const cy0 = ir.top - canvasRect.top
+            const ch = ir.height
+            ctx.save()
+            // highlight the source region
+            ctx.fillStyle = withAlpha(readVar('--foreground1', color), 0.08)
+            ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+            ctx.strokeStyle = withAlpha(color, 0.55)
+            ctx.lineWidth = 1.5
+            ctx.setLineDash([5, 4])
+            ctx.strokeRect(x0, y0, x1 - x0, y1 - y0)
+            // connectors from the source box's top-right and bottom-right corners
+            // to the inset's top-left and bottom-left corners
+            ctx.setLineDash([])
+            ctx.lineWidth = 1.5
+            ctx.beginPath()
+            ctx.moveTo(x1, y0)
+            ctx.lineTo(cx0, cy0)
+            ctx.moveTo(x1, y1)
+            ctx.lineTo(cx0, cy0 + ch)
+            ctx.stroke()
+            ctx.restore()
+        },
+    }
+    const stageMarks: { t: number; label: string }[] = [
+        { t: 4.67378, label: 'stage 1 → 2' },
+        { t: 7.06416, label: 'stage 2 → 3' },
+    ]
+    const stageMarksPlugin: Plugin<'line'> = {
         id: 'sc26StageMarks',
         afterDatasetsDraw({ ctx, scales, chartArea }) {
             if (!fullLoss) return
-            const x = scales.x.getPixelForValue(stageTransition)
             ctx.save()
             ctx.setLineDash([6, 5])
-            ctx.strokeStyle = withAlpha(readVar('--foreground1', color), 0.7)
+            ctx.strokeStyle = withAlpha(readVar('--foreground2', color), 0.45)
             ctx.lineWidth = 1.5
-            ctx.beginPath()
-            ctx.moveTo(x, chartArea.top)
-            ctx.lineTo(x, chartArea.bottom)
-            ctx.stroke()
-            ctx.setLineDash([])
             ctx.fillStyle = color
             ctx.font = '500 ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) + 'px "' + family + '"'
             ctx.textAlign = 'right'
             ctx.textBaseline = 'bottom'
-            ctx.fillText('stage 1 → 2', x - 8, chartArea.bottom - 6)
+            let row = 0
+            for (const { t, label } of stageMarks) {
+                const x = scales.x.getPixelForValue(t)
+                if (x < chartArea.left || x > chartArea.right) continue
+                ctx.beginPath()
+                ctx.moveTo(x, chartArea.top)
+                ctx.lineTo(x, chartArea.bottom)
+                ctx.stroke()
+                // Stagger the labels vertically so adjacent markers at 7.06 and 7.77 don't collide.
+                ctx.fillText(label, x - 8, chartArea.bottom - 6 - row * (Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.72) + 4))
+                row += 1
+            }
             ctx.restore()
         },
     }
@@ -309,8 +342,8 @@ function mount(
         type: 'line',
         data: { datasets },
         plugins: isLoss
-            ? zoom ? [reveal] : [reveal, stageMarks]
-            : !history && !compact && task === 0
+            ? [reveal, stageMarksPlugin, insetGuide]
+            : !compact && task === 0
               ? [compare]
               : [],
         options: {
@@ -323,9 +356,12 @@ function mount(
                 legend: {
                     // The optimizer backup slide renders two panels of the same
                     // four optimizers; only the loss panel carries the legend.
-                    display: !compact && !optGrad,
+                    // The production-loss view splits its legend into two columns
+                    // (2B | 20B) rendered as a caption row instead — see below.
+                    display: !optGrad && !fullLoss,
                     position: 'top',
                     align: 'center',
+
                     labels: {
                         color,
                         font: { family, size: Math.max(11, Math.round(font.size * 0.72)), weight: 500 },
@@ -353,7 +389,7 @@ function mount(
                     ...axis,
                     type: 'linear',
                     min: 0,
-                    max: zoom ? 0.6 : undefined,
+                    max: undefined,
                     title: {
                         ...axisTitle,
                         text: 'Tokens consumed (trillions)',
@@ -367,12 +403,12 @@ function mount(
                     // without flattening the 0.2–5 band the healthy runs live in.
                     min: optimizer ? (optGrad ? 0.2 : 2) : isLoss ? 2 : undefined,
                     max: optGrad ? 50 : optLoss ? 8 : isLoss ? 4.5 : undefined,
-                    type: optimizer || mds ? 'logarithmic' : 'linear',
+                    type: optimizer ? 'logarithmic' : 'linear',
                     title: {
                         ...axisTitle,
                         text: optGrad
                             ? 'Gradient norm'
-                            : isLoss || mds || optLoss
+                            : isLoss || optLoss
                               ? 'Training loss'
                               : 'HellaSwag accuracy',
                     },
@@ -382,15 +418,62 @@ function mount(
     })
     // Full-loss view: overlay a second, small chart in the empty lower-right
     // region showing the first 600B tokens for the two 20B chains — this is the
-    // old standalone "loss-zoom" slide, folded in as an inset.
     if (fullLoss) {
+        // Legend split into two columns: a 2B group and a 20B group, matching the
+        // "v1 | v2" grouping style but rendered as compact custom HTML so the two
+        // groups can sit side by side instead of wrapping into one row.
+        const cidAttrs: [string, string][] = []
+        for (const attr of frame.getAttributeNames()) {
+            if (attr.startsWith('data-astro-cid-')) cidAttrs.push([attr, ''])
+        }
+        const copyCid = (el: HTMLElement) => { for (const [k, v] of cidAttrs) el.setAttribute(k, v) }
+        const legendEl = document.createElement('div')
+        legendEl.className = 'sc26-legend'
+        copyCid(legendEl)
+        const mkGroup = (title: string, entries: { label: string; stroke: string; dash?: string }[]) => {
+            const col = document.createElement('div')
+            col.className = 'sc26-legend-col'
+            copyCid(col)
+            const head = document.createElement('div')
+            head.className = 'sc26-legend-head'
+            head.textContent = title
+            copyCid(head)
+            col.appendChild(head)
+            for (const e of entries) {
+                const row = document.createElement('div')
+                row.className = 'sc26-legend-row'
+                copyCid(row)
+                const swatch = document.createElement('span')
+                swatch.className = 'sc26-legend-swatch'
+                copyCid(swatch)
+                // inline styles beat Astro's scoped stylesheet, which sets a
+                // fallback border-bottom on the class with higher specificity.
+                swatch.style.cssText += `;display:inline-block;width:1.6em;height:0.6em;flex:0 0 1.6em;border-bottom:3px ${e.dash ? 'dashed' : 'solid'} ${e.stroke};`
+                row.appendChild(swatch)
+                const label = document.createElement('span')
+                label.className = 'sc26-legend-label'
+                copyCid(label)
+                label.textContent = e.label
+                row.appendChild(label)
+                col.appendChild(row)
+            }
+            return col
+        }
+        legendEl.appendChild(mkGroup('2B', [
+            { label: 'MDS (reference)', stroke: colors[0], dash: '2 6' },
+            { label: '256N (dolmino)', stroke: colors[1] },
+            { label: '512N (dolmino)', stroke: colors[2], dash: '12 7' },
+        ]))
+        legendEl.appendChild(mkGroup('20B', [
+            { label: '256N', stroke: colors[3], dash: '2 6' },
+            { label: '512N', stroke: colors[4] },
+        ]))
+        frame.appendChild(legendEl)
         // Wrap the inset canvas in its own sized box; a bare canvas would be
         // stretched by chart.js's resize observer to the frame's full size.
         const holder = document.createElement('div')
         holder.className = 'sc26-inset'
-        for (const attr of frame.getAttributeNames()) {
-            if (attr.startsWith('data-astro-cid-')) holder.setAttribute(attr, '')
-        }
+        copyCid(holder)
         frame.appendChild(holder)
         const insetCanvas = document.createElement('canvas')
         holder.appendChild(insetCanvas)
@@ -477,7 +560,7 @@ function mount(
         const start = performance.now()
         const draw = (time: number) => {
             if (!Chart.getChart(canvas)) return
-            const t = Math.min(1, (time - start) / 1600)
+            const t = Math.min(1, (time - start) / 2600)
             progress = 1 - (1 - t) ** 2
             chart.draw()
             if (t < 1) requestAnimationFrame(draw)
