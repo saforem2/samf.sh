@@ -29,7 +29,7 @@ interface Palette {
 const scenes: Scene[] = [
     {
         id: 'batch',
-        duration: 5500,
+        duration: 7000,
         kicker: 'Training · step 3003',
         title: 'One batch, eight hosts',
         detail: 'Each host receives a shard and computes its gradients.',
@@ -38,7 +38,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'sync',
-        duration: 6000,
+        duration: 8000,
         kicker: 'Training · step 3003',
         title: 'The collective completes',
         detail: 'Gradients go out and return synchronized across all eight hosts.',
@@ -47,7 +47,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'save',
-        duration: 5000,
+        duration: 6500,
         kicker: 'Checkpoint',
         title: 'Save the finished step',
         detail: 'The trainer saves checkpoint 3003 to shared storage.',
@@ -56,7 +56,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'stall',
-        duration: 10000,
+        duration: 12000,
         kicker: 'Training · step 3004',
         title: 'One host goes silent',
         detail: 'Seven hosts reach the collective. The eighth stops responding.',
@@ -65,7 +65,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'timeout',
-        duration: 4500,
+        duration: 6000,
         kicker: 'Watchdog',
         title: 'No output for 30 min',
         detail: 'The idle watchdog ends the attempt with exit 124.',
@@ -74,7 +74,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'swap',
-        duration: 6500,
+        duration: 8000,
         kicker: 'Retry',
         title: 'Rotate in a spare',
         detail: 'A blind retry replaces the first active host with a spare.',
@@ -83,7 +83,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'restore',
-        duration: 6500,
+        duration: 8000,
         kicker: 'Relaunch',
         title: 'Reload the checkpoint',
         detail: 'The trainer restores checkpoint 3003 on the new host list.',
@@ -92,7 +92,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'batch-retry',
-        duration: 5500,
+        duration: 7000,
         kicker: 'Training · step 3004',
         title: 'A fresh batch goes out',
         detail: 'The replacement run restarts step 3004 from the checkpoint.',
@@ -101,7 +101,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'resume',
-        duration: 6000,
+        duration: 8000,
         kicker: 'Training · step 3004',
         title: 'The collective completes',
         detail: 'All eight hosts participate and step 3004 completes.',
@@ -110,7 +110,7 @@ const scenes: Scene[] = [
     },
     {
         id: 'done',
-        duration: 3500,
+        duration: 4500,
         kicker: 'Training resumed',
         title: 'Back to training',
         detail: 'The replacement host joins the same distributed run.',

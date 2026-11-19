@@ -258,6 +258,9 @@ Illustrative replay. The healthy step saves checkpoint 3003. On step 3004, one h
 
 ## Thank you
 
+<div class="thanks-layout">
+<div class="thanks-main">
+
 <p class="thanks-line"><span class="c-cyan">AuroraGPT</span> trains open foundation models for science.</p>
 <p class="thanks-line"><span class="c-pink">`ezpz` + `TorchTitan`</span> carry the run across devices, systems, and failures.</p>
 
@@ -270,13 +273,19 @@ Aurora was built by HPE and Intel. Thanks to the ALCF operations and user-suppor
 
 </details>
 
-<ul class="thanks-links">
+</div>
+
+<nav class="thanks-links" aria-label="Links">
+<h3 class="thanks-links-title">Links</h3>
+<ul>
 <li><span class="thanks-link-label">This talk</span><a href="https://samf.sh/talks/2026/11/20/">samf.sh/talks/2026/11/20</a></li>
 <li><span class="thanks-link-label">Workshop</span><a href="https://sc26.conference-program.com/presentation/?id=ws_tpw126&amp;sess=sess149">4th Annual Trillion Parameter Workshop · W181abc</a></li>
 <li><span class="thanks-link-label">Code</span><a href="https://github.com/saforem2/ezpz">ezpz</a> · <a href="https://github.com/saforem2/torchtitan/tree/ezpz">torchtitan@ezpz</a> · <a href="https://github.com/saforem2/torchtitan/blob/293533196acc8543fdd4ea3f54ca9d38596d031b/torchtitan/experiments/ezpz/scripts/submit_agpt_2b_autoretry.sh">auto-retry launcher</a></li>
 <li><span class="thanks-link-label">Earlier talks</span><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a> · <a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a> · <a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a> · <a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></li>
 <li><span class="thanks-link-label">Site</span><a href="https://samf.sh">samf.sh</a> · <a href="https://github.com/saforem2/samf.sh/tree/feat/sc26-slides/web/src/pages/talks/2026/11/20">this deck’s source</a></li>
 </ul>
+</nav>
+</div>
 
 <SpeakerNotes>
 Stop here. Leave the links on screen for questions.
@@ -1026,18 +1035,41 @@ flowchart TB
     .acknowledgement p { margin: 0 0 0.45em; }
     .acknowledgement p:last-child { margin-bottom: 0.1em; }
 
-    .thanks-links {
-        list-style: none;
-        margin: 0.3rem 0 0;
-        padding: 0;
+    /* Two-column close: statement + acknowledgements left, links rail right.
+       Collapses to one column on phones/print rather than squeezing the
+       link labels against the thanks-line. */
+    .thanks-layout {
         display: grid;
-        gap: 0.18rem;
-        max-width: 48rem;
+        grid-template-columns: minmax(0, 1.45fr) minmax(16rem, 1fr);
+        gap: clamp(1.5rem, 3vw, 3rem);
+        align-items: start;
+        width: 100%;
+        max-width: 76rem;
+    }
+    .thanks-main { min-width: 0; }
+    .thanks-main .acknowledgement { width: 100%; }
+    .thanks-links-title {
+        margin: 0 0 0.4rem;
+        font-size: 0.62em;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--foreground2);
+    }
+    .thanks-links {
+        margin: 0;
+        padding: 0.6rem 0 0;
         font-size: 0.6em;
         line-height: 1.35;
         text-align: left;
+        border-top: 1px solid var(--sc-rule);
     }
-    .thanks-links li { margin: 0; }
+    .thanks-links ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.55rem;
+    }
     .thanks-link-label {
         display: inline-block;
         min-width: 7.5ch;
@@ -1048,6 +1080,16 @@ flowchart TB
     }
     .thanks-links a { color: var(--sc-cyan); text-decoration: none; }
     .thanks-links a:hover { text-decoration: underline; }
+    @media (max-width: 900px) {
+        .thanks-layout {
+            grid-template-columns: 1fr;
+            gap: 0.9rem;
+        }
+        .thanks-links {
+            border-top: 1px solid var(--sc-rule);
+            padding-top: 0.7rem;
+        }
+    }
 
     @media (max-width: 700px) {
         .title-panel { width: 88vw; }

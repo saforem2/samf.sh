@@ -1701,11 +1701,17 @@ body.slides-print-mode .slide-web-link {
    rather than tucking into a corner, and the gutter reservation it forces
    on the slide's last flow child costs more horizontal room than the mark
    is worth there. The title slide still shows its own bigger logo. The
-   breakpoint keys off height as well as width: landscape phones run out of
-   height before they run out of width. */
-@media (max-width: 1024px), (max-height: 540px) {
+   height breakpoint covers wide-but-short decks where the content column
+   runs into the mark; past this point the mark is not worth the crowding. */
+@media (max-width: 1024px), (max-height: 800px) {
     .deck-corner-logo {
         display: none !important;
+    }
+    /* Nothing left to reserve room for. */
+    [is-~='presentation']:not(:has(#title-slide[data-current]))
+        [is-~='slide'][data-current]
+        .slide-inner {
+        --deck-logo-gutter: 0;
     }
 }
 
@@ -1735,8 +1741,10 @@ body.slides-print-mode .slide-web-link {
         max-width: calc(100% - var(--deck-logo-gutter, 0px));
     }
 }
-/* Gutter applies only where the logo is actually visible. */
-@media (min-width: 1025px) and (min-height: 541px) {
+/* Gutter applies only where the logo is actually visible. Keep these bounds
+   identical to the hide rule above, or short-wide decks pay for a gutter
+   reserving room for a logo that isn't there. */
+@media (min-width: 1025px) and (min-height: 801px) {
     [is-~='presentation']:not(:has(#title-slide[data-current]))
         [is-~='slide'][data-current]
         .slide-inner {
