@@ -448,7 +448,7 @@ function mount(
                 copyCid(swatch)
                 // inline styles beat Astro's scoped stylesheet, which sets a
                 // fallback border-bottom on the class with higher specificity.
-                swatch.style.cssText += `;display:inline-block;width:1.6em;height:0.6em;flex:0 0 1.6em;border-bottom:3px ${e.dash ? 'dashed' : 'solid'} ${e.stroke};`
+                swatch.style.cssText += `;display:inline-block;width:2.1em;height:0;flex:0 0 2.1em;border-bottom:3px ${e.dash ? 'dashed' : 'solid'} ${e.stroke};`
                 row.appendChild(swatch)
                 const label = document.createElement('span')
                 label.className = 'sc26-legend-label'
