@@ -626,17 +626,27 @@ function mount(
                 stageProgress.splice(0, 3, ...targets)
                 chart.draw()
             } else {
-                const duration = 2100
+                // Reveal duration per stage; later stages (the 20B pair is its
+                // own clip) get a slower draw so the eye can follow the pair.
+                const stageDurations = [2100, 2100, 4500]
                 const start = performance.now()
                 const from = startVals.slice()
+                const active = [0, 1, 2].map((i) => from[i] !== targets[i])
                 const tick = (time: number) => {
-                    const t = Math.min(1, (time - start) / duration)
-                    const e = easeOutQuad(t)
                     for (let i = 0; i < 3; i++) {
+                        if (!active[i]) continue
+                        const t = Math.min(
+                            1,
+                            (time - start) / stageDurations[i],
+                        )
+                        const e = easeOutQuad(t)
                         stageProgress[i] = from[i] + (targets[i] - from[i]) * e
                     }
                     chart.draw()
-                    if (t < 1) requestAnimationFrame(tick)
+                    const done = [0, 1, 2].every(
+                        (i) => !active[i] || time - start >= stageDurations[i],
+                    )
+                    if (!done) requestAnimationFrame(tick)
                 }
                 requestAnimationFrame(tick)
             }
