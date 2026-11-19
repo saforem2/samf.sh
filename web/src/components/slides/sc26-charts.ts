@@ -627,7 +627,7 @@ function mount(
             } else {
                 // Reveal duration per stage; later stages (the 20B pair is its
                 // own clip) get a slower draw so the eye can follow the pair.
-                const stageDurations = [2100, 2100, 6500]
+                const stageDurations = [2100, 2100, 9000]
                 const start = performance.now()
                 const from = startVals.slice()
                 const active = [0, 1, 2].map((i) => from[i] !== targets[i])

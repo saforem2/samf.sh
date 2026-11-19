@@ -502,14 +502,21 @@ function draw(
         'done',
     ].includes(id)
     const saveDone = id !== 'save' || p > 0.78
-    const collectiveProgress =
-        id === 'sync' || id === 'resume'
-            ? Math.min(8, Math.floor(p * 14))
-            : id === 'stall'
-              ? Math.min(7, Math.floor(p * 17))
-              : id === 'save' || id === 'done'
-                ? 8
-                : 0
+    // A packet is "in" when its own delayed() ramp completes — the same test
+    // the packet renderer uses — so the pips and the count can never run
+    // ahead of the animation.
+    const packetArrived = (i: number) =>
+        id === 'stall'
+            ? i > 0 && delayed(p * 1.85, i) >= 1
+            : id === 'sync' || id === 'resume'
+              ? delayed(p / 0.6, i) >= 1
+              : false
+    const packetScene = id === 'stall' || id === 'sync' || id === 'resume'
+    const collectiveProgress = packetScene
+        ? ranks.reduce((n, _, i) => n + (packetArrived(i) ? 1 : 0), 0)
+        : id === 'save' || id === 'done'
+          ? 8
+          : 0
 
     ctx.clearRect(0, 0, width, height)
 
@@ -599,26 +606,22 @@ function draw(
     )
     for (let i = 0; i < 8; i++) {
         ctx.save()
-        const arrivedCount =
-            id === 'stall'
-                ? Math.min(7, Math.floor(p * 17))
-                : collectiveProgress
-        if (id === 'sync' || id === 'resume' || id === 'stall') {
-            // Map pip i -> the i-th *healthy* shard so colours line up with senders.
+        if (packetScene) {
             const shardIndex = id === 'stall' ? (i === 0 ? -1 : i) : i
+            const arrived = packetArrived(i)
             ctx.fillStyle =
-                i < arrivedCount && shardIndex >= 0
+                arrived && shardIndex >= 0
                     ? palette.shards[shardIndex]
                     : palette.muted
+            ctx.globalAlpha = arrived ? 0.95 : 0.24
         } else {
             ctx.fillStyle = i < collectiveProgress ? signal : palette.muted
+            ctx.globalAlpha = i < collectiveProgress ? 0.95 : 0.24
         }
-        ctx.globalAlpha = i < collectiveProgress ? 0.95 : 0.24
         ctx.fillRect(767 + i * 17, 263, 10, 10)
         ctx.restore()
     }
-    const arrived =
-        id === 'stall' ? Math.min(7, Math.floor(p * 17)) : collectiveProgress
+    const arrived = collectiveProgress
     const count = stopped
         ? compact
             ? 'stopped'
