@@ -261,11 +261,22 @@ Illustrative replay. The healthy step saves checkpoint 3003. On step 3004, one h
 <p class="thanks-line"><span class="c-cyan">AuroraGPT</span> trains open foundation models for science.</p>
 <p class="thanks-line"><span class="c-pink">`ezpz` + `TorchTitan`</span> carry the run across devices, systems, and failures.</p>
 
-<p class="acknowledgement">
-Aurora was built with HPE and Intel. Thanks to the ALCF operations and support teams, the Intel `torch.xpu` and `oneCCL` teams, and the AuroraGPT collaborators.
-</p>
+<details is-="accordion" class="callout callout-note acknowledgement" open>
+<summary>Acknowledgements</summary>
 
-<div class="final-url">samf.sh/talks/2026/11/20</div>
+This research used resources of the Argonne Leadership Computing Facility at Argonne National Laboratory, a U.S. Department of Energy Office of Science User Facility, under Contract DE-AC02-06CH11357.
+
+Aurora was built by HPE and Intel. Thanks to the ALCF operations and user-support teams; the Intel `torch.xpu`, oneCCL, and oneAPI teams; and the AuroraGPT collaborators.
+
+</details>
+
+<ul class="thanks-links">
+<li><span class="thanks-link-label">This talk</span><a href="https://samf.sh/talks/2026/11/20/">samf.sh/talks/2026/11/20</a></li>
+<li><span class="thanks-link-label">Workshop</span><a href="https://sc26.conference-program.com/presentation/?id=ws_tpw126&amp;sess=sess149">4th Annual Trillion Parameter Workshop · W181abc</a></li>
+<li><span class="thanks-link-label">Code</span><a href="https://github.com/saforem2/ezpz">ezpz</a> · <a href="https://github.com/saforem2/torchtitan/tree/ezpz">torchtitan@ezpz</a> · <a href="https://github.com/saforem2/torchtitan/blob/293533196acc8543fdd4ea3f54ca9d38596d031b/torchtitan/experiments/ezpz/scripts/submit_agpt_2b_autoretry.sh">auto-retry launcher</a></li>
+<li><span class="thanks-link-label">Earlier talks</span><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a> · <a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a> · <a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a> · <a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></li>
+<li><span class="thanks-link-label">Site</span><a href="https://samf.sh">samf.sh</a> · <a href="https://github.com/saforem2/samf.sh/tree/feat/sc26-slides/web/src/pages/talks/2026/11/20">this deck’s source</a></li>
+</ul>
 
 <SpeakerNotes>
 Stop here. Leave the links on screen for questions.
@@ -1005,21 +1016,38 @@ flowchart TB
     .thanks-line span { font-weight: 850; }
 
     .acknowledgement {
-        max-width: 48rem;
-        margin-top: 1.4rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--sc-rule);
-        color: var(--foreground2);
-        font-size: 0.65em;
+        width: min(52rem, 100%);
+        margin-top: 1.1rem;
+        margin-bottom: 0.35rem;
+        font-size: 0.62em;
+        text-align: left;
     }
+    .acknowledgement > summary { cursor: pointer; }
+    .acknowledgement p { margin: 0 0 0.45em; }
+    .acknowledgement p:last-child { margin-bottom: 0.1em; }
 
-    .final-url {
-        margin-top: 0.8rem;
-        color: var(--sc-cyan);
-        font-family: var(--font-family-mono, monospace);
-        font-size: 0.8em;
-        font-weight: 750;
+    .thanks-links {
+        list-style: none;
+        margin: 0.3rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.18rem;
+        max-width: 48rem;
+        font-size: 0.6em;
+        line-height: 1.35;
+        text-align: left;
     }
+    .thanks-links li { margin: 0; }
+    .thanks-link-label {
+        display: inline-block;
+        min-width: 7.5ch;
+        color: var(--foreground2);
+        font-size: 0.68em;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+    .thanks-links a { color: var(--sc-cyan); text-decoration: none; }
+    .thanks-links a:hover { text-decoration: underline; }
 
     @media (max-width: 700px) {
         .title-panel { width: 88vw; }
