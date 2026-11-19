@@ -6,7 +6,9 @@ import { optimizerHistories } from './sc26-optimizer-data'
 // Canvas can't resolve CSS variables, so read the theme's resolved font stack
 // off the root element at init. Falls back to the mono stack if empty.
 const themeFontFamily = () => {
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--font-family').trim()
+    const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue('--font-family')
+        .trim()
     return raw || 'ui-monospace, Menlo, Monaco, monospace'
 }
 const family = themeFontFamily()
@@ -20,11 +22,11 @@ const family = themeFontFamily()
 //   256N → --accent (2B) / --orange (20B)  [solid]
 //   512N → --blue   (2B) / --green  (20B)  [dotted]
 const paletteVars = [
-    '--foreground2',  // MDS
-    '--accent',       // 2B TT 256N
-    '--blue',         // 2B TT 512N
-    '--orange',       // 20B TT 256N
-    '--green',        // 20B TT 512N
+    '--foreground2', // MDS
+    '--accent', // 2B TT 256N
+    '--blue', // 2B TT 512N
+    '--orange', // 20B TT 256N
+    '--green', // 20B TT 512N
 ] as const
 const paletteFallback = ['#6b7280', '#e0559a', '#2196f3', '#ff7900', '#4caf50']
 function withAlpha(rgb: string, alpha: number) {
@@ -38,7 +40,6 @@ const labels = ['2B MDS', '2B 256N', '2B 512N', '20B 256N', '20B 512N']
 const reference = evaluations[0].rows[0]
 const match = evaluations[3].rows.find((row) => row[1] >= reference[1])!
 const ratio = (reference[0] / match[0]).toFixed(1)
-
 
 // W&B's default line-plot smoothing ("Time weighted EMA") applies a
 // debias-corrected EMA weighted by elapsed x-distance, normalized by the x-range:
@@ -123,13 +124,20 @@ function mount(
         readVar(name, paletteFallback[i]),
     )
     // Optimizer panel needs its own hues so it doesn't collide with the loss chart.
-    const optColors = [readVar('--blue', '#2196f3'), readVar('--foreground3', '#838383'), readVar('--green', '#4caf50'), readVar('--pink', '#ea76cb')]
+    const optColors = [
+        readVar('--blue', '#2196f3'),
+        readVar('--foreground3', '#838383'),
+        readVar('--green', '#4caf50'),
+        readVar('--pink', '#ea76cb'),
+    ]
     // Canvas is sized by CSS (maintainAspectRatio: false), so derive the
     // label size from the rendered width instead of a fixed px value.
     // Reference width 620px ~ the full slide figure column; clamped so the
     // text never collapses on narrow layouts or balloons on 4K.
-    const frameWidth = () => frame.clientWidth || frame.parentElement?.clientWidth || 620
-    const frameHeight = () => frame.clientHeight || frame.parentElement?.clientHeight || 320
+    const frameWidth = () =>
+        frame.clientWidth || frame.parentElement?.clientWidth || 620
+    const frameHeight = () =>
+        frame.clientHeight || frame.parentElement?.clientHeight || 320
     // Anchor on the measured desktop panel width (~558px for the two-up
     // backup grid, wider for full-width figures). The floor is low because
     // phone-landscape gives the frame ~185px of height: a 30px axis title
@@ -142,66 +150,92 @@ function mount(
     const fontSizeFor = (w: number, h: number) => {
         const byWidth = (w / referenceWidth) * baseTarget
         const byHeight = h / 11
-        return Math.round(Math.max(minSize, Math.min(maxSize, Math.min(byWidth, byHeight))))
+        return Math.round(
+            Math.max(minSize, Math.min(maxSize, Math.min(byWidth, byHeight))),
+        )
     }
     const baseSize = fontSizeFor(frameWidth(), frameHeight())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }
     const datasets = optimizer
-          ? optimizerHistories.map((run, i) =>
-                // W&B full-fidelity view: faint raw trace + smoothed line on top.
-                [
-                    dataset(
-                        ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
-                        withAlpha(optColors[i], 0.18),
-                        optGrad ? run.grad : run.loss,
-                        1,
-                        0,
-                    ),
-                    dataset(
-                        ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                        optColors[i],
-                        optGrad ? run.grad : run.loss,
-                        1,
-                        0,
-                        true,
-                    ),
-                ]).flat()
-          : isLoss
-            ? Object.values(loss)
-                  .map((rows, i) => ({
-                      // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                      // MDS dashed grey · 2B 256N solid accent · 2B 512N dotted blue ·
-                      // 20B 256N solid orange · 20B 512N dotted green
-                      ...dataset(labels[i], i === 0 ? withAlpha(colors[0], 0.75) : withAlpha(colors[i], i === 1 || i === 3 ? 0.62 : 1), rows, 1, 0),
-                      borderWidth: i === 0 ? 3 : i >= 3 ? 5 : 4,
-                      borderDash: ([[7, 6], [], [10, 4, 1.5, 4], [], [10, 4, 1.5, 4]] as number[][])[i],
-                      pointRadius: 0,
-                      pointBorderWidth: 1,
-                      // Loss chart reveal sequence: MDS is the resting state,
-                      // first press adds the 2B TT pair, second adds the 20B runs.
-                      hidden: fullLoss && i >= 1,
-                      sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
-                  }))
-            : evaluations
-                  .map((run, i) => ({
-                      // Eval panels share the production-loss family:
-                      // MDS = dashed grey, 2B 256N = solid accent, 2B 512N = dotted blue,
-                      // 20B 512N = dotted green.
-                      ...dataset(
-                          run.label,
-                          i === 0 ? colors[0] : [colors[1], colors[2], colors[4]][(i - 1) % 3],
-                          run.rows,
-                          task + 1,
-                          compact ? 3 : 6,
+        ? optimizerHistories
+              .map((run, i) =>
+                  // W&B full-fidelity view: faint raw trace + smoothed line on top.
+                  [
+                      dataset(
+                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
+                          withAlpha(optColors[i], 0.18),
+                          optGrad ? run.grad : run.loss,
+                          1,
+                          0,
                       ),
-                      borderDash: i === 0 ? [7, 6] : i === 2 ? [10, 4, 1.5, 4] : [],
-                      borderWidth: i === 0 ? 2 : 2.6,
-                      pointStyle: (
-                          ['crossRot', 'circle', 'rect', 'triangle'] as const
-                      )[i],
-                  }))
-                  .filter((_, i) => compact || i === 0 || i === 1 || i === 2 || i === 3)
+                      dataset(
+                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
+                          optColors[i],
+                          optGrad ? run.grad : run.loss,
+                          1,
+                          0,
+                          true,
+                      ),
+                  ],
+              )
+              .flat()
+        : isLoss
+          ? Object.values(loss).map((rows, i) => ({
+                // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
+                // MDS dashed grey · 2B 256N solid accent · 2B 512N dotted blue ·
+                // 20B 256N solid orange · 20B 512N dotted green
+                ...dataset(
+                    labels[i],
+                    i === 0
+                        ? withAlpha(colors[0], 0.75)
+                        : withAlpha(colors[i], i === 1 || i === 3 ? 0.62 : 1),
+                    rows,
+                    1,
+                    0,
+                ),
+                borderWidth: i === 0 ? 3 : i >= 3 ? 5 : 4,
+                borderDash: (
+                    [
+                        [7, 6],
+                        [],
+                        [10, 4, 1.5, 4],
+                        [],
+                        [10, 4, 1.5, 4],
+                    ] as number[][]
+                )[i],
+                pointRadius: 0,
+                pointBorderWidth: 1,
+                // Loss chart reveal sequence: MDS is the resting state,
+                // first press adds the 2B TT pair, second adds the 20B runs.
+                hidden: fullLoss && i >= 1,
+                sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
+            }))
+          : evaluations
+                .map((run, i) => ({
+                    // Eval panels share the production-loss family:
+                    // MDS = dashed grey, 2B 256N = solid accent, 2B 512N = dotted blue,
+                    // 20B 512N = dotted green.
+                    ...dataset(
+                        run.label,
+                        i === 0
+                            ? colors[0]
+                            : [colors[1], colors[2], colors[4]][(i - 1) % 3],
+                        run.rows,
+                        task + 1,
+                        compact ? 3 : 6,
+                    ),
+                    borderDash:
+                        i === 0 ? [7, 6] : i === 2 ? [10, 4, 1.5, 4] : [],
+                    borderWidth: i === 0 ? 2 : 2.6,
+                    pointStyle: (
+                        ['crossRot', 'circle', 'rect', 'triangle'] as const
+                    )[i],
+                }))
+                .filter(
+                    (_, i) =>
+                        compact || i === 0 || i === 1 || i === 2 || i === 3,
+                )
 
     // Per-stage reveal: one clip width per dataset group (MDS, 2B, 20B).
     // 0 = not yet revealed, 0..1 easing in, 1 = fully drawn.
@@ -257,7 +291,11 @@ function mount(
             ctx.strokeStyle = withAlpha(readVar('--foreground2', color), 0.45)
             ctx.lineWidth = 1.5
             ctx.fillStyle = color
-            ctx.font = '500 ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) + 'px ' + family
+            ctx.font =
+                '500 ' +
+                Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) +
+                'px ' +
+                family
             ctx.textAlign = 'right'
             ctx.textBaseline = 'bottom'
             let row = 0
@@ -269,7 +307,17 @@ function mount(
                 ctx.lineTo(x, chartArea.bottom)
                 ctx.stroke()
                 // Stagger the labels vertically so adjacent markers at 7.06 and 7.77 don't collide.
-                ctx.fillText(label, x - 8, chartArea.bottom - 6 - row * (Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.72) + 4))
+                ctx.fillText(
+                    label,
+                    x - 8,
+                    chartArea.bottom -
+                        6 -
+                        row *
+                            (Math.round(
+                                fontSizeFor(frameWidth(), frameHeight()) * 0.72,
+                            ) +
+                                4),
+                )
                 row += 1
             }
             ctx.restore()
@@ -289,7 +337,11 @@ function mount(
             ctx.moveTo(left, y)
             ctx.lineTo(right, y)
             ctx.stroke()
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.9) + 'px ' + family
+            ctx.font =
+                'bold ' +
+                Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.9) +
+                'px ' +
+                family
             ctx.textAlign = 'center'
             ctx.fillText(ratio + '× fewer tokens', (left + right) / 2, y - 11)
             ctx.restore()
@@ -301,8 +353,14 @@ function mount(
     }
     // Wordy axis titles don't fit narrow or short panels; drop them there
     // rather than let chart.js widen the plot past the frame edge.
-    const titleFits = () => !compact && frameWidth() >= 520 && frameHeight() >= 260
-    const axisTitle = { display: titleFits(), color, font: axisTitleFont, padding: { top: 8, bottom: 4 } }
+    const titleFits = () =>
+        !compact && frameWidth() >= 520 && frameHeight() >= 260
+    const axisTitle = {
+        display: titleFits(),
+        color,
+        font: axisTitleFont,
+        padding: { top: 8, bottom: 4 },
+    }
     frame.hidden = false
     const chart = new Chart(canvas, {
         type: 'line',
@@ -330,7 +388,11 @@ function mount(
 
                     labels: {
                         color,
-                        font: { family, size: Math.max(11, Math.round(font.size * 0.72)), weight: 500 },
+                        font: {
+                            family,
+                            size: Math.max(11, Math.round(font.size * 0.72)),
+                            weight: 500,
+                        },
                         boxWidth: 12,
                         boxHeight: 12,
                         padding: 14,
@@ -368,7 +430,13 @@ function mount(
                     // axis spans from its floor up to the 50 clip used in the data;
                     // log scale with ticks at 1/2/10/50 keeps the divergences visible
                     // without flattening the 0.2–5 band the healthy runs live in.
-                    min: optimizer ? (optGrad ? 0.2 : 2) : isLoss ? 2 : undefined,
+                    min: optimizer
+                        ? optGrad
+                            ? 0.2
+                            : 2
+                        : isLoss
+                          ? 2
+                          : undefined,
                     max: optGrad ? 50 : optLoss ? 8 : isLoss ? 4.5 : undefined,
                     type: optimizer ? 'logarithmic' : 'linear',
                     title: {
@@ -394,17 +462,27 @@ function mount(
         for (const attr of frame.getAttributeNames()) {
             if (attr.startsWith('data-astro-cid-')) cidAttrs.push([attr, ''])
         }
-        const copyCid = (el: HTMLElement) => { for (const [k, v] of cidAttrs) el.setAttribute(k, v) }
+        const copyCid = (el: HTMLElement) => {
+            for (const [k, v] of cidAttrs) el.setAttribute(k, v)
+        }
         const legendEl = document.createElement('div')
         legendEl.className = 'sc26-legend'
         copyCid(legendEl)
         // Two column groups: 20B (hidden until the reveal fragment) and 2B.
-        const columnDefs: { title: string; late: boolean; entries: ({ label: string; stroke: string; dash?: string } | null)[] }[] = [
+        const columnDefs: {
+            title: string
+            late: boolean
+            entries: ({ label: string; stroke: string; dash?: string } | null)[]
+        }[] = [
             {
                 title: '20B',
                 late: true,
                 entries: [
-                    { label: 'TT (512N)', stroke: colors[4], dash: '8 3 1.5 3' },
+                    {
+                        label: 'TT (512N)',
+                        stroke: colors[4],
+                        dash: '8 3 1.5 3',
+                    },
                     { label: 'TT (256N)', stroke: withAlpha(colors[3], 0.62) },
                     null,
                 ],
@@ -413,9 +491,17 @@ function mount(
                 title: '2B',
                 late: false,
                 entries: [
-                    { label: 'TT (512N)', stroke: colors[2], dash: '8 3 1.5 3' },
+                    {
+                        label: 'TT (512N)',
+                        stroke: colors[2],
+                        dash: '8 3 1.5 3',
+                    },
                     { label: 'TT (256N)', stroke: withAlpha(colors[1], 0.62) },
-                    { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.75), dash: '7 6' },
+                    {
+                        label: 'MDS (256N)',
+                        stroke: withAlpha(colors[0], 0.75),
+                        dash: '7 6',
+                    },
                 ],
             },
         ]
@@ -444,7 +530,8 @@ function mount(
                     copyCid(swatch)
                     // inline SVG so multi-segment dash patterns (dot-dash) render
                     // exactly as the canvas series do; CSS border-style can't express that.
-                    swatch.style.cssText += ';display:inline-block;width:2em;height:0.75em;flex:0 0 2em;'
+                    swatch.style.cssText +=
+                        ';display:inline-block;width:2em;height:0.75em;flex:0 0 2em;'
                     swatch.innerHTML = ''
                     const NS = 'http://www.w3.org/2000/svg'
                     const svg = document.createElementNS(NS, 'svg')
@@ -460,7 +547,13 @@ function mount(
                     line.setAttribute('stroke', entry.stroke)
                     line.setAttribute('stroke-width', '3')
                     if (entry.dash) {
-                        line.setAttribute('stroke-dasharray', entry.dash.split(' ').map((n) => String(Number(n) * 1.1)).join(' '))
+                        line.setAttribute(
+                            'stroke-dasharray',
+                            entry.dash
+                                .split(' ')
+                                .map((n) => String(Number(n) * 1.1))
+                                .join(' '),
+                        )
                     }
                     svg.appendChild(line)
                     swatch.appendChild(svg)
@@ -487,18 +580,28 @@ function mount(
             copyCid(sentinel)
             frame.appendChild(sentinel)
         }
-        const sentinels = () => Array.from(frame.querySelectorAll<HTMLElement>('.sc26-fragment-stage'))
+        const sentinels = () =>
+            Array.from(
+                frame.querySelectorAll<HTMLElement>('.sc26-fragment-stage'),
+            )
         // Stage 0 is the resting view: MDS only. Each sentinel pressed adds one.
-        const stage = () => sentinels().filter((el) => el.hasAttribute('data-visible')).length + 1
+        const stage = () =>
+            sentinels().filter((el) => el.hasAttribute('data-visible')).length +
+            1
         const syncStages = () => {
             const n = stage()
-            for (const el of frame.querySelectorAll<HTMLElement>('[data-stage]')) {
+            for (const el of frame.querySelectorAll<HTMLElement>(
+                '[data-stage]',
+            )) {
                 const st = Number(el.dataset.stage)
                 if (el.classList.contains('sc26-legend-col')) {
                     // Column visibility is driven by its cells; keep it in the flow
                     // iff any cell will show.
-                    const anyVisible = Array.from(el.querySelectorAll('[data-stage]')).some(
-                        (cell) => Number((cell as HTMLElement).dataset.stage) <= n,
+                    const anyVisible = Array.from(
+                        el.querySelectorAll('[data-stage]'),
+                    ).some(
+                        (cell) =>
+                            Number((cell as HTMLElement).dataset.stage) <= n,
                     )
                     el.style.display = anyVisible ? '' : 'none'
                 } else {
@@ -542,7 +645,10 @@ function mount(
             if (placeLegendRef) placeLegendRef()
         }
         for (const el of sentinels()) {
-            new MutationObserver(syncStages).observe(el, { attributes: true, attributeFilter: ['data-visible'] })
+            new MutationObserver(syncStages).observe(el, {
+                attributes: true,
+                attributeFilter: ['data-visible'],
+            })
         }
         syncStages()
     }
@@ -607,7 +713,14 @@ function mount(
 async function initialize() {
     await Promise.all(
         [400, 700].map((weight) =>
-            document.fonts.load(weight + ' 30px ' + family.split(',')[0].trim().replace(/^['"]|['"]$/g, '')),
+            document.fonts.load(
+                weight +
+                    ' 30px ' +
+                    family
+                        .split(',')[0]
+                        .trim()
+                        .replace(/^['"]|['"]$/g, ''),
+            ),
         ),
     )
     for (const root of document.querySelectorAll<HTMLElement>(

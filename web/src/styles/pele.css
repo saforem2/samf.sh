@@ -75,14 +75,14 @@
     --pele-surface-alt: var(--background1);
     --pele-border: var(--background3);
     --pele-accent: var(--accent); /* #e599f7 */
-    --pele-series-1: var(--blue);   /* #29b6f6 */
-    --pele-series-2: var(--green);  /* #40c057 */
+    --pele-series-1: var(--blue); /* #29b6f6 */
+    --pele-series-2: var(--green); /* #40c057 */
     --pele-series-3: var(--orange); /* #fd971f */
-    --pele-series-4: var(--pink);   /* #e599f7 */
+    --pele-series-4: var(--pink); /* #e599f7 */
     --pele-series-5: var(--purple); /* #ae81ff */
-    --pele-series-6: var(--teal);   /* #38d9a9, distinct from green */
+    --pele-series-6: var(--teal); /* #38d9a9, distinct from green */
     --pele-series-7: var(--yellow); /* #fcc419 */
-    --pele-series-8: var(--red);    /* #ff6b6b */
+    --pele-series-8: var(--red); /* #ff6b6b */
 }
 
 /* ---------- Catppuccin (Latte / Frappé / Macchiato / Mocha) ----------- */
@@ -178,11 +178,11 @@
     --pele-accent: var(--alcf-blue);
     --pele-critical: var(--alcf-red);
     --pele-error: var(--alcf-red);
-    --pele-series-1: var(--alcf-blue);      /* #0061af */
-    --pele-series-2: var(--alcf-teal);      /* #107970 */
-    --pele-series-3: var(--alcf-coral);     /* #ec6358 */
-    --pele-series-4: var(--alcf-red);       /* #d03e53 */
-    --pele-series-5: var(--purple);         /* #4b47a0 */
+    --pele-series-1: var(--alcf-blue); /* #0061af */
+    --pele-series-2: var(--alcf-teal); /* #107970 */
+    --pele-series-3: var(--alcf-coral); /* #ec6358 */
+    --pele-series-4: var(--alcf-red); /* #d03e53 */
+    --pele-series-5: var(--purple); /* #4b47a0 */
     --pele-series-6: var(--alcf-teal-bright);
     --pele-series-7: var(--yellow);
     --pele-series-8: var(--alcf-plum);
@@ -199,7 +199,7 @@
     --pele-accent: var(--doe-blue-text);
     --pele-critical: var(--red);
     --pele-error: var(--red);
-    --pele-series-1: var(--doe-blue-text);  /* #0066cc */
+    --pele-series-1: var(--doe-blue-text); /* #0066cc */
     --pele-series-2: var(--teal);
     --pele-series-3: var(--orange);
     --pele-series-4: var(--pink);
@@ -217,15 +217,15 @@
     --pele-surface-alt: var(--background1);
     --pele-border: var(--pt-red);
     --pele-line: var(--pt-mid-grey);
-    --pele-accent: var(--pt-red);           /* #ee3b24 */
+    --pele-accent: var(--pt-red); /* #ee3b24 */
     --pele-critical: var(--pt-red);
     --pele-error: var(--pt-red);
-    --pele-series-1: var(--pt-red);         /* #ee3b24 */
-    --pele-series-2: var(--pt-indigo);      /* #3532a8 */
-    --pele-series-3: var(--pt-magenta);     /* #cc2faa */
-    --pele-series-4: var(--pt-purple);      /* #8d2e9b */
-    --pele-series-5: var(--pt-red-dark);    /* #e12353 */
-    --pele-series-6: var(--pt-teal);        /* #0097a7 */
+    --pele-series-1: var(--pt-red); /* #ee3b24 */
+    --pele-series-2: var(--pt-indigo); /* #3532a8 */
+    --pele-series-3: var(--pt-magenta); /* #cc2faa */
+    --pele-series-4: var(--pt-purple); /* #8d2e9b */
+    --pele-series-5: var(--pt-red-dark); /* #e12353 */
+    --pele-series-6: var(--pt-teal); /* #0097a7 */
     --pele-series-7: var(--yellow);
     --pele-series-8: var(--pt-red-dark);
 }
@@ -241,15 +241,15 @@
     --pele-border: var(--border);
     --pele-line: var(--body);
     --pele-muted: var(--body);
-    --pele-accent: var(--brand);            /* #ff5c00 */
+    --pele-accent: var(--brand); /* #ff5c00 */
     --pele-critical: var(--artisan);
     --pele-error: var(--artisan);
-    --pele-series-1: var(--brand);          /* #ff5c00 */
-    --pele-series-2: var(--cron);           /* #00fdff */
-    --pele-series-3: var(--object-object);  /* #ffaf00 */
-    --pele-series-4: var(--404);            /* #d75f87 */
-    --pele-series-5: var(--segfault);       /* #00afaf */
-    --pele-series-6: var(--dark-mode);      /* #00875f */
+    --pele-series-1: var(--brand); /* #ff5c00 */
+    --pele-series-2: var(--cron); /* #00fdff */
+    --pele-series-3: var(--object-object); /* #ffaf00 */
+    --pele-series-4: var(--404); /* #d75f87 */
+    --pele-series-5: var(--segfault); /* #00afaf */
+    --pele-series-6: var(--dark-mode); /* #00875f */
     --pele-series-7: #ffffff;
     --pele-series-8: var(--artisan);
 }
@@ -306,14 +306,14 @@
     --pele-accent: var(--nord8);
     --pele-critical: var(--nord11);
     --pele-error: var(--nord11);
-    --pele-series-1: var(--nord8);   /* frost nord8 */
-    --pele-series-2: var(--nord14);  /* aurora green */
-    --pele-series-3: var(--nord12);  /* aurora orange */
-    --pele-series-4: var(--nord15);  /* aurora purple */
-    --pele-series-5: var(--nord7);   /* frost nord7 */
-    --pele-series-6: var(--nord13);  /* aurora yellow */
-    --pele-series-7: var(--nord9);   /* frost nord9 */
-    --pele-series-8: var(--nord11);  /* aurora red */
+    --pele-series-1: var(--nord8); /* frost nord8 */
+    --pele-series-2: var(--nord14); /* aurora green */
+    --pele-series-3: var(--nord12); /* aurora orange */
+    --pele-series-4: var(--nord15); /* aurora purple */
+    --pele-series-5: var(--nord7); /* frost nord7 */
+    --pele-series-6: var(--nord13); /* aurora yellow */
+    --pele-series-7: var(--nord9); /* frost nord9 */
+    --pele-series-8: var(--nord11); /* aurora red */
 }
 
 [data-webtui-theme|='gruvbox'] .pele {

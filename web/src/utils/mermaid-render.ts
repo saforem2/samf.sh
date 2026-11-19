@@ -521,9 +521,9 @@ function stabilizeMermaidSvgLayout() {
             widthRaw
         // Default cap is half the viewport; a slide/block can raise it via
         // the --mermaid-max-height custom property (e.g. the launch diagram).
-        const requestedMax = getComputedStyle(node).getPropertyValue(
-            '--mermaid-max-height',
-        ).trim()
+        const requestedMax = getComputedStyle(node)
+            .getPropertyValue('--mermaid-max-height')
+            .trim()
         const parsedMax = Number.parseFloat(requestedMax)
         const unit = requestedMax.replace(/^[\d.]+/, '').trim()
         const maxHeight =
