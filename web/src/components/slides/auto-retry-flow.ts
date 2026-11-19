@@ -501,8 +501,10 @@ function draw(
         palette.muted,
         0.35,
     )
-    for (const rank of ranks) {
+    for (const [index, rank] of ranks.entries()) {
         const endY = rank.y < busY ? rank.y + 45 : rank.y - 22
+        // host-041's link is up — it just carries nothing. Dashed + faint.
+        const silent = id === 'stall' && index === 0
         line(
             ctx,
             [
@@ -510,7 +512,8 @@ function draw(
                 { x: rank.x, y: busY },
             ],
             palette.muted,
-            0.3,
+            silent ? 0.18 : 0.3,
+            silent,
         )
     }
 
@@ -877,6 +880,29 @@ function draw(
                 palette.red,
                 compact ? 24 : 18,
                 700,
+            )
+            // Node is alive; it just never sends. Heartbeat ticks, bytes don't.
+            const beat = 0.5 + 0.5 * Math.sin(p * Math.PI * 8)
+            // 'size' 80 matches the host() call; LED sits in the first slot.
+            const ledX = rank.x - 80 * 0.45 + 80 * 0.07 + 80 * 0.018
+            const ledY = rank.y - 80 * 0.27 + (80 * 0.65) / 6
+            ctx.save()
+            ctx.globalAlpha = 0.25 + 0.75 * beat
+            ctx.fillStyle = palette.green
+            ctx.shadowColor = palette.green
+            ctx.shadowBlur = 6 + 6 * beat
+            ctx.beginPath()
+            ctx.arc(ledX + 2, ledY, 3.4, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.restore()
+            label(
+                ctx,
+                'heartbeat · 0 B/s',
+                rank.x,
+                rank.y + 107,
+                palette.muted,
+                compact ? 15 : 12,
+                600,
             )
         }
     })
