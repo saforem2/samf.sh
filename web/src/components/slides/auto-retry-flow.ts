@@ -162,6 +162,24 @@ const smooth = (value: number) => {
 }
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
+function rgbParts(cssColor: string) {
+    const m = cssColor.match(/rgba?\(([^)]+)\)/)
+    if (!m) return null
+    const parts = m[1].split(',').map((n) => Number.parseFloat(n))
+    if (parts.length < 3 || parts.some(Number.isNaN)) return null
+    return parts.slice(0, 3) as [number, number, number]
+}
+
+/** Interpolate two rgb() colors; falls back to `to` when either side is not rgb(). */
+function mixColor(from: string, to: string, t: number) {
+    const a = rgbParts(from)
+    const b = rgbParts(to)
+    const k = clamp(t)
+    if (!a || !b) return k < 0.5 ? from : to
+    const c = a.map((v, i) => Math.round(lerp(v, b[i], k)))
+    return `rgb(${c[0]}, ${c[1]}, ${c[2]})`
+}
+
 function cubic(
     a: Point,
     b: Point,
@@ -451,6 +469,22 @@ function draw(
     const swapping = id === 'swap'
     const swapped = id === 'restore' || id === 'resume' || id === 'done'
     const stopped = id === 'timeout' || swapping
+    // host-041 fades into red over the opening of the stall instead of
+    // snapping red on scene entry; it holds through the timeout and swap.
+    const failRamp =
+        id === 'stall' ? smooth(clamp(p / 0.18)) : failed || swapping ? 1 : 0
+    // Opacity eases instead of snapping at scene boundaries: stall ramps the
+    // healthy ranks down over the scene, timeout/swap hold them, restore
+    // eases everybody back up as the checkpoint lands. With motion reduced
+    // `p` is already quantised to 0/1, so this collapses to the old snap.
+    const healthyOpacity =
+        id === 'stall'
+            ? lerp(0.95, 0.45, smooth(p))
+            : id === 'timeout' || id === 'swap'
+              ? 0.45
+              : id === 'restore'
+                ? lerp(0.45, 0.95, smooth(clamp(p / 0.45)))
+                : 0.95
     const gradient = id === 'sync' || id === 'resume'
     const signal =
         failed || swapping
@@ -645,9 +679,17 @@ function draw(
     ctx.lineTo(807, 466)
     ctx.lineTo(767, 466)
     ctx.closePath()
-    ctx.globalAlpha = 0.1
+    // Idle checkpoint: barely there until the step-3003 save actually begins,
+    // then it ramps up with the write and stays solid for the rest of the run.
+    const checkpointAlpha =
+        id === 'save'
+            ? lerp(0.12, 0.95, smooth(clamp(p / 0.78)))
+            : checkpoint
+              ? 0.95
+              : 0.12
+    ctx.globalAlpha = checkpointAlpha * 0.16
     ctx.fill()
-    ctx.globalAlpha = checkpoint && saveDone ? 0.95 : 0.55
+    ctx.globalAlpha = checkpointAlpha
     ctx.stroke()
     ctx.beginPath()
     ctx.moveTo(797, 415)
@@ -661,6 +703,8 @@ function draw(
     ctx.lineTo(791, 449)
     ctx.stroke()
     ctx.restore()
+    ctx.save()
+    ctx.globalAlpha = checkpoint ? 1 : 0.35
     label(
         ctx,
         compact ? 'ckpt' : 'checkpoint',
@@ -687,6 +731,7 @@ function draw(
         400,
         'left',
     )
+    ctx.restore()
 
     const swapProgress = swapping ? smooth((p - 0.16) / 0.65) : 0
     const spareOnTheMove = swapping && swapProgress > 0 && swapProgress < 1
@@ -694,8 +739,9 @@ function draw(
     const spareInDock = !swapped && (!swapping || swapProgress === 0)
 
     if (spareInDock) {
-        host(ctx, 146, 433, 50, palette.green, 0.85)
-        label(ctx, 'spare-007', 146, 482, palette.text, compact ? 26 : 20, 700)
+        // Idling spare: barely there until the rotation actually calls it up.
+        host(ctx, 146, 433, 50, palette.green, 0.22)
+        label(ctx, 'spare-007', 146, 482, palette.muted, compact ? 26 : 20, 700)
         label(ctx, 'standby', 146, 502, palette.muted, compact ? 20 : 16)
     } else if (swapping || swapped) {
         label(
@@ -709,36 +755,36 @@ function draw(
     }
 
     // Fill each host from its own delivery state, never from the scene id
-    // alone: neutral until a colored packet actually lands on it. Shards
-    // arrive during 'batch' (per-host arrival time); the averaged gradient
-    // (purple) comes back during 'sync'/'resume' at delayed((p - 0.6) / 0.4).
-    // Once purple, a host stays purple: every later scene inherits the last
-    // completed all-reduce.
-    const sceneOrder = [
-        'batch',
-        'sync',
-        'save',
-        'stall',
-        'timeout',
-        'swap',
-        'restore',
-        'resume',
-        'done',
-    ]
-    const order = sceneOrder.indexOf(id)
+    // alone: neutral until a colored packet actually lands on it. Passes:
+    //   batch shard -> all-reduce result -> checkpoint restore.
+    // State is a function of p and scene only, so frames never flicker.
+    const allReduceLanded = (i, phase, offset) =>
+        delayed((p - offset) / phase, i) >= 1
     const hostColorFor = (i: number) => {
         if (id === 'batch')
             return delayed(p, i) >= 1 ? palette.shards[i] : palette.muted
         // Flip each host only when its all-reduce packet lands (delayed()
         // already staggers ranks), so purple sweeps through one host at a time.
         if (id === 'sync')
-            return delayed((p - 0.6) / 0.4, i) >= 1
+            return allReduceLanded(i, 0.4, 0.6)
                 ? palette.purple
                 : palette.shards[i]
-        // From 'save' onward the previous all-reduce has landed, so hosts
-        // stay purple through the failure and the retry.
-        if (order >= 2) return palette.purple
-        return palette.muted
+        // Step 3004 re-runs the all-reduce on the restored ranks. Restore
+        // leaves every host green, so resume flips each green host to purple
+        // as its packet lands; never routing back through shard colors.
+        if (id === 'resume')
+            return allReduceLanded(i, 0.4, 0.6) ? palette.purple : palette.green
+        if (id === 'done') return palette.purple
+        // Restore: checkpoint bytes arrive per rank; the step-3003 purple is
+        // still the last completed state until a rank's shard is restored, at
+        // which point it shows green. After restore completes every host is
+        // green (checkpoint), not purple, and resume re-derives purple.
+        if (id === 'restore')
+            return p > 0.45 && delayed((p - 0.45) / 0.55, i) >= 1
+                ? palette.green
+                : palette.purple
+        // save/stall/timeout/swap: step 3003's all-reduce already landed.
+        return palette.purple
     }
     // Draw hosts above their connections so the lines don't cross the blocks.
     ranks.forEach((rank, index) => {
@@ -754,28 +800,52 @@ function draw(
                 0.7 * (1 - moved * 0.75),
             )
         } else if (!(badHost && (swapping || swapped))) {
-            const delivered =
-                id === 'batch' ? delayed(p, index) >= 1 : order >= 1
             const hostColor =
-                badHost && failed ? palette.red : hostColorFor(index)
-            const opacity = stopped
-                ? 0.3
-                : failed && !badHost
-                  ? 0.45
-                  : delivered
-                    ? 0.95
-                    : 0.55
+                badHost && (failed || swapping)
+                    ? mixColor(hostColorFor(index), palette.red, failRamp)
+                    : hostColorFor(index)
+            const opacity = healthyOpacity
             host(ctx, rank.x, rank.y, 80, hostColor, opacity)
         }
         if (badHost && spareInSlot)
-            host(ctx, rank.x, rank.y, 80, palette.green, 1)
+            // The spare inherits the failed slot; once the resume all-reduce
+            // reaches rank 0, it flips to purple like every other rank.
+            host(
+                ctx,
+                rank.x,
+                rank.y,
+                80,
+                id === 'resume' && allReduceLanded(0, 0.4, 0.6)
+                    ? palette.purple
+                    : id === 'done'
+                      ? palette.purple
+                      : palette.green,
+                1,
+            )
+        // Same eased opacity as everywhere else in the stall arc; drawing a
+        // second, more opaque red pass here popped brighter at swap entry.
         if (badHost && swapping && swapProgress === 0)
-            host(ctx, rank.x, rank.y, 80, palette.red, 0.6)
+            host(
+                ctx,
+                rank.x,
+                rank.y,
+                80,
+                mixColor(hostColorFor(0), palette.red, 1),
+                healthyOpacity,
+            )
     })
 
     if (spareOnTheMove) {
         const point = cubic(...sparePath, swapProgress)
-        host(ctx, point.x, point.y, 60, palette.green, 1)
+        // Grow into the slot's footprint so arrival doesn't pop in size.
+        host(
+            ctx,
+            point.x,
+            point.y,
+            lerp(60, 80, swapProgress),
+            palette.green,
+            lerp(0.22, 1, smooth(swapProgress)),
+        )
         label(
             ctx,
             compact ? 'spare' : 'spare-007',
