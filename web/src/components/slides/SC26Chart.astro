@@ -55,8 +55,9 @@ const { kind, fallback, label, compact = false } = Astro.props
         z-index: 2;
         display: flex;
         align-items: flex-start;
-        gap: 1.4rem;
-        padding: 0.4em 0.75em;
+        gap: clamp(0.6rem, 2.4vw, 1.4rem);
+        padding: clamp(0.25em, 0.8vw, 0.4em) clamp(0.35em, 1vw, 0.75em);
+        max-width: calc(100% - 1rem);
         width: max-content;
         font-family: var(--code-font-family, var(--font-family));
         white-space: nowrap;
@@ -64,6 +65,10 @@ const { kind, fallback, label, compact = false } = Astro.props
         border: 1px solid
             color-mix(in srgb, var(--foreground3) 55%, transparent);
         background: color-mix(in srgb, var(--background0) 88%, transparent);
+        /* Scale the whole chip with the frame width instead of a fixed 23px
+           cell; the desktop values are the ceiling. */
+        font-size: clamp(0.62rem, 3.6vw, 1rem);
+        zoom: 1;
     }
     .sc26-legend-col {
         display: flex;
@@ -71,7 +76,7 @@ const { kind, fallback, label, compact = false } = Astro.props
         gap: 0.15em;
     }
     .sc26-legend-head {
-        font-size: 1.2rem;
+        font-size: 1.2em;
         font-weight: 700;
         letter-spacing: 0.06em;
         color: var(--foreground2);
@@ -81,7 +86,7 @@ const { kind, fallback, label, compact = false } = Astro.props
         display: flex;
         align-items: center;
         gap: 0.5em;
-        font-size: 1.45rem;
+        font-size: 1.45em;
         color: var(--foreground0);
     }
     .sc26-legend-swatch {
@@ -100,31 +105,34 @@ const { kind, fallback, label, compact = false } = Astro.props
        fill whatever vertical room the flex column has left after the
        heading/caption, keeping a floor so it never collapses. Only in
        portrait \u2014 desktop keeps its authored height. */
-    @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
-        /* Compact panels live in a 2-up grid; leave them at their compact
-           height so the grid doesn't overflow the slide. */
+    @media (max-width: 700px) {
+        /* Narrow slides stack their charts; keep the frame wide enough that
+           ticks and legends stay legible. The deck-specific rules own the
+           grid itself so each backup slide can pick its own aspect ratio. */
         .sc26-chart:not(.compact) {
             display: flex;
             flex-direction: column;
-            flex: 1 1 auto;
             min-height: 0;
         }
         .sc26-chart:not(.compact) .canvas-frame {
             height: auto;
-            flex: 1 1 0;
-            min-height: var(--sc26-frame-min, clamp(260px, 52vh, 62vh));
+            flex: 0 0 auto;
+            min-height: clamp(220px, 48vh, 380px);
         }
     }
+    /* Compact panels share the eval grid height, but on narrow phones they
+       stack full-width, so drop the fixed height and let the deck's
+       aspect-ratio rule drive them instead. */
+    .compact .canvas-frame {
+        height: clamp(150px, 32vh, 380px);
+    }
     @media (max-width: 700px) {
-        .canvas-frame {
-            height: clamp(180px, 46vh, 420px);
+        .compact .canvas-frame {
+            height: auto;
         }
         .canvas-frame :global(canvas) {
             max-width: 100%;
         }
-    }
-    .compact .canvas-frame {
-        height: clamp(150px, 32vh, 380px);
     }
     .sc26-chart[data-ready] > img {
         display: none;

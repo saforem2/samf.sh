@@ -142,7 +142,11 @@ function mount(
     // rotated 90° is taller than the canvas and gets clipped top/bottom.
     // Height is the binding constraint there, so scale by both.
     const referenceWidth = compact ? 280 : 560
-    const minSize = compact ? 14 : 15
+    // Phones render the non-compact frame at ~280–360 CSS px: the old floor
+    // of 15px produced axis labels the same height as the chart's whole body
+    // is tall on small canvases. Floor is 13px so ticks stay legible without
+    // eating the plot; the width term still dominates and shrinks smoothly.
+    const minSize = compact ? 14 : 13
     const maxSize = compact ? 34 : 40
     const baseTarget = compact ? 22 : 30
     const fontSizeFor = (w: number, h: number) => {
@@ -345,14 +349,26 @@ function mount(
             ctx.restore()
         },
     }
+    // On narrow frames the desktop maxTicksLimit spaces gridlines so far
+    // apart that the linear axes read as a flat band; drop to fewer ticks and
+    // pad less so the scale still reads at phone widths.
+    const narrow = frameWidth() < 420
     const axis = {
-        ticks: { color, font, maxTicksLimit: compact ? 4 : 6, padding: 8 },
+        ticks: {
+            color,
+            font,
+            maxTicksLimit: compact ? 4 : narrow ? 5 : 6,
+            padding: narrow ? 4 : 8,
+        },
         grid: { color: grid },
     }
     // Wordy axis titles don't fit narrow or short panels; drop them there
     // rather than let chart.js widen the plot past the frame edge.
     const titleFits = () =>
         !compact && frameWidth() >= 520 && frameHeight() >= 260
+    // Phone-width frames drop the rotated y-axis title too: at ~350px the
+    // rotated title consumes ~40px of plot width and chart.js still reserves
+    // the gutter even when hidden, so prefer clean ticks + x title over it.
     const axisTitle = {
         display: titleFits(),
         color,

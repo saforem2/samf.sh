@@ -1291,16 +1291,20 @@ flowchart TB
     #optimizer-backup .sc-fill-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: auto; --sc26-frame-min: 0px; }
     #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { height: clamp(340px, 52vh, 560px); flex: 0 0 auto; min-height: 0; }
     .sc-fill-caption { flex: 0 0 auto; margin-top: 0.4lh; font-size: clamp(0.72rem, 1.1vw, 0.95rem); line-height: 1.35; }
-    @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
-        /* Phone portrait: grid of half-width panels leaves the slide mostly
-           empty. Stack to one column with equal flexible rows and let each
-           chart frame fill its row. */
+    /* Narrow phones: stack the four eval panels 1xN. Each frame keeps a
+       fixed aspect ratio instead of sharing the leftover slide height, so
+       the charts remain legible instead of shrinking to ~100px tall. The
+       slide-inner scrolls if the stack exceeds the viewport. */
+    @media (max-width: 700px) {
+        /* Phones have ~590px of usable slide height; four 16:9 panels do not
+           fit under the heading, so keep the charts legible and let the
+           slide scroll. Scrolling the slide-inner beats shrinking text
+           below chart.js's floor. */
         .sc-eval-grid {
-            grid-template-columns: 1fr;
-            grid-auto-rows: 1fr;
-            gap: 0.3rem;
-            flex: 1 1 auto;
-            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            grid-auto-rows: auto;
+            gap: 0.35rem;
         }
         .sc-eval-grid .sc26-chart,
         .sc-eval-grid .sc26-chart.compact {
@@ -1313,24 +1317,42 @@ flowchart TB
         .sc-eval-grid .sc26-chart .canvas-frame,
         .sc-eval-grid .sc26-chart.compact .canvas-frame {
             height: auto;
-            flex: 1 1 0;
+            flex: 0 0 auto;
             min-height: 0;
+            aspect-ratio: 16 / 7;
+        }
+        /* iPhone-class viewports: shrink the caption so the stack fits
+           without scrolling. */
+        #eval-backup h2,
+        #optimizer-backup h2 {
+            font-size: 1.35rem;
+        }
+        .sc-backup-legend {
+            font-size: 0.72rem;
+            line-height: 1.25;
         }
     }
-    @media (orientation: portrait) and (max-aspect-ratio: 9/10) {
+    /* Narrow phones: stack the optimizer panels, one chart per row, each
+       frame sized from its width so the axis labels stay legible. The
+       slide-inner scrolls if the stack is taller than the viewport. */
+    @media (max-width: 700px) {
         #optimizer-backup .sc-fill-grid {
             grid-template-columns: minmax(0, 1fr);
             grid-auto-rows: auto;
             gap: 0.75rem;
-            flex: 1 1 auto;
+        }
+        #optimizer-backup .sc-fill-grid .sc26-chart,
+        #optimizer-backup .sc-fill-grid .sc26-chart.compact {
+            display: flex;
+            flex-direction: column;
             min-height: 0;
-            align-content: start;
+            height: auto;
         }
         #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame {
             height: auto;
             flex: 0 0 auto;
             min-height: 0;
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 16 / 10;
         }
     }
     .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
