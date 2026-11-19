@@ -138,18 +138,12 @@ flowchart LR
     EZ --> MPS["<span style='font-weight:700'>Multi-MPS*</span><br/><i>MPS · Apple</i>"]
 
     classDef hub        fill:none,stroke:currentColor,color:currentColor,stroke-width:1.8px
-    linkStyle 0 stroke:#3b82f6,stroke-width:1.8px
-    linkStyle 1 stroke:#10b981,stroke-width:1.8px
-    linkStyle 2 stroke:#06b6d4,stroke-width:1.8px
-    linkStyle 3 stroke:#ef4444,stroke-width:1.8px
-    linkStyle 4 stroke:#a78bfa,stroke-width:1.8px
-    linkStyle 5 stroke:#f59e0b,stroke-width:1.8px
-    classDef aurora     fill:#3b82f608,stroke:#3b82f6,color:#3b82f6,stroke-width:1.5px
-    classDef polaris    fill:#10b98108,stroke:#10b981,color:#10b981,stroke-width:1.5px
-    classDef perlmutter fill:#06b6d408,stroke:#06b6d4,color:#06b6d4,stroke-width:1.5px
-    classDef frontier   fill:#ef444408,stroke:#ef4444,color:#ef4444,stroke-width:1.5px
-    classDef mac        fill:#a78bfa08,stroke:#a78bfa,color:#a78bfa,stroke-width:1.5px
-    classDef mps        fill:#f59e0b08,stroke:#f59e0b,color:#d97706,stroke-width:1.5px
+    classDef aurora     stroke-width:1.5px
+    classDef polaris    stroke-width:1.5px
+    classDef perlmutter stroke-width:1.5px
+    classDef frontier   stroke-width:1.5px
+    classDef mac        stroke-width:1.5px
+    classDef mps        stroke-width:1.5px
     class EZ hub
     class AURORA aurora
     class POLARIS polaris
@@ -362,6 +356,43 @@ flowchart TB
     #portable-stack .mermaid .pele-node.hub polygon,
     #portable-stack .mermaid .pele-node.hub rect { fill: var(--background1) !important; stroke: var(--foreground2) !important; }
     #portable-stack .mermaid .pele-node.hub .pele-label { fill: var(--foreground0) !important; }
+    /* Backend nodes: pull fill/stroke/label from theme accents so the diagram
+       tracks whichever theme is active. pele paints inline styles, so these
+       must win with !important; fills are the accent at ~3% alpha. */
+    #portable-stack .sc-launch-figure {
+        --sc-aurora: var(--blue);
+        --sc-polaris: var(--green);
+        --sc-perlmutter: var(--teal);
+        --sc-frontier: var(--red);
+        --sc-mac: var(--purple);
+        --sc-mps: var(--orange);
+    }
+    #portable-stack .pele-node.aurora rect,
+    #portable-stack .pele-node.aurora polygon { fill: color-mix(in srgb, var(--sc-aurora) 4%, transparent) !important; stroke: var(--sc-aurora) !important; }
+    #portable-stack .pele-node.aurora .pele-label { fill: var(--sc-aurora) !important; }
+    #portable-stack .pele-node.polaris rect,
+    #portable-stack .pele-node.polaris polygon { fill: color-mix(in srgb, var(--sc-polaris) 4%, transparent) !important; stroke: var(--sc-polaris) !important; }
+    #portable-stack .pele-node.polaris .pele-label { fill: var(--sc-polaris) !important; }
+    #portable-stack .pele-node.perlmutter rect,
+    #portable-stack .pele-node.perlmutter polygon { fill: color-mix(in srgb, var(--sc-perlmutter) 4%, transparent) !important; stroke: var(--sc-perlmutter) !important; }
+    #portable-stack .pele-node.perlmutter .pele-label { fill: var(--sc-perlmutter) !important; }
+    #portable-stack .pele-node.frontier rect,
+    #portable-stack .pele-node.frontier polygon { fill: color-mix(in srgb, var(--sc-frontier) 4%, transparent) !important; stroke: var(--sc-frontier) !important; }
+    #portable-stack .pele-node.frontier .pele-label { fill: var(--sc-frontier) !important; }
+    #portable-stack .pele-node.mac rect,
+    #portable-stack .pele-node.mac polygon { fill: color-mix(in srgb, var(--sc-mac) 4%, transparent) !important; stroke: var(--sc-mac) !important; }
+    #portable-stack .pele-node.mac .pele-label { fill: var(--sc-mac) !important; }
+    #portable-stack .pele-node.mps rect,
+    #portable-stack .pele-node.mps polygon { fill: color-mix(in srgb, var(--sc-mps) 4%, transparent) !important; stroke: var(--sc-mps) !important; }
+    #portable-stack .pele-node.mps .pele-label { fill: var(--sc-mps) !important; }
+    #portable-stack .pele-edge[data-id='L_EZ_AURORA_0'] { --_l: var(--sc-aurora); }
+    #portable-stack .pele-edge[data-id='L_EZ_POLARIS_0'] { --_l: var(--sc-polaris); }
+    #portable-stack .pele-edge[data-id='L_EZ_PM_0'] { --_l: var(--sc-perlmutter); }
+    #portable-stack .pele-edge[data-id='L_EZ_FRONTIER_0'] { --_l: var(--sc-frontier); }
+    #portable-stack .pele-edge[data-id='L_EZ_MAC_0'] { --_l: var(--sc-mac); }
+    #portable-stack .pele-edge[data-id='L_EZ_MPS_0'] { --_l: var(--sc-mps); }
+    #portable-stack .pele-edge path { stroke: var(--_l) !important; }
+    #portable-stack .pele-edge .pele-marker { fill: var(--_l) !important; }
     #portable-stack .sc-launch-grid pre { font-size: clamp(1rem, 1.6vw, 1.85rem); }
     @media (max-width: 700px) { .sc-launch-grid { grid-template-columns: 1fr; } }
 

@@ -14,10 +14,10 @@ const paletteVars = [
     '--foreground1',
     '--pink',
     '--blue',
-    '--purple',
+    '--orange',
     '--green',
 ] as const
-const paletteFallback = ['#3f4652', '#ea76cb', '#2196f3', '#9a76ce', '#4caf50']
+const paletteFallback = ['#3f4652', '#ea76cb', '#2196f3', '#ff7900', '#4caf50']
 function withAlpha(rgb: string, alpha: number) {
     const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
     return m ? `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})` : rgb
@@ -164,11 +164,11 @@ function mount(
             ? Object.values(loss)
                   .map((rows, i) => ({
                       // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                      // MDS solid grey · 2B 256N dotted pink · 2B 512N dashed blue ·
-                      // 20B 256N dotted purple · 20B 512N solid green
-                      ...dataset(labels[i], [colors[0], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
-                      borderWidth: i >= 3 ? 5 : 4,
-                      borderDash: ([[], [2, 6], [12, 7], [2, 6], []] as number[][])[i],
+                      // MDS faint dashed grey reference · 2B 256N solid pink · 2B 512N dashed blue ·
+                      // 20B 256N dotted orange · 20B 512N solid green
+                      ...dataset(labels[i], i === 0 ? withAlpha(colors[0], 0.6) : [colors[0], colors[1], colors[2], colors[3], colors[4]][i], rows, 1, 0),
+                      borderWidth: i === 0 ? 3.25 : i >= 3 ? 5 : 4,
+                      borderDash: ([[3, 5], [], [12, 7], [2, 6], []] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
                   }))
@@ -430,22 +430,23 @@ function mount(
         const legendEl = document.createElement('div')
         legendEl.className = 'sc26-legend'
         copyCid(legendEl)
-        // Row-aligned grid: an empty leading cell keeps 20B on the same rows as 2B.
+        // Row-aligned grid: columns run 20B | 2B; the 20B column leaves the
+        // first row empty (no MDS reference for the 20B model).
         const legendRows: (
             | { label: string; stroke: string; dash?: string }
             | null
         )[][] = [
-            [{ label: 'MDS (256N)', stroke: colors[0] }, null],
+            [null, { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.6), dash: '3 5' }],
             [
-                { label: 'TT (256N)', stroke: colors[1], dash: '2 6' },
                 { label: 'TT (256N)', stroke: colors[3], dash: '2 6' },
+                { label: 'TT (256N)', stroke: colors[1] },
             ],
             [
-                { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
                 { label: 'TT (512N)', stroke: colors[4] },
+                { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
             ],
         ]
-        for (const [title, col] of [['2B', 0], ['20B', 1]] as const) {
+        for (const [title, col] of [['20B', 0], ['2B', 1]] as const) {
             const head = document.createElement('div')
             head.className = 'sc26-legend-head'
             head.style.gridColumn = String(col + 1)
