@@ -180,8 +180,7 @@ function mount(
                       pointRadius: 0,
                       pointBorderWidth: 1,
                       // Loss chart reveal sequence: MDS is the resting state,
-                      // first press adds the 2B TT pair, second adds the 20B runs
-                      // and the inset.
+                      // first press adds the 2B TT pair, second adds the 20B runs.
                       hidden: fullLoss && i >= 1,
                       sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
                   }))
@@ -246,11 +245,14 @@ function mount(
                 const label = index === 0 ? '256 nodes' : '512 nodes'
                 const x = Math.min(
                     scales.x.getPixelForValue(point.x) + 14,
-                    chartArea.right - ctx.measureText(label),
+                    chartArea.right - ctx.measureText(label).width,
                 )
+                // In stage 2 the two 2B curves sit ~0.05 loss apart; a bigger
+                // vertical split keeps the labels off each other's line.
+                const both2B = chart.isDatasetVisible(1) && chart.isDatasetVisible(2)
                 const y =
                     scales.y.getPixelForValue(point.y) +
-                    (index === 0 ? -14 : 22)
+                    (index === 0 ? (both2B ? -20 : -12) : (both2B ? 26 : 18))
                 ctx.fillText(label, x, y)
             })
             ctx.restore()
@@ -260,50 +262,6 @@ function mount(
     // milestones from the 10/21 figure (τ in trillions): stage 1 -> 2 at 4.674,
     // stage 2 -> 3 at 7.064, and the 7.771T MDS endpoint. 2B v2 chains branch at
     // stage 2; the 20B runs stopped in stage 1.
-    // Inset guide: outline the zoomed x-range [0, 0.6T] on the main chart and
-    // connect its right edge to the inset panel, so the magnification reads as
-    // a callout rather than a random floating axis.
-    // The inset position is driven by CSS (sc26-inset: left/top/width/height as
-    // fractions of the frame), so the box is resolved in pixel terms there.
-    const insetGuide: Plugin<'line'> = {
-        id: 'sc26InsetGuide',
-        beforeDatasetsDraw({ ctx, scales, chartArea }) {
-            if (!fullLoss) return
-            const inset = frame.querySelector<HTMLElement>('.sc26-inset')
-            if (!inset || !inset.hasAttribute('data-visible')) return
-            const frameRect = frame.getBoundingClientRect()
-            const ir = inset.getBoundingClientRect()
-            const canvasRect = canvas.getBoundingClientRect()
-            const x0 = scales.x.getPixelForValue(0)
-            const x1 = scales.x.getPixelForValue(0.6)
-            const y0 = chartArea.top
-            const y1 = chartArea.bottom
-            // Chart.js draws in CSS pixels (it pre-scales the context by DPR), so
-            // convert the inset's frame-relative position straight into canvas CSS px.
-            const cx0 = ir.left - canvasRect.left
-            const cy0 = ir.top - canvasRect.top
-            const ch = ir.height
-            ctx.save()
-            // highlight the source region
-            ctx.fillStyle = withAlpha(readVar('--foreground1', color), 0.08)
-            ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
-            ctx.strokeStyle = withAlpha(color, 0.55)
-            ctx.lineWidth = 1.5
-            ctx.setLineDash([5, 4])
-            ctx.strokeRect(x0, y0, x1 - x0, y1 - y0)
-            // connectors from the source box's top-right and bottom-right corners
-            // to the inset's top-left and bottom-left corners
-            ctx.setLineDash([])
-            ctx.lineWidth = 1.5
-            ctx.beginPath()
-            ctx.moveTo(x1, y0)
-            ctx.lineTo(cx0, cy0)
-            ctx.moveTo(x1, y1)
-            ctx.lineTo(cx0, cy0 + ch)
-            ctx.stroke()
-            ctx.restore()
-        },
-    }
     const stageMarks: { t: number; label: string }[] = [
         { t: 4.67378, label: 'stage 1 → 2' },
         { t: 7.06416, label: 'stage 2 → 3' },
@@ -368,7 +326,7 @@ function mount(
         type: 'line',
         data: { datasets },
         plugins: isLoss
-            ? [reveal, stageMarksPlugin, insetGuide]
+            ? [reveal, stageMarksPlugin]
             : !compact && task === 0
               ? [compare]
               : [],
@@ -538,13 +496,7 @@ function mount(
             legendEl.appendChild(group)
         }
         frame.appendChild(legendEl)
-        // Wrap the inset canvas in its own sized box; a bare canvas would be
-        // stretched by chart.js's resize observer to the frame's full size.
-        const holder = document.createElement('div')
-        holder.className = 'sc26-inset'
-        holder.dataset.stage = '3'
-        // The deck steps fragments in DOM order. Stage 1 (MDS) is the resting view;
-        // each sentinel advances one stage: 2 = 2B TT pair, 3 = 20B pair + inset.
+        // Stage sentinels: the deck steps these fragments to advance the reveal.
         for (const n of [2, 3]) {
             const sentinel = document.createElement('span')
             sentinel.className = 'fragment sc26-fragment-stage'
@@ -560,9 +512,7 @@ function mount(
             const n = stage()
             for (const el of frame.querySelectorAll<HTMLElement>('[data-stage]')) {
                 const st = Number(el.dataset.stage)
-                if (el.classList.contains('sc26-inset')) {
-                    el.classList.toggle('sc26-on', n >= st)
-                } else if (el.classList.contains('sc26-legend-col')) {
+                if (el.classList.contains('sc26-legend-col')) {
                     // Column visibility is driven by its cells; keep it in the flow
                     // iff any cell will show.
                     const anyVisible = Array.from(el.querySelectorAll('[data-stage]')).some(
@@ -613,76 +563,6 @@ function mount(
             new MutationObserver(syncStages).observe(el, { attributes: true, attributeFilter: ['data-visible'] })
         }
         syncStages()
-        copyCid(holder)
-        frame.appendChild(holder)
-        const insetCanvas = document.createElement('canvas')
-        holder.appendChild(insetCanvas)
-        const insetChart = new Chart(insetCanvas, {
-            type: 'line',
-            data: {
-                datasets: [
-                    {
-                        label: 'MDS',
-                        data: loss.C_2B_MDS.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: withAlpha(colors[0], 0.75),
-                        backgroundColor: withAlpha(colors[0], 0.75),
-                        borderWidth: 1.5,
-                        borderDash: [7, 6],
-                        pointRadius: 0,
-                    },
-                    {
-                        label: '2B 256N',
-                        data: loss.C_2B_256.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: withAlpha(colors[1], 0.62),
-                        backgroundColor: withAlpha(colors[1], 0.62),
-                        borderWidth: 1.5,
-                        pointRadius: 0,
-                    },
-                    {
-                        label: '2B 512N',
-                        data: loss.C_2B_512.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: colors[2],
-                        backgroundColor: colors[2],
-                        borderWidth: 1.5,
-                        borderDash: [10, 4, 1.5, 4],
-                        pointRadius: 0,
-                    },
-                    {
-                        label: '20B 256N',
-                        data: loss.C_20B_256.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: withAlpha(colors[3], 0.62),
-                        backgroundColor: withAlpha(colors[3], 0.62),
-                        borderWidth: 2,
-                        pointRadius: 0,
-                    },
-                    {
-                        label: '20B 512N',
-                        data: loss.C_20B_512.filter(([x]) => x <= 600).map(([x, y]) => ({ x: x / 1000, y })),
-                        borderColor: colors[4],
-                        backgroundColor: colors[4],
-                        borderWidth: 2,
-                        borderDash: [10, 4, 1.5, 4],
-                        pointRadius: 0,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: false },
-                    tooltip: { titleFont: font, bodyFont: font },
-                },
-                layout: { padding: { top: 2, right: 6, bottom: 0, left: 2 } },
-                scales: {
-                    x: { type: 'linear', min: 0, max: 0.6, ticks: { color, font: { family, size: Math.max(9, Math.round(baseSize * 0.55)) }, maxTicksLimit: 4, padding: 2 }, grid: { color: grid } },
-                    y: { type: 'linear', min: 2, max: 4.5, ticks: { color, font: { family, size: Math.max(9, Math.round(baseSize * 0.55)) }, maxTicksLimit: 4, padding: 2 }, grid: { color: grid } },
-                },
-            },
-        })
-        void insetChart
     }
 
     // Pin the caller-supplied module-level legend into the plot area's top-right
