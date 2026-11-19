@@ -60,26 +60,45 @@ const themeOptions = {
 
 // Body font: all 10 (mono, the quasi-proportional QP / Aile /
 // Etoile, and the generic sans / serif system stacks).
-// Defaults first: Layout.astro falls back to miosevka-qp for the body and
-// miosevka-term for code, so each list leads with the font you are already
-// looking at rather than burying it mid-list.
-const bodyFontOptions = {
-    'ibm-plex-sans': 'IBM Plex Sans',
-    'miosevka-qp': 'mIosevka-QP',
-    'miosevka-term': 'mIosevka-Term',
-    iosevka: 'Iosevka',
-    'iosevka25-condensed': 'Iosevka25 Condensed',
-    'victor-mono': 'Victor Mono',
-    system: 'System',
-    sans: 'Sans',
-    serif: 'Serif',
-    'iosevka-aile': 'Iosevka Aile',
-    'iosevka-etoile': 'Iosevka Etoile',
-}
+// Grouped into rows so the list is scannable; first row carries the
+// defaults Layout.astro falls back to (QP for body, Term for code).
+const bodyFontRows: { options: [string, string][] }[] = [
+    {
+        options: [
+            ['miosevka-qp', 'Default (mIosevka-QP)'],
+            ['miosevka-term', 'mIosevka-Term'],
+        ],
+    },
+    {
+        options: [
+            ['iosevka', 'Iosevka'],
+            ['iosevka25-condensed', 'Iosevka25 Condensed'],
+        ],
+    },
+    {
+        options: [
+            ['iosevka-aile', 'Iosevka Aile'],
+            ['iosevka-etoile', 'Iosevka Etoile'],
+        ],
+    },
+    {
+        options: [
+            ['victor-mono', 'Victor Mono'],
+            ['system', 'System'],
+        ],
+    },
+    {
+        options: [
+            ['sans', 'Sans'],
+            ['serif', 'Serif'],
+            ['ibm-plex-sans', 'IBM Plex Sans'],
+        ],
+    },
+]
 // Code font: true-monospace only — no QP (it breaks ASCII / column alignment).
 const codeFontOptions = {
+    'miosevka-term': 'Default (mIosevka-Term)',
     'ibm-plex-mono': 'IBM Plex Mono',
-    'miosevka-term': 'mIosevka-Term',
     iosevka: 'Iosevka',
     'iosevka25-condensed': 'Iosevka25 Condensed',
     'victor-mono': 'Victor Mono',
@@ -137,18 +156,22 @@ const codeFontOptions = {
                 <span is-="badge" class="keybind-group-title font-row-label"
                     >Body</span
                 >
-                <row class="command-theme-buttons" gap-="0">
-                    {
-                        Object.entries(bodyFontOptions).map(([key, value]) => (
-                            <button
-                                data-body-font-option={key}
-                                aria-selected="false"
-                                class="command-theme-chip command-font-chip">
-                                {value}
-                            </button>
-                        ))
-                    }
-                </row>
+                {
+                    bodyFontRows.map((row) => (
+                        <row
+                            class="command-theme-buttons command-font-row"
+                            gap-="0">
+                            {row.options.map(([key, value]) => (
+                                <button
+                                    data-body-font-option={key}
+                                    aria-selected="false"
+                                    class="command-theme-chip command-font-chip">
+                                    {value}
+                                </button>
+                            ))}
+                        </row>
+                    ))
+                }
                 <span is-="badge" class="keybind-group-title font-row-label"
                     >Code</span
                 >
@@ -542,6 +565,12 @@ const codeFontOptions = {
     .command-theme-buttons {
         flex-wrap: wrap;
         gap: 0;
+    }
+    /* Body-font rows are grouped chips; a bare <row> adds no vertical
+       gap, so give each row a small gap below and pull it back in with
+       a negative top margin on the following row label. */
+    .command-font-row + .command-font-row {
+        margin-top: 0.25lh;
     }
 
     .command-theme-chip {
