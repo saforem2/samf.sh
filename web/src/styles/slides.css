@@ -1725,8 +1725,15 @@ body.slides-print-mode .slide-web-link {
     /* A child sized `width: 100%` (e.g. .sc26-chart) does not shrink to
        absorb the margin — without this cap the gutter pushed the content
        76px past the viewport and gave the slide a phantom horizontal
-       scrollbar. Cap the width so the pair always fits the content box. */
-    max-width: calc(100% - var(--deck-logo-gutter, 0px));
+       scrollbar. Cap the width so the pair always fits the content box.
+       Callouts are exempt: their width is governed by the prose measure in
+       @layer components, and this unlayered cap used to override it — the
+       LAST callout on a slide (it's the last flow child) rendered ~110px
+       wider than the identical callouts above it. The margin above still
+       reserves the logo's corner. */
+    &:not(.callout) {
+        max-width: calc(100% - var(--deck-logo-gutter, 0px));
+    }
 }
 /* Gutter applies only where the logo is actually visible. */
 @media (min-width: 1025px) and (min-height: 541px) {
