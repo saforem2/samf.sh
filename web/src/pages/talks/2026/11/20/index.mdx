@@ -216,11 +216,11 @@ flowchart LR
     D -.->|❌| F["<span style='font-weight:700'>bisect</span>"]
     F -.-> B
 
-    classDef source fill:#7c4ed508,stroke:#7c4ed5,color:#7c4ed5,stroke-width:1.5px
-    classDef stage  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
-    classDef ship   fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
-    classDef gate   fill:#8a8a8a18,stroke:#9a9a9a,color:#838383,stroke-width:1.5px
-    classDef bad    fill:#e0556008,stroke:#e05560,color:#e05560,stroke-width:1.5px
+    classDef source stroke-width:1.5px
+    classDef stage  stroke-width:1.5px
+    classDef ship   stroke-width:1.5px
+    classDef gate   stroke-width:1.5px
+    classDef bad    stroke-width:1.5px
     class A source
     class B stage
     class D gate
@@ -315,12 +315,12 @@ flowchart TB
         end
     end
 
-    classDef jobC  fill:#118cc208,stroke:#118cc2,color:#118cc2,stroke-width:1.5px
-    classDef nodeC fill:#ee8f2408,stroke:#ee8f24,color:#ee8f24,stroke-width:1.5px
-    classDef procC fill:#1da81108,stroke:#1da811,color:#1da811,stroke-width:1.5px
-    classDef jobTxt  fill:transparent,stroke:none,color:#118cc2
-    classDef nodeTxt fill:transparent,stroke:none,color:#ee8f24
-    classDef procTxt fill:transparent,stroke:none,color:#1da811
+    classDef jobC  stroke-width:1.5px
+    classDef nodeC stroke-width:1.5px
+    classDef procC stroke-width:1.5px
+    classDef jobTxt  fill:transparent,stroke:none
+    classDef nodeTxt fill:transparent,stroke:none
+    classDef procTxt fill:transparent,stroke:none
     class JOB_TXT jobTxt
     class NODE_TXT nodeTxt
     class PROC_TXT procTxt
@@ -393,6 +393,30 @@ flowchart TB
     #portable-stack .pele-edge[data-id='L_EZ_MPS_0'] { --_l: var(--sc-mps); }
     #portable-stack .pele-edge path { stroke: var(--_l) !important; }
     #portable-stack .pele-edge .pele-marker { fill: var(--_l) !important; }
+    /* Bit-exact slide: theme-mapped node accents. Source = purple, stage = teal,
+       ship = green, gate = neutral, bad = red. Fills are accent at ~4% alpha. */
+    #bit-exact { --sc-source: var(--purple); --sc-stage: var(--teal); --sc-ship: var(--green); --sc-gate: var(--foreground2); --sc-bad: var(--red); }
+    #bit-exact .pele-node.source rect, #bit-exact .pele-node.source polygon { fill: color-mix(in srgb, var(--sc-source) 4%, transparent) !important; stroke: var(--sc-source) !important; }
+    #bit-exact .pele-node.source .pele-label { fill: var(--sc-source) !important; }
+    #bit-exact .pele-node.stage rect, #bit-exact .pele-node.stage polygon { fill: color-mix(in srgb, var(--sc-stage) 4%, transparent) !important; stroke: var(--sc-stage) !important; }
+    #bit-exact .pele-node.stage .pele-label { fill: var(--sc-stage) !important; }
+    #bit-exact .pele-node.ship rect, #bit-exact .pele-node.ship polygon { fill: color-mix(in srgb, var(--sc-ship) 5%, transparent) !important; stroke: var(--sc-ship) !important; }
+    #bit-exact .pele-node.ship .pele-label { fill: var(--sc-ship) !important; }
+    #bit-exact .pele-node.gate polygon, #bit-exact .pele-node.gate rect { fill: color-mix(in srgb, var(--sc-gate) 10%, transparent) !important; stroke: var(--sc-gate) !important; }
+    #bit-exact .pele-node.gate .pele-label { fill: var(--sc-gate) !important; }
+    #bit-exact .pele-node.bad rect, #bit-exact .pele-node.bad polygon { fill: color-mix(in srgb, var(--sc-bad) 4%, transparent) !important; stroke: var(--sc-bad) !important; }
+    #bit-exact .pele-node.bad .pele-label { fill: var(--sc-bad) !important; }
+    /* Recovery-scopes: nested clusters job/node/proc mapped to teal/orange/green. */
+    #recovery-scopes { --sc-job: var(--teal); --sc-node: var(--orange); --sc-proc: var(--green); }
+    #recovery-scopes .pele-cluster.jobC rect { fill: color-mix(in srgb, var(--sc-job) 4%, transparent) !important; stroke: var(--sc-job) !important; }
+    #recovery-scopes .pele-cluster.jobC .pele-cluster-label { fill: var(--sc-job) !important; }
+    #recovery-scopes .pele-cluster.nodeC rect { fill: color-mix(in srgb, var(--sc-node) 5%, transparent) !important; stroke: var(--sc-node) !important; }
+    #recovery-scopes .pele-cluster.nodeC .pele-cluster-label { fill: var(--sc-node) !important; }
+    #recovery-scopes .pele-cluster.procC rect { fill: color-mix(in srgb, var(--sc-proc) 6%, transparent) !important; stroke: var(--sc-proc) !important; }
+    #recovery-scopes .pele-cluster.procC .pele-cluster-label { fill: var(--sc-proc) !important; }
+    #recovery-scopes .pele-node.jobTxt .pele-label { fill: var(--sc-job) !important; }
+    #recovery-scopes .pele-node.nodeTxt .pele-label { fill: var(--sc-node) !important; }
+    #recovery-scopes .pele-node.procTxt .pele-label { fill: var(--sc-proc) !important; }
     #portable-stack .sc-launch-grid pre { font-size: clamp(1rem, 1.6vw, 1.85rem); }
     @media (max-width: 700px) { .sc-launch-grid { grid-template-columns: 1fr; } }
 

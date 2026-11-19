@@ -3,7 +3,13 @@ import type { Plugin } from 'chart.js'
 import { evaluations, loss } from './sc26-chart-data'
 import { optimizerHistories } from './sc26-optimizer-data'
 
-const family = 'mIosevka-QP Web'
+// Canvas can't resolve CSS variables, so read the theme's resolved font stack
+// off the root element at init. Falls back to the mono stack if empty.
+const themeFontFamily = () => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--font-family').trim()
+    return raw || 'ui-monospace, Menlo, Monaco, monospace'
+}
+const family = themeFontFamily()
 // Series colors come from the active theme's accent variables (--blue, --red, …)
 // instead of hard-coded hex. Canvas needs concrete srgb/rgb values, so each
 // custom property is painted through a 1×1 canvas and read back as rgb().
@@ -171,6 +177,10 @@ function mount(
                       borderDash: ([[3, 5], [], [12, 7], [2, 6], []] as number[][])[i],
                       pointRadius: 0,
                       pointBorderWidth: 1,
+                      // Loss chart reveal sequence: MDS first, then the 2B TT
+                      // pair, then the 20B runs (with the inset) on the last step.
+                      hidden: fullLoss && i >= 0,
+                      sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
                   }))
             : evaluations
                   .map((run, i) => ({
@@ -211,7 +221,7 @@ function mount(
             if (progress < 1) return
             ctx.save()
             ctx.fillStyle = color
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.8) + 'px ' + family
             datasets.forEach((series, index) => {
                 const point = [...series.data]
                     .reverse()
@@ -291,7 +301,7 @@ function mount(
             ctx.strokeStyle = withAlpha(readVar('--foreground2', color), 0.45)
             ctx.lineWidth = 1.5
             ctx.fillStyle = color
-            ctx.font = '500 ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) + 'px "' + family + '"'
+            ctx.font = '500 ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) + 'px ' + family
             ctx.textAlign = 'right'
             ctx.textBaseline = 'bottom'
             let row = 0
@@ -323,7 +333,7 @@ function mount(
             ctx.moveTo(left, y)
             ctx.lineTo(right, y)
             ctx.stroke()
-            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.9) + 'px "' + family + '"'
+            ctx.font = 'bold ' + Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.9) + 'px ' + family
             ctx.textAlign = 'center'
             ctx.fillText(ratio + '× fewer tokens', (left + right) / 2, y - 11)
             ctx.restore()
@@ -389,7 +399,8 @@ function mount(
                     ...axis,
                     type: 'linear',
                     min: 0,
-                    max: undefined,
+                    // Pin the axis so a fully-hidden loss chart (stage 0) doesn't collapse to 0-1.
+                    max: isLoss ? 8 : undefined,
                     title: {
                         ...axisTitle,
                         text: 'Tokens consumed (trillions)',
@@ -417,6 +428,7 @@ function mount(
         },
     })
     // Full-loss view: overlay a second, small chart in the empty lower-right
+    let placeLegendRef: (() => void) | null = null
     // region showing the first 600B tokens for the two 20B chains — this is the
     if (fullLoss) {
         // Legend split into two columns: a 2B group and a 20B group, matching the
@@ -430,66 +442,112 @@ function mount(
         const legendEl = document.createElement('div')
         legendEl.className = 'sc26-legend'
         copyCid(legendEl)
-        // Row-aligned grid: columns run 20B | 2B; the 20B column leaves the
-        // first row empty (no MDS reference for the 20B model).
-        const legendRows: (
-            | { label: string; stroke: string; dash?: string }
-            | null
-        )[][] = [
-            [null, { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.6), dash: '3 5' }],
-            [
-                { label: 'TT (256N)', stroke: colors[3], dash: '2 6' },
-                { label: 'TT (256N)', stroke: colors[1] },
-            ],
-            [
-                { label: 'TT (512N)', stroke: colors[4] },
-                { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
-            ],
+        // Two column groups: 20B (hidden until the reveal fragment) and 2B.
+        const columnDefs: { title: string; late: boolean; entries: ({ label: string; stroke: string; dash?: string } | null)[] }[] = [
+            {
+                title: '20B',
+                late: true,
+                entries: [
+                    null,
+                    { label: 'TT (256N)', stroke: colors[3], dash: '2 6' },
+                    { label: 'TT (512N)', stroke: colors[4] },
+                ],
+            },
+            {
+                title: '2B',
+                late: false,
+                entries: [
+                    { label: 'MDS (256N)', stroke: withAlpha(colors[0], 0.6), dash: '3 5' },
+                    { label: 'TT (256N)', stroke: colors[1] },
+                    { label: 'TT (512N)', stroke: colors[2], dash: '12 7' },
+                ],
+            },
         ]
-        for (const [title, col] of [['20B', 0], ['2B', 1]] as const) {
+        for (const col of columnDefs) {
+            const group = document.createElement('div')
+            group.className = 'sc26-legend-col'
+            group.dataset.stage = col.late ? '3' : '1'
+            copyCid(group)
             const head = document.createElement('div')
             head.className = 'sc26-legend-head'
-            head.style.gridColumn = String(col + 1)
-            head.style.gridRow = '1'
-            head.textContent = title
+            head.textContent = col.title
             copyCid(head)
-            legendEl.appendChild(head)
-        }
-        legendRows.forEach((row, i) => {
-            row.forEach((entry, col) => {
+            group.appendChild(head)
+            col.entries.forEach((entry, row) => {
                 const cell = document.createElement('div')
                 cell.className = 'sc26-legend-cell'
-                cell.style.gridColumn = String(col + 1)
-                cell.style.gridRow = String(i + 2)
+                // Stage mapping: 2B column (col.late=false) → MDS row 1, TT rows 2;
+                // 20B column → stage 3.
+                const stage = col.late ? 3 : row === 0 ? 1 : 2
+                cell.dataset.stage = String(stage)
                 copyCid(cell)
-                if (!entry) {
+                if (entry) {
+                    const swatch = document.createElement('span')
+                    swatch.className = 'sc26-legend-swatch'
+                    copyCid(swatch)
+                    // inline styles beat Astro's scoped stylesheet, which sets a
+                    // fallback border-bottom on the class with higher specificity.
+                    swatch.style.cssText += `;display:inline-block;width:2em;height:0;flex:0 0 2em;border-bottom:4px ${entry.dash ? 'dashed' : 'solid'} ${entry.stroke};`
+                    cell.appendChild(swatch)
+                    const label = document.createElement('span')
+                    label.className = 'sc26-legend-label'
+                    copyCid(label)
+                    label.textContent = entry.label
+                    cell.appendChild(label)
+                } else {
                     cell.setAttribute('aria-hidden', 'true')
-                    legendEl.appendChild(cell)
-                    return
                 }
-                const swatch = document.createElement('span')
-                swatch.className = 'sc26-legend-swatch'
-                copyCid(swatch)
-                // inline styles beat Astro's scoped stylesheet, which sets a
-                // fallback border-bottom on the class with higher specificity.
-                swatch.style.cssText += `;display:inline-block;width:2.1em;height:0;flex:0 0 2.1em;border-bottom:3px ${entry.dash ? 'dashed' : 'solid'} ${entry.stroke};`
-                cell.appendChild(swatch)
-                const label = document.createElement('span')
-                label.className = 'sc26-legend-label'
-                copyCid(label)
-                label.textContent = entry.label
-                cell.appendChild(label)
-                legendEl.appendChild(cell)
+                group.appendChild(cell)
             })
-        })
+            legendEl.appendChild(group)
+        }
         frame.appendChild(legendEl)
         // Wrap the inset canvas in its own sized box; a bare canvas would be
         // stretched by chart.js's resize observer to the frame's full size.
         const holder = document.createElement('div')
-        holder.className = 'sc26-inset fragment'
-        // The deck controls fragment visibility via [data-visible]; watch it so
-        // the on-canvas guide lines redraw in step with the inset reveal.
-        new MutationObserver(() => chart.draw()).observe(holder, { attributes: true, attributeFilter: ['data-visible'] })
+        holder.className = 'sc26-inset'
+        holder.dataset.stage = '3'
+        // The deck steps fragments in DOM order; three zero-size sentinel spans mark
+        // the reveal stages (1 = MDS, 2 = 2B TT pair, 3 = 20B pair + inset).
+        for (const n of [1, 2, 3]) {
+            const sentinel = document.createElement('span')
+            sentinel.className = 'fragment sc26-fragment-stage'
+            sentinel.dataset.stage = String(n)
+            sentinel.setAttribute('aria-hidden', 'true')
+            copyCid(sentinel)
+            frame.appendChild(sentinel)
+        }
+        const sentinels = () => Array.from(frame.querySelectorAll<HTMLElement>('.sc26-fragment-stage'))
+        const stage = () => sentinels().filter((el) => el.hasAttribute('data-visible')).length
+        const syncStages = () => {
+            const n = stage()
+            for (const el of frame.querySelectorAll<HTMLElement>('[data-stage]')) {
+                if (el.classList.contains('sc26-inset')) {
+                    el.classList.toggle('sc26-on', n >= Number(el.dataset.stage))
+                } else {
+                    el.style.display = Number(el.dataset.stage) <= n ? '' : 'none'
+                }
+            }
+            legendEl.style.display = n >= 1 ? '' : 'none'
+            let dirty = false
+            chart.data.datasets.forEach((ds, i) => {
+                const dsStage = (ds as { sc26Stage?: number }).sc26Stage ?? 0
+                const show = dsStage === 0 || dsStage <= n
+                if (chart.isDatasetVisible(i) !== show) {
+                    chart.setDatasetVisibility(i, show)
+                    dirty = true
+                }
+            })
+            if (dirty) chart.update('none')
+            chart.draw()
+            // The reveal changes legend width; re-anchor it to the plot's top-right.
+            // (placeLegend is declared below; defer if we're still in init.)
+            if (placeLegendRef) placeLegendRef()
+        }
+        for (const el of sentinels()) {
+            new MutationObserver(syncStages).observe(el, { attributes: true, attributeFilter: ['data-visible'] })
+        }
+        syncStages()
         copyCid(holder)
         frame.appendChild(holder)
         const insetCanvas = document.createElement('canvas')
@@ -576,6 +634,8 @@ function mount(
             if (scale.title) scale.title.display = fit
         }
     }
+    placeLegendRef = placeLegend
+
     let lastWidth = frameWidth()
     const resizeObserver = new ResizeObserver((entries) => {
         const width = entries[0]?.contentRect.width ?? frame.clientWidth
@@ -611,7 +671,7 @@ function mount(
 async function initialize() {
     await Promise.all(
         [400, 700].map((weight) =>
-            document.fonts.load(weight + ' 30px "' + family + '"'),
+            document.fonts.load(weight + ' 30px ' + family.split(',')[0].trim().replace(/^['"]|['"]$/g, '')),
         ),
     )
     for (const root of document.querySelectorAll<HTMLElement>(
