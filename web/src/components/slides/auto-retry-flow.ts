@@ -762,11 +762,11 @@ function draw(
             if (id !== 'stall' && p >= 0.6) {
                 const inbound = delayed((p - 0.6) / 0.4, index)
                 if (inbound > 0 && inbound < 1)
+                    // All-reduced gradient is identical on every rank: one hue, no shard label.
                     packet(
                         ctx,
                         alongRoute(rank, 1 - inbound, 'out'),
-                        shardColors[index],
-                        String(index),
+                        palette.purple,
                     )
             }
         })
