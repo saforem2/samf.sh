@@ -22,6 +22,8 @@ interface Palette {
     orange: string
     green: string
     red: string
+    /** One hue per batch shard, resolved from the theme's badge accents. */
+    shards: string[]
 }
 
 const scenes: Scene[] = [
@@ -124,28 +126,34 @@ const ranks = [
     { x: 625, y: 337, name: 'host-048' },
 ]
 
-/** Readable text color for a shard fill (dark text on light hues, white on dark). */
-function shardTextColor(hex: string) {
-    const [r, g, b] = [1, 3, 5].map(
-        (i) => parseInt(hex.slice(i, i + 2), 16) / 255,
-    )
-    const lin = (v: number) =>
-        v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-    return L > 0.35 ? '#0b0b0b' : '#f5f5f5'
+/** Batch-shard hues come straight from the theme's badge accent tokens. */
+const shardTokens = [
+    '--red',
+    '--orange',
+    '--yellow',
+    '--green',
+    '--teal',
+    '--blue',
+    '--purple',
+    '--pink',
+]
+
+function relativeLuminance(cssColor: string) {
+    const m = cssColor.match(/[\d.]+/g)
+    if (!m || m.length < 3) return 0.5
+    const [r, g, b] = m
+        .slice(0, 3)
+        .map(Number)
+        .map((v) => {
+            const c = v / 255
+            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+        })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-/** Okabe-Ito-inspired palette, one hue per batch shard (rank order). */
-const shardColors = [
-    '#E69F00',
-    '#56B4E9',
-    '#009E73',
-    '#8A6D00',
-    '#0072B2',
-    '#D55E00',
-    '#CC79A7',
-    '#999999',
-]
+function shardTextColor(cssColor: string) {
+    return relativeLuminance(cssColor) > 0.35 ? '#0b0b0b' : '#f5f5f5'
+}
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
 const smooth = (value: number) => {
@@ -265,7 +273,12 @@ function host(
     ctx.restore()
 }
 
-function batchGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function batchGrid(
+    ctx: CanvasRenderingContext2D,
+    shards: string[],
+    x: number,
+    y: number,
+) {
     const tile = 21
     const gap = 3
     const left = x - (tile * 4 + gap * 3) / 2
@@ -278,13 +291,13 @@ function batchGrid(ctx: CanvasRenderingContext2D, x: number, y: number) {
             const tileX = left + column * (tile + gap)
             const tileY = top + row * (tile + gap)
             ctx.globalAlpha = 0.32
-            ctx.fillStyle = shardColors[index]
+            ctx.fillStyle = shards[index]
             ctx.fillRect(tileX, tileY, tile, tile)
             ctx.globalAlpha = 0.95
-            ctx.strokeStyle = shardColors[index]
+            ctx.strokeStyle = shards[index]
             ctx.strokeRect(tileX, tileY, tile, tile)
             ctx.globalAlpha = 1
-            ctx.fillStyle = shardTextColor(shardColors[index])
+            ctx.fillStyle = shardTextColor(shards[index])
             ctx.font = '700 12px ' + ctx.canvas.dataset.font
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
@@ -524,7 +537,7 @@ function draw(
     if (swapping) curve(ctx, sparePath, palette.green, 0.75)
 
     // The eight batch cells travel to the eight hosts.
-    batchGrid(ctx, 69, 255)
+    batchGrid(ctx, palette.shards, 69, 255)
     label(ctx, 'batch', 69, 331, palette.text, compact ? 30 : 25, 700)
     label(ctx, '8 shards', 69, 354, palette.muted, compact ? 22 : 17)
 
@@ -558,7 +571,7 @@ function draw(
             const shardIndex = id === 'stall' ? (i === 0 ? -1 : i) : i
             ctx.fillStyle =
                 i < arrivedCount && shardIndex >= 0
-                    ? shardColors[shardIndex]
+                    ? palette.shards[shardIndex]
                     : palette.muted
         } else {
             ctx.fillStyle = i < collectiveProgress ? signal : palette.muted
@@ -711,7 +724,7 @@ function draw(
                     ? palette.red
                     : gradient
                       ? palette.purple
-                      : shardColors[index]
+                      : palette.shards[index]
             const opacity = stopped ? 0.3 : failed && !badHost ? 0.45 : 0.95
             host(ctx, rank.x, rank.y, 80, hostColor, opacity)
         }
@@ -742,7 +755,7 @@ function draw(
                 packet(
                     ctx,
                     alongRoute(rank, progress, 'in'),
-                    shardColors[index],
+                    palette.shards[index],
                     String(index),
                 )
         })
@@ -756,7 +769,7 @@ function draw(
                 packet(
                     ctx,
                     alongRoute(rank, outbound, 'out'),
-                    shardColors[index],
+                    palette.shards[index],
                     String(index),
                 )
             if (id !== 'stall' && p >= 0.6) {
@@ -869,10 +882,28 @@ function draw(
     })
 }
 
+/** Resolve a custom property to a concrete color via a probe element. */
+function resolveColor(root: HTMLElement, name: string, fallback: string) {
+    const probe = document.createElement('span')
+    probe.style.cssText =
+        'position:absolute;visibility:hidden;background-color:var(' +
+        name +
+        ', ' +
+        fallback +
+        ')'
+    root.appendChild(probe)
+    const resolved = getComputedStyle(probe).backgroundColor
+    probe.remove()
+    return resolved && resolved !== 'rgba(0, 0, 0, 0)' ? resolved : fallback
+}
+
 function paletteFor(root: HTMLElement): Palette {
     const style = getComputedStyle(root)
     const color = (name: string, fallback: string) =>
         style.getPropertyValue(name).trim() || fallback
+    const shards = shardTokens.map((token) =>
+        resolveColor(root, token, '#888888'),
+    )
     return {
         text: color('--foreground0', '#262626'),
         muted: color('--foreground2', '#777777'),
@@ -882,6 +913,7 @@ function paletteFor(root: HTMLElement): Palette {
         orange: color('--sc-orange', '#c55500'),
         green: color('--sc-green', '#187a43'),
         red: color('--sc-pink', '#c21f63'),
+        shards,
     }
 }
 
