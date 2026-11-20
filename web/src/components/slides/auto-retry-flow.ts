@@ -580,6 +580,12 @@ function draw(
 ) {
     const p = reducedMotion ? (rawProgress < 0.5 ? 0 : 1) : rawProgress
     const id = scene.id
+    // The stall scene is two phases, not one: first the seven healthy hosts
+    // reach the collective (their shards arrive), THEN host-041 is missing
+    // from the completed set and the idle clock starts. `stallArrive` ramps
+    // over the first 35% of the scene; `waitPhase` covers the remainder.
+    const stallArrive = id === 'stall' ? clamp(p / 0.35) : 0
+    const waitPhase = id === 'stall' ? clamp((p - 0.35) / 0.65) : 0
     const failed = id === 'stall' || id === 'timeout'
     const swapping = id === 'swap'
     const swapped =
@@ -593,14 +599,18 @@ function draw(
     // host-041 fades into red over the opening of the stall instead of
     // snapping red on scene entry; it holds through the timeout and swap.
     const failRamp =
-        id === 'stall' ? smooth(clamp(p / 0.18)) : failed || swapping ? 1 : 0
+        id === 'stall'
+            ? smooth(clamp((p - 0.35) / 0.3))
+            : failed || swapping
+              ? 1
+              : 0
     // Opacity eases instead of snapping at scene boundaries: stall ramps the
     // healthy ranks down over the scene, timeout/swap hold them, restore
     // eases everybody back up as the checkpoint lands. With motion reduced
     // `p` is already quantised to 0/1, so this collapses to the old snap.
     const healthyOpacity =
         id === 'stall'
-            ? lerp(0.95, 0.45, smooth(p))
+            ? lerp(0.95, 0.45, smooth(waitPhase))
             : id === 'timeout' || id === 'swap'
               ? 0.45
               : id === 'restore'
@@ -639,7 +649,7 @@ function draw(
     // ahead of the animation.
     const packetArrived = (i: number) =>
         id === 'stall'
-            ? i > 0 && delayed(p * 1.85, i) >= 1
+            ? i > 0 && delayed(stallArrive, i) >= 1
             : id === 'batch' ||
                 id === 'batch-3004' ||
                 id === 'batch-retry' ||
@@ -787,7 +797,7 @@ function draw(
     if (id === 'stall') {
         // Seven healthy hosts tick waiting-for-you clocks; the stalled one is frozen red.
         for (let i = 1; i < ranks.length; i++) {
-            const label_ = readableClock(p * 1800)
+            const label_ = readableClock(waitPhase * 1800)
             const iy = ranks[i].y < busY ? ranks[i].y - 34 : ranks[i].y + 88
             label(
                 ctx,
@@ -804,7 +814,7 @@ function draw(
     let idleLabel = 'output flowing'
     let idleColor = palette.muted
     if (id === 'stall') {
-        idleLabel = 'idle ' + readableClock(p * 1800)
+        idleLabel = 'idle ' + readableClock(waitPhase * 1800)
         idleColor = palette.orange
     } else if (id === 'timeout') {
         idleLabel = 'idle 30:00'
@@ -934,6 +944,8 @@ function draw(
         }
         if (id === 'batch')
             return delayed(p, i) >= 1 ? shardHue : { hue: palette.muted }
+        // Continue from the purple the step-3003 collective produced: hosts
+        // hold that hue until their shard lands, instead of snapping to muted.
         if (id === 'batch-3004')
             return delayed(p, i) >= 1 ? shardHue : { hue: palette.purple }
         if (id === 'batch-retry')
@@ -975,10 +987,10 @@ function draw(
         // Swap: the spare has docked in slot 0 but has no data yet — it is
         // checkpoint-green until the retried batch is dealt to it.
         if (i === 0 && id === 'swap') return { hue: palette.green }
-        // stall/timeout hold whatever step 3004 staged: once the fresh
-        // batch lands, every healthy host keeps its shard colour while it
-        // waits at the collective (host-041 blends toward red via failRamp).
-        // save still holds the step-3003 collective result (purple).
+        // stall/timeout/swap hold exactly what step 3004 staged: every host,
+        // host-041 included, is wearing the shard hue it was dealt. The stall
+        // is expressed through opacity + the red failRamp on host-041, not by
+        // re-hueing the body, so frame 4 -> frame 5 is a continuation.
         if (id === 'save') return { hue: palette.purple }
         return shardHue
     }
@@ -1079,7 +1091,10 @@ function draw(
     if (id === 'sync' || id === 'resume' || id === 'stall') {
         ranks.forEach((rank, index) => {
             if (id === 'stall' && index === 0) return
-            const outbound = delayed(id === 'stall' ? p * 1.85 : p / 0.6, index)
+            const outbound = delayed(
+                id === 'stall' ? stallArrive : p / 0.6,
+                index,
+            )
             if (outbound > 0 && outbound < 1)
                 packet(
                     ctx,
@@ -1185,7 +1200,10 @@ function draw(
             size,
             700,
         )
-        if (affected && id === 'stall') {
+        if (affected && id === 'stall' && waitPhase > 0) {
+            const waitFade = smooth(clamp(waitPhase / 0.15))
+            ctx.save()
+            ctx.globalAlpha = waitFade
             label(
                 ctx,
                 compact ? 'stalled' : 'unresponsive',
@@ -1195,13 +1213,14 @@ function draw(
                 compact ? 24 : 18,
                 700,
             )
+            ctx.restore()
             // Node is alive; it just never sends. Heartbeat ticks, bytes don't.
-            const beat = 0.5 + 0.5 * Math.sin(p * Math.PI * 8)
+            const beat = 0.5 + 0.5 * Math.sin(waitPhase * Math.PI * 8)
             // 'size' 80 matches the host() call; LED sits in the first slot.
             const ledX = rank.x - 80 * 0.45 + 80 * 0.07 + 80 * 0.018
             const ledY = rank.y - 80 * 0.27 + (80 * 0.65) / 6
             ctx.save()
-            ctx.globalAlpha = 0.25 + 0.75 * beat
+            ctx.globalAlpha = waitFade * (0.25 + 0.75 * beat)
             ctx.fillStyle = palette.green
             ctx.shadowColor = palette.green
             ctx.shadowBlur = 6 + 6 * beat
