@@ -152,14 +152,16 @@ export const customLightTheme = withOverrides(nvimLightRole, {
             ],
             '#EEA825',
         ],
-        // @module — #01a9f4
+        // @module — oklch(from #118dc3 l c h) ≡ #118dc3. Shiki's TextMate
+        // pipeline rejects non-hex foregrounds, so the hex is used here;
+        // the oklch() spelling only survives in CSS.
         [
             [
                 'entity.name.namespace',
                 'support.module',
                 'entity.name.namespace.python',
             ],
-            '#01A9F4',
+            '#118DC3',
         ],
         // @function / defs — Function #118dc3
         [
@@ -193,7 +195,7 @@ export const customLightTheme = withOverrides(nvimLightRole, {
         // @attribute / decorators — Attribute #9a77cf
         [['entity.other.attribute-name', 'meta.function.decorator'], '#9A77CF'],
         // shell / flags
-        [['entity.name.function.call.shell'], '#01A9F4'],
+        [['entity.name.function.call.shell'], '#118DC3'],
         [
             ['constant.other.option', 'constant.other.option.dash.shell'],
             '#9A77CF',

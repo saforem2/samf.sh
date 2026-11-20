@@ -11,7 +11,7 @@
         --crust: oklch(from #e4e4e4 l c h);
         --pre-background: transparent;
         --pre-linenumber-fg: oklch(from #dddddd l c h);
-        --code-bg: oklch(from #f8f8f8 l c h);
+        --code-bg: #ffffff;
         --code-fg: oklch(from #888888 l c h);
         --bs-body-bg: var(--background1);
         --bs-border-color: var(--background2);
