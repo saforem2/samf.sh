@@ -23,8 +23,22 @@ interface Palette {
     orange: string
     green: string
     red: string
+    /** Dark theme? Drives which side of the lightness ramp ink picks. */
+    dark: boolean
     /** One hue per batch shard, resolved from the theme's badge accents. */
-    shards: string[]
+    shards: ShardTint[]
+}
+
+/** A shard hue rendered the way the mermaid diagrams render their classes. */
+interface ShardTint {
+    /** The hue itself. */
+    hue: string
+    /** Low-alpha wash of the hue, for fills. */
+    tint: string
+    /** Stroke/outline; darkened on light themes. */
+    stroke: string
+    /** Same hue moved along the lightness ramp for legible text. */
+    ink: string
 }
 
 const scenes: Scene[] = [
@@ -195,19 +209,57 @@ function toRgb(color: string): [number, number, number] | null {
     return [d[0], d[1], d[2]]
 }
 
-function relativeLuminance(cssColor: string) {
-    const rgb = toRgb(cssColor)
-    if (!rgb) return 0.5
-    const [r, g, b] = rgb.map((v) => {
-        const c = v / 255
-        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+/** Resolve a CSS colour to `oklch(L C H)` via a probe element. Going through
+ * the browser means hex, rgb(), and the theme's own oklch tokens all parse
+ * the same way, and Chrome serialises the result back as oklch. Returns null
+ * when the colour cannot be resolved. */
+function toOklch(color: string): [number, number, number] | null {
+    probeEl ??= document.createElement('span')
+    const el = probeEl
+    el.style.cssText = `position:absolute;visibility:hidden;color:oklch(from ${color} l c h)`
+    document.body.appendChild(el)
+    const resolved = getComputedStyle(el).color
+    el.remove()
+    const match =
+        /oklch\(\s*([0-9.eE+-]+)%?\s+([0-9.eE+-]+)%?\s+([0-9.eE+-]+)(?:deg|rad|turn|grad)?/.exec(
+            resolved,
+        )
+    if (!match) return null
+    return [parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3])]
 }
 
-function shardTextColor(cssColor: string) {
-    // 0.179 is the WCAG mid-gray break-even for black vs white text.
-    return relativeLuminance(cssColor) > 0.18 ? '#0b0b0b' : '#f5f5f5'
+let probeEl: HTMLSpanElement | null = null
+
+const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
+const formatOklch = (l: number, c: number, h: number, alpha?: number) =>
+    `oklch(${clamp01(l).toFixed(4)} ${c.toFixed(4)} ${h.toFixed(3)}${alpha === undefined ? '' : ` / ${alpha}`})`
+
+/** Tint/stroke/ink for one shard hue, echoing the mermaid `color-mix` tints:
+ *  a low-alpha wash of the hue for fills, the hue itself for strokes, and the
+ *  same hue moved down (light themes) or up (dark themes) the lightness ramp
+ *  for text — so every hue behaves the same and black/white flips never
+ *  appear on some tiles and not others. */
+function shardTint(cssColor: string, dark: boolean): ShardTint {
+    const parsed = toOklch(cssColor)
+    if (!parsed) {
+        // Unresolvable: keep the colour everywhere rather than inventing one.
+        return {
+            hue: cssColor,
+            tint: cssColor,
+            stroke: cssColor,
+            ink: cssColor,
+        }
+    }
+    const [l, c, h] = parsed
+    return {
+        hue: formatOklch(l, c, h),
+        tint: formatOklch(l, c, h, 0.16),
+        // Pull the stroke a little deeper on light themes so the ~1px outline holds.
+        stroke: dark ? formatOklch(l, c, h) : formatOklch(l * 0.78, c, h),
+        ink: dark
+            ? formatOklch(Math.min(0.92, l + 0.3), c * 0.9, h)
+            : formatOklch(Math.max(0.18, l * 0.58), c, h),
+    }
 }
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -272,14 +324,29 @@ function polygon(
     ctx.restore()
 }
 
+interface HostHue {
+    /** Stroke / detail hue. */
+    hue: string
+    /** Low-alpha wash for the body; defaults to the hue at low alpha. */
+    tint?: string
+    /** Stroke hue; defaults to `hue`. */
+    stroke?: string
+}
+
 function host(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     size: number,
-    color: string,
+    color: HostHue | string,
     opacity = 1,
 ) {
+    const { hue, tint, stroke } =
+        typeof color === 'string'
+            ? { hue: color, tint: undefined, stroke: undefined }
+            : color
+    const bodyFill = tint ?? hue
+    const edge = stroke ?? hue
     const left = x - size * 0.45
     const top = y - size * 0.27
     const faceWidth = size * 0.76
@@ -293,8 +360,8 @@ function host(
             { x: left + faceWidth + depth, y: top - depth },
             { x: left + faceWidth, y: top },
         ],
-        color,
-        opacity * 0.4,
+        bodyFill,
+        opacity * (tint ? 1 : 0.4),
     )
     polygon(
         ctx,
@@ -304,15 +371,15 @@ function host(
             { x: left + faceWidth + depth, y: top + faceHeight - depth },
             { x: left + faceWidth, y: top + faceHeight },
         ],
-        color,
-        opacity * 0.23,
+        bodyFill,
+        opacity * (tint ? 0.9 : 0.23),
     )
     ctx.save()
-    ctx.fillStyle = color
-    ctx.globalAlpha = opacity * 0.16
+    ctx.globalAlpha = opacity * (tint ? 1 : 0.16)
+    ctx.fillStyle = bodyFill
     ctx.fillRect(left, top, faceWidth, faceHeight)
     ctx.globalAlpha = opacity * 0.9
-    ctx.strokeStyle = color
+    ctx.strokeStyle = edge
     ctx.lineWidth = Math.max(1, size * 0.016)
     ctx.strokeRect(left, top, faceWidth, faceHeight)
     for (let i = 0; i < 3; i++) {
@@ -324,6 +391,7 @@ function host(
             ctx.lineTo(left + faceWidth, rowTop)
             ctx.stroke()
         }
+        ctx.fillStyle = edge
         ctx.fillRect(
             left + size * 0.07,
             center - size * 0.018,
@@ -340,7 +408,7 @@ function host(
 
 function batchGrid(
     ctx: CanvasRenderingContext2D,
-    shards: string[],
+    shards: ShardTint[],
     x: number,
     y: number,
 ) {
@@ -349,20 +417,19 @@ function batchGrid(
     const left = x - (tile * 4 + gap * 3) / 2
     const top = y - (tile * 2 + gap) / 2
     ctx.save()
-    ctx.lineWidth = 1
+    ctx.lineWidth = 1.25
     for (let row = 0; row < 2; row++) {
         for (let column = 0; column < 4; column++) {
             const index = row * 4 + column
+            const shard = shards[index]
             const tileX = left + column * (tile + gap)
             const tileY = top + row * (tile + gap)
-            ctx.globalAlpha = 0.32
-            ctx.fillStyle = shards[index]
-            ctx.fillRect(tileX, tileY, tile, tile)
-            ctx.globalAlpha = 0.95
-            ctx.strokeStyle = shards[index]
-            ctx.strokeRect(tileX, tileY, tile, tile)
             ctx.globalAlpha = 1
-            ctx.fillStyle = shardTextColor(shards[index])
+            ctx.fillStyle = shard.tint
+            ctx.fillRect(tileX, tileY, tile, tile)
+            ctx.strokeStyle = shard.stroke
+            ctx.strokeRect(tileX, tileY, tile, tile)
+            ctx.fillStyle = shard.ink
             ctx.font = '700 12px ' + ctx.canvas.dataset.font
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
@@ -469,17 +536,18 @@ function packet(
     point: Point,
     color: string,
     label?: string,
+    tint?: string,
+    ink?: string,
 ) {
     ctx.save()
-    ctx.fillStyle = color
-    ctx.strokeStyle = color
-    ctx.globalAlpha = 0.28
-    ctx.fillRect(point.x - 10, point.y - 10, 20, 20)
+    ctx.fillStyle = tint ?? color
     ctx.globalAlpha = 1
+    ctx.fillRect(point.x - 10, point.y - 10, 20, 20)
+    ctx.strokeStyle = color
     ctx.lineWidth = 1.5
     ctx.strokeRect(point.x - 9, point.y - 9, 18, 18)
     if (label !== undefined) {
-        ctx.fillStyle = color
+        ctx.fillStyle = ink ?? color
         ctx.font = '700 11px ' + ctx.canvas.dataset.font
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -698,9 +766,9 @@ function draw(
             const arrived = batchRetry ? delayed(p, i) >= 1 : packetArrived(i)
             ctx.fillStyle =
                 arrived && shardIndex >= 0
-                    ? palette.shards[shardIndex]
+                    ? palette.shards[shardIndex].stroke
                     : palette.muted
-            ctx.globalAlpha = arrived ? 0.95 : 0.24
+            ctx.globalAlpha = arrived ? 1 : 0.24
         } else {
             ctx.fillStyle = i < collectiveProgress ? signal : palette.muted
             ctx.globalAlpha = i < collectiveProgress ? 0.95 : 0.24
@@ -848,38 +916,51 @@ function draw(
     // alone: neutral until a colored packet actually lands on it. Passes:
     //   batch shard -> all-reduce result -> checkpoint restore.
     // State is a function of p and scene only, so frames never flicker.
-    const allReduceLanded = (i, phase, offset) =>
+    const allReduceLanded = (i: number, phase: number, offset: number) =>
         delayed((p - offset) / phase, i) >= 1
-    const hostColorFor = (i: number) => {
+    // Returns a hue to draw the host in. Shard-derived colours carry the
+    // tint/stroke pair so the body can be drawn as a tinted panel; plain
+    // string hues (purple/green/muted) are drawn as a flat wash.
+    const hostColorFor = (
+        i: number,
+    ): { hue: string; tint?: string; stroke?: string } => {
+        const shard = palette.shards[i]
+        // Body = low-alpha tint of the shard hue, stroked in the full hue —
+        // the same tint recipe the mermaid diagrams use.
+        const shardHue = {
+            hue: shard.stroke,
+            tint: shard.tint,
+            stroke: shard.stroke,
+        }
         if (id === 'batch')
-            return delayed(p, i) >= 1 ? palette.shards[i] : palette.muted
+            return delayed(p, i) >= 1 ? shardHue : { hue: palette.muted }
         if (id === 'batch-3004')
-            return delayed(p, i) >= 1 ? palette.shards[i] : palette.purple
+            return delayed(p, i) >= 1 ? shardHue : { hue: palette.purple }
         if (id === 'batch-retry')
             // The replacement host (slot 0) is still checkpoint-green until
             // its shard lands; the rest are green from the restore as well.
-            return delayed(p, i) >= 1 ? palette.shards[i] : palette.green
+            return delayed(p, i) >= 1 ? shardHue : { hue: palette.green }
         // Flip each host only when its all-reduce packet lands (delayed()
         // already staggers ranks), so purple sweeps through one host at a time.
         if (id === 'sync')
             return allReduceLanded(i, 0.4, 0.6)
-                ? palette.purple
-                : palette.shards[i]
+                ? { hue: palette.purple }
+                : shardHue
         // Resume is the same collective as sync, run on the retried batch:
         // each host keeps the shard colour it received in batch-retry and
         // flips to purple as its all-reduce packet lands, one rank at a time.
         if (id === 'resume')
             return allReduceLanded(i, 0.4, 0.6)
-                ? palette.purple
-                : palette.shards[i]
+                ? { hue: palette.purple }
+                : shardHue
         // save-3004 starts from the purple the collective just produced and
         // the batch after it deals shard colours out again from purple.
-        if (id === 'save-3004') return palette.purple
+        if (id === 'save-3004') return { hue: palette.purple }
         if (id === 'batch-next')
-            return delayed(p, i) >= 1 ? palette.shards[i] : palette.purple
+            return delayed(p, i) >= 1 ? shardHue : { hue: palette.purple }
         // done follows batch-next, which ends with every host holding its
         // shard colour; keep that state instead of snapping to a new hue.
-        if (id === 'done') return palette.shards[i]
+        if (id === 'done') return shardHue
         // Restore: at swap exit the seven surviving hosts were still wearing
         // their step-3004 shard colours while the failed slot is green (the
         // spare). Checkpoint bytes land per rank and flip each of those hosts
@@ -887,19 +968,19 @@ function draw(
         // snapping shard → purple → green across the swap/restore seam.
         if (id === 'restore')
             return p > 0.45 && delayed((p - 0.45) / 0.55, i) >= 1
-                ? palette.green
+                ? { hue: palette.green }
                 : i === 0
-                  ? palette.green
-                  : palette.shards[i]
+                  ? { hue: palette.green }
+                  : shardHue
         // Swap: the spare has docked in slot 0 but has no data yet — it is
         // checkpoint-green until the retried batch is dealt to it.
-        if (i === 0 && id === 'swap') return palette.green
+        if (i === 0 && id === 'swap') return { hue: palette.green }
         // stall/timeout hold whatever step 3004 staged: once the fresh
         // batch lands, every healthy host keeps its shard colour while it
         // waits at the collective (host-041 blends toward red via failRamp).
         // save still holds the step-3003 collective result (purple).
-        if (id === 'save') return palette.purple
-        return palette.shards[i]
+        if (id === 'save') return { hue: palette.purple }
+        return shardHue
     }
     // Draw hosts above their connections so the lines don't cross the blocks.
     ranks.forEach((rank, index) => {
@@ -915,12 +996,24 @@ function draw(
                 0.7 * (1 - moved * 0.75),
             )
         } else if (!(badHost && (swapping || swapped))) {
-            const hostColor =
+            const base = hostColorFor(index)
+            const fill =
                 badHost && (failed || swapping)
-                    ? mixColor(hostColorFor(index), palette.red, failRamp)
-                    : hostColorFor(index)
-            const opacity = healthyOpacity
-            host(ctx, rank.x, rank.y, 80, hostColor, opacity)
+                    ? {
+                          hue: mixColor(base.hue, palette.red, failRamp),
+                          tint: mixColor(
+                              base.tint ?? base.hue,
+                              palette.red,
+                              failRamp * 0.5,
+                          ),
+                          stroke: mixColor(
+                              base.stroke ?? base.hue,
+                              palette.red,
+                              failRamp,
+                          ),
+                      }
+                    : base
+            host(ctx, rank.x, rank.y, 80, fill, healthyOpacity)
         }
         if (badHost && spareInSlot)
             // The spare inherits the failed slot and follows the exact same
@@ -936,7 +1029,7 @@ function draw(
                 rank.x,
                 rank.y,
                 80,
-                mixColor(hostColorFor(0), palette.red, 1),
+                { hue: mixColor(hostColorFor(0).hue, palette.red, 1) },
                 healthyOpacity,
             )
     })
@@ -975,8 +1068,10 @@ function draw(
                 packet(
                     ctx,
                     alongRoute(rank, progress, 'in'),
-                    palette.shards[index],
+                    palette.shards[index].stroke,
                     String(index),
+                    palette.shards[index].tint,
+                    palette.shards[index].ink,
                 )
         })
     }
@@ -989,8 +1084,10 @@ function draw(
                 packet(
                     ctx,
                     alongRoute(rank, outbound, 'out'),
-                    palette.shards[index],
+                    palette.shards[index].stroke,
                     String(index),
+                    palette.shards[index].tint,
+                    palette.shards[index].ink,
                 )
             if (id !== 'stall' && p >= 0.6) {
                 const inbound = delayed((p - 0.6) / 0.4, index)
@@ -1125,7 +1222,8 @@ function draw(
     })
 }
 
-/** Resolve a custom property to a concrete color via a probe element. */
+/** Resolve a custom property to a concrete color via a probe element. Modern
+ * color functions (oklch) survive verbatim; legacy colors come back as rgb(). */
 function resolveColor(root: HTMLElement, name: string, fallback: string) {
     const probe = document.createElement('span')
     probe.style.cssText =
@@ -1140,12 +1238,20 @@ function resolveColor(root: HTMLElement, name: string, fallback: string) {
     return resolved && resolved !== 'rgba(0, 0, 0, 0)' ? resolved : fallback
 }
 
+/** Is the deck currently on a dark canvas? Reads --background0's lightness. */
+function isDarkBackground(root: HTMLElement) {
+    const background = resolveColor(root, '--background0', '#ffffff')
+    const parsed = toOklch(background)
+    return parsed ? parsed[0] < 0.5 : false
+}
+
 function paletteFor(root: HTMLElement): Palette {
     const style = getComputedStyle(root)
     const color = (name: string, fallback: string) =>
         style.getPropertyValue(name).trim() || fallback
+    const dark = isDarkBackground(root)
     const shards = shardTokens.map((token) =>
-        resolveColor(root, token, '#888888'),
+        shardTint(resolveColor(root, token, '#888888'), dark),
     )
     return {
         text: color('--foreground0', '#262626'),
@@ -1159,6 +1265,7 @@ function paletteFor(root: HTMLElement): Palette {
         orange: color('--sc-orange', '#c55500'),
         green: color('--sc-green', '#187a43'),
         red: color('--sc-pink', '#c21f63'),
+        dark,
         shards,
     }
 }

@@ -174,7 +174,9 @@
     .key-shards i {
         inline-size: 0.62em;
         block-size: 0.62em;
-        background: var(--c);
+        background: oklch(from var(--c) l c h / 0.3);
+        border: 1px solid var(--c);
+        border-radius: 2px;
         display: inline-block;
     }
     .key-recovery {

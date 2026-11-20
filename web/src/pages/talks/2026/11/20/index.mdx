@@ -277,13 +277,13 @@ Aurora was built by HPE and Intel. Thanks to the ALCF operations and user-suppor
 
 <nav class="thanks-links" aria-label="Links">
 <h3 class="thanks-links-title">Links</h3>
-<ul>
-<li><span class="thanks-link-label">This talk</span><a href="https://samf.sh/talks/2026/11/20/">samf.sh/talks/2026/11/20</a></li>
-<li><span class="thanks-link-label">Workshop</span><a href="https://sc26.conference-program.com/presentation/?id=ws_tpw126&amp;sess=sess149">4th Annual Trillion Parameter Workshop · W181abc</a></li>
-<li><span class="thanks-link-label">Code</span><a href="https://github.com/saforem2/ezpz">ezpz</a> · <a href="https://github.com/saforem2/torchtitan/tree/ezpz">torchtitan@ezpz</a> · <a href="https://github.com/saforem2/torchtitan/blob/293533196acc8543fdd4ea3f54ca9d38596d031b/torchtitan/experiments/ezpz/scripts/submit_agpt_2b_autoretry.sh">auto-retry launcher</a></li>
-<li><span class="thanks-link-label">Earlier talks</span><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a> · <a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a> · <a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a> · <a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></li>
-<li><span class="thanks-link-label">Site</span><a href="https://samf.sh">samf.sh</a> · <a href="https://github.com/saforem2/samf.sh/tree/feat/sc26-slides/web/src/pages/talks/2026/11/20">this deck’s source</a></li>
-</ul>
+<dl>
+<div class="thanks-link-row"><dt class="thanks-link-label">This talk</dt><dd><a href="https://samf.sh/talks/2026/11/20/">samf.sh/talks/2026/11/20</a></dd></div>
+<div class="thanks-link-row"><dt class="thanks-link-label">Workshop</dt><dd><a href="https://sc26.conference-program.com/presentation/?id=ws_tpw126&amp;sess=sess149">4th Annual Trillion Parameter Workshop · W181abc</a></dd></div>
+<div class="thanks-link-row"><dt class="thanks-link-label">Code</dt><dd><a href="https://github.com/saforem2/ezpz">ezpz</a> · <a href="https://github.com/saforem2/torchtitan/tree/ezpz">torchtitan@ezpz</a> · <a href="https://github.com/saforem2/torchtitan/blob/293533196acc8543fdd4ea3f54ca9d38596d031b/torchtitan/experiments/ezpz/scripts/submit_agpt_2b_autoretry.sh">auto-retry launcher</a></dd></div>
+<div class="thanks-link-row"><dt class="thanks-link-label">Earlier talks</dt><dd><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a> · <a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a> · <a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a> · <a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></dd></div>
+<div class="thanks-link-row"><dt class="thanks-link-label">Site</dt><dd><a href="https://samf.sh">samf.sh</a> · <a href="https://github.com/saforem2/samf.sh/tree/feat/sc26-slides/web/src/pages/talks/2026/11/20">this deck’s source</a></dd></div>
+</dl>
 </nav>
 </div>
 
@@ -1025,10 +1025,11 @@ flowchart TB
     .thanks-line span { font-weight: 850; }
 
     .acknowledgement {
-        width: min(52rem, 100%);
-        margin-top: 1.1rem;
+        width: 100%;
+        margin-top: 1.4rem;
         margin-bottom: 0.35rem;
-        font-size: 0.62em;
+        font-size: 0.72em;
+        line-height: 1.45;
         text-align: left;
     }
     .acknowledgement > summary { cursor: pointer; }
@@ -1049,34 +1050,44 @@ flowchart TB
     .thanks-main { min-width: 0; }
     .thanks-main .acknowledgement { width: 100%; }
     .thanks-links-title {
-        margin: 0 0 0.4rem;
-        font-size: 0.62em;
+        margin: 0 0 0.6rem;
+        font-size: 0.68em;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--foreground2);
     }
     .thanks-links {
         margin: 0;
-        padding: 0.6rem 0 0;
-        font-size: 0.6em;
-        line-height: 1.35;
+        padding: 0.85rem 0 0.2rem;
+        font-size: 0.74em;
+        line-height: 1.4;
         text-align: left;
         border-top: 1px solid var(--sc-rule);
     }
-    .thanks-links ul {
-        list-style: none;
+    .thanks-links dl {
         margin: 0;
         padding: 0;
         display: grid;
-        gap: 0.55rem;
+        gap: 0.85rem;
+    }
+    /* Label column + value column: wrapped lines align under the value,
+       not back under the label. */
+    .thanks-link-row {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        column-gap: 1.25ch;
+        align-items: baseline;
+    }
+    .thanks-link-row dt,
+    .thanks-link-row dd {
+        margin: 0;
     }
     .thanks-link-label {
-        display: inline-block;
-        min-width: 7.5ch;
         color: var(--foreground2);
-        font-size: 0.68em;
+        font-size: 0.72em;
         text-transform: uppercase;
         letter-spacing: 0.08em;
+        padding-top: 0.15em;
     }
     .thanks-links a { color: var(--sc-cyan); text-decoration: none; }
     .thanks-links a:hover { text-decoration: underline; }
