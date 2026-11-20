@@ -525,7 +525,7 @@ function stabilizeMermaidSvgLayout() {
             .getPropertyValue('--mermaid-max-height')
             .trim()
         const parsedMax = Number.parseFloat(requestedMax)
-        const unit = requestedMax.replace(/^[\d.]+/, '').trim()
+        const unit = requestedMax.replace(/^[0-9.]+/, '').trim()
         const maxHeight =
             Number.isFinite(parsedMax) && unit.startsWith('vh')
                 ? (window.innerHeight * parsedMax) / 100
