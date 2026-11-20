@@ -62,19 +62,29 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 </Slide>
 
-<Slide id="aurora">
+<Slide id="aurora" size="sm">
 
 ## Aurora, at production scale
 
 <div class="aurora-layout">
 
-<div>
+<figure class="aurora-photo">
+<img src="/talks/2026/11/20/figures/aurora-cabinets.jpg" alt="Rendering of the Aurora cabinet line at Argonne Leadership Computing Facility, with the ANL, DOE, Intel, and HPE wordmarks on the first cabinet doors" loading="eager" />
+<figcaption>Aurora · 166 cabinets · Argonne Leadership Computing Facility · HPE Cray EX · Intel® Data Center GPU Max 1550 (“Ponte Vecchio”)</figcaption>
+</figure>
 
-<div class="hero-number">10,624</div>
-<div class="hero-label">nodes · full machine<br />127,488 XPU tiles</div>
-<p class="hero-context">HPE Cray EX · Intel GPU MAX 1550 · Slingshot-11 · ALCF<sup>1</sup></p>
+<div class="aurora-specs">
 
-</div>
+<dl class="aurora-facts">
+<div><dt>Racks</dt><dd>166</dd></div>
+<div><dt>Nodes</dt><dd>10,624</dd></div>
+<div><dt>XPUs</dt><dd>127,488 <span class="aurora-fact-note">6 tiles · 2 XPUs each</span></dd></div>
+<div><dt>CPUs</dt><dd>21,248</dd></div>
+<div><dt>NICs</dt><dd>84,992 <span class="aurora-fact-note">Slingshot-11</span></dd></div>
+<div><dt>HBM</dt><dd>8 PB</dd></div>
+<div><dt>DDR5</dt><dd>10 PB</dd></div>
+</dl>
+<p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11 · Argonne Leadership Computing Facility</p>
 
 <div class="aurora-contract">
 
@@ -82,6 +92,8 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><span class="contract-label">STORAGE</span><p>Checkpoints land on shared Lustre; the next allocation reads them back.</p></div>
 <div><span class="contract-label">RESTARTS</span><p>Model, optimizer, data position, and RNG state all resume from the last checkpoint.</p></div>
 <div><span class="contract-label">STACK</span><p>SYCL and oneCCL below PyTorch, not CUDA and NCCL.</p></div>
+
+</div>
 
 </div>
 
@@ -609,47 +621,110 @@ flowchart TB
 
     .aurora-layout {
         display: grid;
-        grid-template-columns: 0.9fr 1.1fr;
-        gap: clamp(2rem, 5vw, 5rem);
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        gap: clamp(1.75rem, 3.5vw, 3.5rem);
         align-items: center;
         flex: 1;
     }
 
-    .hero-number {
-        color: var(--foreground0);
-        font-size: clamp(4.4rem, 10vw, 8.6rem);
-        font-weight: 850;
-        line-height: 0.8;
-        letter-spacing: -0.06em;
+    /* Left column: the machine itself. The render has a pure-black
+       backdrop, so it sits directly on the dark theme without a frame.
+       In the light theme the black slab is deliberate — caption it. */
+    .aurora-photo {
+        margin: 0;
+        display: grid;
+        gap: 0.6rem;
+        align-content: center;
+    }
+    .aurora-photo img {
+        width: 100%;
+        max-height: 46vh;
+        object-fit: contain;
+        object-position: center;
+        display: block;
+        border-radius: 2px;
+        background: #000;
+    }
+    .aurora-photo figcaption {
+        color: var(--foreground2);
+        font-size: 0.66em;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
     }
 
-    .hero-label {
-        margin-top: 0.7rem;
-        color: var(--sc-cyan);
+    .aurora-specs {
+        display: grid;
+        gap: 0.7rem;
+        align-content: center;
+        min-width: 0;
+    }
+
+    .aurora-facts {
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.6rem 1.1rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid var(--sc-rule);
+    }
+    .aurora-facts > div {
+        display: grid;
+        gap: 0.15rem;
+        align-content: start;
+    }
+    #aurora .hero-context { font-size: 1.02rem; line-height: 1.35; }
+    #aurora .aurora-contract p { font-size: 1.15rem; line-height: 1.3; }
+    #aurora .aurora-photo figcaption { font-size: 0.78rem; }
+    .aurora-facts dt {
+        font-size: 0.58em;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--foreground2);
+    }
+    .aurora-facts dd {
+        margin: 0;
         font-size: 1.05em;
-        font-weight: 750;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+        color: var(--foreground0);
+        font-variant-numeric: tabular-nums;
+    }
+    .aurora-fact-note {
+        display: block;
+        font-size: 0.42em;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 1.35;
+        color: var(--foreground2);
+        margin-top: 0.25em;
     }
 
     .hero-context {
-        margin-top: 1.1rem;
+        margin: 0;
         color: var(--foreground2);
-        font-size: 0.78em;
+        font-size: 0.72em;
+        line-height: 1.35;
     }
 
     .aurora-contract {
         display: grid;
-        gap: 0.7rem;
-        padding-left: 1.1rem;
-        border-left: 1px solid var(--sc-rule);
+        gap: 0.45rem;
+        padding-top: 0.1rem;
     }
 
     .aurora-contract > div {
         display: grid;
-        grid-template-columns: 11ch 1fr;
+        grid-template-columns: 9ch 1fr;
         align-items: baseline;
-        gap: 1rem;
-        padding-bottom: 0.55rem;
+        gap: 0.9rem;
+        padding-bottom: 0.3rem;
         border-bottom: 1px solid var(--sc-rule);
+    }
+    .aurora-contract > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
     }
 
     .aurora-contract .contract-label,
@@ -661,15 +736,15 @@ flowchart TB
 
     .aurora-contract p {
         color: var(--foreground2);
-        font-size: 0.76em;
+        font-size: 0.66em;
+        line-height: 1.28;
+        margin: 0;
     }
 
-    .takeaway-line {
-        margin-top: auto;
-        padding-top: 0.65rem;
-        border-top: 1px solid var(--sc-rule);
-        color: var(--foreground2);
-        font-size: 0.75em;
+    #aurora .takeaway-line {
+        margin-top: 0.6rem;
+        padding-top: 0.5rem;
+        font-size: 0.7em;
     }
 
     .takeaway-line span {
@@ -1052,8 +1127,8 @@ flowchart TB
        link labels against the thanks-line. */
     .thanks-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(21rem, 30rem);
-        column-gap: clamp(2.5rem, 5vw, 5rem);
+        grid-template-columns: minmax(0, 1fr) minmax(28rem, 38rem);
+        column-gap: clamp(2rem, 4vw, 4rem);
         row-gap: 1.5rem;
         align-items: start;
         width: 100%;
@@ -1061,7 +1136,7 @@ flowchart TB
     .thanks-main { min-width: 0; }
     .thanks-main .acknowledgement { width: 100%; }
     .thanks-links-title {
-        margin: 0 0 0.9rem;
+        margin: 0 0 1.1rem;
         font-size: 0.72em;
         letter-spacing: 0.16em;
         text-transform: uppercase;
@@ -1069,42 +1144,57 @@ flowchart TB
     }
     .thanks-links {
         margin: 0;
-        padding: 1.1rem 0 0.4rem;
-        font-size: 0.78em;
-        line-height: 1.4;
+        padding: 1.25rem 0 0.4rem;
+        font-size: 0.82em;
+        line-height: 1.45;
         text-align: left;
         border-top: 1px solid var(--sc-rule);
+        /* One shared label column for every row: labels sit flush left and
+           values start on a single tab stop, instead of each row sizing its
+           own max-content label column. That per-row sizing is what made the
+           rail read as cramped and uneven. */
+        --links-label-col: 10.25rem;
+        display: grid;
+        grid-template-columns: var(--links-label-col) minmax(0, 1fr);
+        column-gap: 1.5rem;
+        align-content: start;
     }
+    .thanks-links-title { grid-column: 1 / -1; }
     .thanks-links dl {
         margin: 0;
         padding: 0;
         display: grid;
-        gap: 0.9rem;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        row-gap: 1.1rem;
     }
-    /* Label column + value column: wrapped lines align under the value,
-       not back under the label. */
-    .thanks-link-row {
-        display: grid;
-        grid-template-columns: max-content minmax(0, 1fr);
-        column-gap: 1.5ch;
-        align-items: start;
-    }
-    .thanks-link-row dt,
-    .thanks-link-row dd {
+    /* Wrapped lines land under the value (subgrid column 2), not back under
+       the label. */
+    .thanks-link-row { display: contents; }
+    .thanks-link-row > dt,
+    .thanks-link-row > dd {
         margin: 0;
     }
+    .thanks-link-row dt { grid-column: 1; }
+    .thanks-link-row dd { grid-column: 2; }
     .thanks-link-row dd.stacked a {
         display: block;
-        padding-block: 0.1em;
+        padding-block: 0.05em;
+        line-height: 1.32;
+        text-wrap: pretty;
     }
     .thanks-link-label {
         color: var(--foreground2);
         font-size: 0.72em;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        padding-top: 0.15em;
+        padding-top: 0.2em;
     }
-    .thanks-links a { color: var(--sc-cyan); text-decoration: none; }
+    .thanks-links a {
+        color: var(--sc-cyan);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
     .thanks-links a:hover { text-decoration: underline; }
     @media (max-width: 900px) {
         .thanks-layout {
@@ -1119,6 +1209,7 @@ flowchart TB
 
     @media (max-width: 700px) {
         .title-panel { width: 88vw; }
+        .aurora-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .aurora-layout,
         .stack-grid,
         .failure-layout,
