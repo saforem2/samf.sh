@@ -15,6 +15,7 @@ interface Point {
 
 interface Palette {
     text: string
+    soft: string
     muted: string
     background: string
     cyan: string
@@ -1065,7 +1066,7 @@ function draw(
         const displayedName = compact
             ? name.replace('host-', '').replace('spare-007', 'spare')
             : name
-        const size = compact ? 29 : 22
+        const size = compact ? 25 : 19
         const labelY = rank.y + 65
         ctx.save()
         ctx.font = '700 ' + size + 'px ' + ctx.canvas.dataset.font
@@ -1083,7 +1084,7 @@ function draw(
             displayedName,
             rank.x,
             labelY,
-            affected && failed ? palette.red : palette.text,
+            affected && failed ? palette.red : palette.soft,
             size,
             700,
         )
@@ -1148,6 +1149,9 @@ function paletteFor(root: HTMLElement): Palette {
     )
     return {
         text: color('--foreground0', '#262626'),
+        // Host-name labels: one step down from primary text so the lattice
+        // of host IDs doesn't compete with the animated state.
+        soft: color('--foreground1', '#666666'),
         muted: color('--foreground2', '#777777'),
         background: color('--background0', '#ffffff'),
         cyan: color('--sc-cyan', '#00779f'),
