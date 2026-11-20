@@ -340,6 +340,27 @@
             gap: 0.8em;
         }
 
+        /* Stack the control row under the trace: the row needs ~243px of
+           fixed content (buttons + range min-inline-size + counter), which
+           is narrower than a phone slide but wider than the space left next
+           to the trace, so let it take the full row instead of overflowing
+           the card's border-box. */
+        .event-bar {
+            flex-direction: column;
+            align-items: stretch;
+            row-gap: 0.4em;
+        }
+
+        .event-trace {
+            flex: 1 1 auto;
+        }
+
+        .replay-controls:not([hidden]) {
+            flex: 1 1 auto;
+            max-inline-size: none;
+            inline-size: 100%;
+        }
+
         .retry-story {
             grid-row: 1;
             border-inline-start: 0;

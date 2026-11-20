@@ -117,9 +117,13 @@ const { kind, fallback, label, compact = false } = Astro.props
             min-height: 0;
         }
         .sc26-chart:not(.compact) .canvas-frame {
-            height: auto;
+            /* Definite height, not `auto`: Chart.js with
+               maintainAspectRatio:false sizes the canvas from the frame's
+               height, and a content-derived frame lets the two feed each
+               other — the canvas grows forever and the slide never settles. */
+            height: clamp(220px, 48vh, 380px);
             flex: 0 0 auto;
-            min-height: clamp(220px, 48vh, 380px);
+            min-height: 0;
         }
     }
     /* Compact panels share the eval grid height, but on narrow phones they

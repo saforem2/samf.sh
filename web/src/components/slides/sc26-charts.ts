@@ -49,6 +49,24 @@ const ratio = (reference[0] / match[0]).toFixed(1)
 // https://docs.wandb.ai/models/app/features/panels/line-plot/smoothing
 const WAND_SMOOTHING = 0.6
 const WAND_VIEWPORT_SCALE = 1000
+// Centred rolling median; used to pre-filter single-step spikes ahead of
+// the EMA. The optimizer grad series is downsampled to ~2400 points over
+// ~4.7T tokens (~2B tokens per bucket), so a half-window of 8 spans roughly
+// +/-16B tokens: wide enough that a single resumed-from-checkpoint step
+// cannot move it, narrow enough that the real level shifts survive.
+function medianPrefilter(rows: { x: number; y: number }[], half: number) {
+    const ys = rows.map((r) => r.y)
+    return rows.map((row, i) => {
+        const lo = Math.max(0, i - half)
+        const hi = Math.min(ys.length, i + half + 1)
+        const window = ys
+            .slice(lo, hi)
+            .slice()
+            .sort((a, b) => a - b)
+        return { x: row.x, y: window[Math.floor(window.length / 2)] }
+    })
+}
+
 function twema(rows: { x: number; y: number }[], w = WAND_SMOOTHING) {
     if (!rows.length) return rows
     const weight = Math.min(Math.sqrt(w), 0.999)
@@ -73,12 +91,22 @@ function dataset(
     rows: number[][],
     column: number,
     pointRadius: number,
-    smooth = false,
+    smooth: false | 'twema' | 'robust' = false,
 ) {
     const data = rows.map((row) => ({ x: row[0] / 1000, y: row[column] }))
+    // 'robust' pre-filters single-step grad-norm explosions with a short
+    // centred median before the W&B-style EMA, so a one-step spike cannot
+    // drag the smoothed line up for hundreds of tokens (plain TWEMA lets a
+    // single 120-sigma blip dominate for the rest of the panel).
+    const smoothed =
+        smooth === 'twema'
+            ? twema(data)
+            : smooth === 'robust'
+              ? twema(medianPrefilter(data, 8))
+              : data
     return {
         label,
-        data: smooth ? twema(data) : data,
+        data: smoothed,
         borderColor: color,
         backgroundColor: color,
         borderWidth: smooth ? 3 : 2.6,
@@ -313,7 +341,10 @@ function mount(
                             optGrad ? run.grad : run.loss,
                             1,
                             0,
-                            true,
+                            // Grad norms: median-prefilter so single-step
+                            // spikes don't hold the average hostage; loss is
+                            // already smooth, keep plain TWEMA.
+                            optGrad ? 'robust' : 'twema',
                         ),
                     ],
                 )
