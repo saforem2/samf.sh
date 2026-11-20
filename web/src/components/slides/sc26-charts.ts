@@ -286,21 +286,21 @@ function mount(
     ]
     const stageMarksPlugin: Plugin<'line'> = {
         id: 'sc26StageMarks',
-        afterDatasetsDraw({ ctx, scales, chartArea }) {
+        afterDatasetsDraw(chart) {
             if (!fullLoss) return
+            const { ctx, scales, chartArea } = chart
+            const yScale = scales.y
+            const fontPx = Math.round(
+                fontSizeFor(frameWidth(), frameHeight()) * 0.62,
+            )
             ctx.save()
             ctx.setLineDash([6, 5])
             ctx.strokeStyle = withAlpha(readVar('--foreground2', color), 0.45)
             ctx.lineWidth = 1.5
             ctx.fillStyle = color
-            ctx.font =
-                '500 ' +
-                Math.round(fontSizeFor(frameWidth(), frameHeight()) * 0.62) +
-                'px ' +
-                family
+            ctx.font = '500 ' + fontPx + 'px ' + family
             ctx.textAlign = 'right'
             ctx.textBaseline = 'bottom'
-            let row = 0
             for (const { t, label } of stageMarks) {
                 const x = scales.x.getPixelForValue(t)
                 if (x < chartArea.left || x > chartArea.right) continue
@@ -308,19 +308,22 @@ function mount(
                 ctx.moveTo(x, chartArea.top)
                 ctx.lineTo(x, chartArea.bottom)
                 ctx.stroke()
-                // Stagger the labels vertically so adjacent markers at 7.06 and 7.77 don't collide.
-                ctx.fillText(
-                    label,
-                    x - 8,
-                    chartArea.bottom -
-                        6 -
-                        row *
-                            (Math.round(
-                                fontSizeFor(frameWidth(), frameHeight()) * 0.72,
-                            ) +
-                                4),
-                )
-                row += 1
+                // Sit each label just above the highest visible curve point in
+                // the window to its left, so it tracks the curves instead of
+                // the axis floor.
+                const lo = t - 0.9
+                let peak = -Infinity
+                chart.data.datasets.forEach((ds, i) => {
+                    if (!chart.isDatasetVisible(i)) return
+                    for (const pt of ds.data as { x: number; y: number }[]) {
+                        if (pt.x >= lo && pt.x <= t && pt.y > peak) peak = pt.y
+                    }
+                })
+                const anchor =
+                    peak === -Infinity
+                        ? chartArea.top + fontPx + 8
+                        : yScale.getPixelForValue(peak) - (fontPx + 6)
+                ctx.fillText(label, x - 8, anchor)
             }
             ctx.restore()
         },

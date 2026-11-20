@@ -1715,31 +1715,27 @@ body.slides-print-mode .slide-web-link {
     }
 }
 
-/* The corner logo is position:fixed with nothing reserving space for it,
-   so a wide figcaption or a full-measure paragraph runs underneath. Pad
-   the last flow child of each slide out of the logo's corner instead of
-   moving the logo -- the logo placement is a brand decision, the collision
-   is a layout one. Width covers the mark plus its right offset. A plain
-   :last-child would land on the hidden <aside is-="notes"> that most
-   slides end with, so count only visible flow children. */
+/* The corner logo is position:fixed at the bottom-right of the viewport,
+   so the content it can collide with is the LAST block on the slide, not the
+   widest. Reserve vertical room for it on that block instead of stealing
+   inline-size from every last child. A plain :last-child would land on the
+   hidden <aside is-="notes"> that most slides end with, so count only
+   visible flow children.
+
+   --deck-logo-gutter is in lh: the mark sits 1lh + 0.5lh above the viewport
+   bottom and is 1.6lh tall, so it occupies the bottom ~1.6lh of the
+   slide-inner box (its bottom edge is 0.5lh above the slide-inner's bottom
+   edge) — plus a small breathing margin. The old rule used a 15ch inline
+   gutter, which cost full-width figures ~200px of width even though the
+   logo is only ~1.6lh tall. */
 [is-~='slide']
     .slide-inner
     > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
-    /* Margin, not padding: padding moved the right edge of a callout's
-       title row (and its +/x toggle) 9ch inside the box. */
-    margin-inline-end: var(--deck-logo-gutter, 0);
-    /* A child sized `width: 100%` (e.g. .sc26-chart) does not shrink to
-       absorb the margin — without this cap the gutter pushed the content
-       76px past the viewport and gave the slide a phantom horizontal
-       scrollbar. Cap the width so the pair always fits the content box.
-       Callouts are exempt: their width is governed by the prose measure in
-       @layer components, and this unlayered cap used to override it — the
-       LAST callout on a slide (it's the last flow child) rendered ~110px
-       wider than the identical callouts above it. The margin above still
-       reserves the logo's corner. */
-    &:not(.callout) {
-        max-width: calc(100% - var(--deck-logo-gutter, 0px));
-    }
+    /* Margin, not padding: reserving on the block axis keeps full-width
+       figures and charts clear of a bottom-right mark without narrowing them.
+       No max-height cap — clamping the last flow child's height squashes
+       flex/figure children and defeats their own aspect-ratio sizing. */
+    margin-block-end: var(--deck-logo-gutter, 0);
 }
 /* Gutter applies only where the logo is actually visible. Keep these bounds
    identical to the hide rule above, or short-wide decks pay for a gutter
@@ -1748,9 +1744,9 @@ body.slides-print-mode .slide-web-link {
     [is-~='presentation']:not(:has(#title-slide[data-current]))
         [is-~='slide'][data-current]
         .slide-inner {
-        /* The ALCF lockup is ~6.6x wider than tall; at 1.6lh this is
-           about 14ch of horizontal room plus breathing space. */
-        --deck-logo-gutter: 15ch;
+        /* Mark is 1.6lh tall starting 0.5lh above the slide-inner bottom;
+           2.5lh leaves the bottom row of the last block clear of it. */
+        --deck-logo-gutter: 2.5lh;
     }
 }
 
