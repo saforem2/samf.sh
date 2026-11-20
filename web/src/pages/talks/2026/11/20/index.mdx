@@ -70,7 +70,7 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 <figure class="aurora-photo">
 <img src="/talks/2026/11/20/figures/ALCF_Aurora_16x9.png" alt="Aurora cabinets at the Argonne Leadership Computing Facility" loading="eager" />
-<figcaption>Aurora cabinets, Argonne Leadership Computing Facility · ALCF / Argonne National Laboratory</figcaption>
+<figcaption>Aurora cabinets, Argonne Leadership Computing Facility · <a href="https://www.alcf.anl.gov/sites/default/files/2024-07/Aurora_FactSheet_2024.pdf">ALCF Aurora Fact Sheet (PDF)</a></figcaption>
 </figure>
 
 <div class="aurora-specs">
@@ -623,9 +623,19 @@ flowchart TB
     }
     .aurora-photo figcaption {
         color: var(--foreground2);
-        font-size: 0.66em;
+        font-size: 0.78rem;
         line-height: 1.35;
         letter-spacing: 0.01em;
+    }
+    .aurora-photo figcaption a {
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+        text-underline-offset: 0.15em;
+    }
+    .aurora-photo figcaption a:hover {
+        color: var(--foreground0);
+        text-decoration-color: currentColor;
     }
 
     .aurora-specs {
