@@ -8,6 +8,8 @@ interface Props {
         | 'arc_easy'
         | 'arc_challenge'
         | 'winogrande'
+        | `sft-${string}`
+        | `grpo-${string}`
     fallback?: string
     label: string
     compact?: boolean
@@ -128,10 +130,9 @@ const { kind, fallback, label, compact = false } = Astro.props
     }
     /* Backup slides set their own heights via flex stretch; don't fight them
        with the fixed compact clamp. */
-    :global(.sc-eval-grid) .compact .canvas-frame {
-        height: auto;
-        min-height: 0;
-    }
+    :global(.sc-eval-grid) .compact .canvas-frame,
+    /* Post-training panels: the deck sizes .canvas-frame itself via
+       .sc-post-grid .canvas-frame, so don't override it here. */
     @media (max-width: 700px) {
         .compact .canvas-frame {
             height: auto;
@@ -144,10 +145,16 @@ const { kind, fallback, label, compact = false } = Astro.props
         display: none;
     }
     @media print {
+        /* Charts with a fallback image swap to it for print. Charts
+           without one print the live canvas — the legend and stage
+           sentinels carry their own layout, so the frame still has height. */
         .sc26-chart[data-ready] > img {
+            display: none;
+        }
+        .sc26-chart[data-ready]:has(> img) > img {
             display: block;
         }
-        .sc26-chart .canvas-frame {
+        .sc26-chart[data-ready]:has(> img) .canvas-frame {
             display: none;
         }
     }

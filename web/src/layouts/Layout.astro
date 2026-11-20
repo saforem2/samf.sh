@@ -460,7 +460,11 @@ const fontFaceCss = [
                     visibility 0s linear 0.15s;
             }
             .mermaid-viewport:hover .mermaid-controls,
-            .mermaid-viewport:focus-within .mermaid-controls {
+            /* Keyboard users land on the outer .mermaid block, not the
+               viewport, so reveal on either focus scope. */
+            .mermaid-viewport:focus-within .mermaid-controls,
+            .mermaid.mermaid-interactive:focus-within .mermaid-controls,
+            .mermaid.mermaid-interactive:focus .mermaid-controls {
                 opacity: 1;
                 visibility: visible;
                 transition:

@@ -292,7 +292,7 @@ Stop here. Leave the links on screen for questions.
 ## Backup: SophiaG at 50M tokens per batch
 
 <div class="sc-fill-grid">
-    <SC26Chart kind="optimizer-loss" fallback="/talks/2026-06-03/figures/optimizer-comparison.svg" label="Optimizer comparison: training loss versus consumed tokens, W&B filters applied" />
+    <SC26Chart kind="optimizer-loss" label="Optimizer comparison: training loss versus consumed tokens, W&B filters applied" />
     <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus consumed tokens, W&B filters applied" />
 </div>
 
@@ -300,24 +300,41 @@ Stop here. Leave the links on screen for questions.
 
 </Slide>
 
-<Slide id="post-training-backup">
+<Slide id="post-training-sft">
 
-## Backup: post-training the 2B
+## Backup: post-training the 2B — SFT
 
 <div class="sc-post-grid">
-    <figure class="sc-post-figure">
-        <img src="/talks/2026/11/20/figures/post-training-sft.png" alt="SFT training curves for AuroraGPT-2B on tulu_math_uc_mix: loss, grad-norm, learning rate, token accuracy, entropy, and tokens seen versus global step" />
-        <figcaption>SFT (tulu_math_uc_mix): loss / grad-norm / LR / token accuracy / entropy / tokens seen vs. global step. Final loss 0.77 over ~4.5B tokens.</figcaption>
-    </figure>
-    <figure class="sc-post-figure">
-        <img src="/talks/2026/11/20/figures/post-training-grpo.png" alt="GRPO training curves on sum_digits for the SFT'd 2B: reward climbs from about 0.4 to about 0.9 over 1000 steps" />
-        <figcaption>GRPO on the SFT'd 2B (sum_digits, 1000 steps, 8 nodes): reward climbs ~0.4 -&gt; ~0.9; accuracy is what moves, format was already saturated.</figcaption>
-    </figure>
+    <SC26Chart compact kind="sft-loss" label="SFT training loss versus global step" />
+    <SC26Chart compact kind="sft-grad-norm" label="SFT gradient norm versus global step" />
+    <SC26Chart compact kind="sft-lr" label="SFT learning rate versus global step (×1e-5)" />
+    <SC26Chart compact kind="sft-accuracy" label="SFT mean token accuracy versus global step" />
+    <SC26Chart compact kind="sft-entropy" label="SFT entropy versus global step" />
+    <SC26Chart compact kind="sft-tokens" label="SFT cumulative tokens (billions) versus global step" />
 </div>
 
-<p class="sc-detail">SFT gives the capability (0.205 GSM8K-CoT after two-stage SFT); GRPO polishes format/accuracy on an already-solved task; the base model's ceiling is the binding constraint.</p>
+<p class="sc-backup-legend">SFT (tulu_math_uc_mix): loss / grad-norm / LR / token accuracy / entropy / tokens seen vs. global step. Final loss 0.77 over ~4.5B tokens; loss curve from the failover-chain logs (72 logged steps).</p>
 
-<p class="sc-backup-legend">Full write-up: <a href="https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/production/POST-TRAINING-2B.md">POST-TRAINING-2B.md</a></p>
+<p class="sc-detail">SFT gives the capability; the base model is the ceiling.</p>
+
+</Slide>
+
+<Slide id="post-training-grpo">
+
+## Backup: post-training the 2B — GRPO
+
+<div class="sc-post-grid">
+    <SC26Chart compact kind="grpo-reward" label="GRPO total reward versus step, EWMA with raw trace" />
+    <SC26Chart compact kind="grpo-acc-reward" label="GRPO accuracy reward versus step, EWMA with raw trace" />
+    <SC26Chart compact kind="grpo-fmt-reward" label="GRPO format reward versus step, EWMA" />
+    <SC26Chart compact kind="grpo-length" label="GRPO length penalty versus step, EWMA" />
+    <SC26Chart compact kind="grpo-entropy" label="GRPO entropy versus step, EWMA" />
+    <SC26Chart compact kind="grpo-grad-norm" label="GRPO gradient norm versus step, EWMA with raw trace" />
+</div>
+
+<p class="sc-backup-legend">GRPO on the SFT'd 2B (sum_digits, 1000 steps, 8 nodes): accuracy reward ~0.45 → ~0.77 (raw trace max ~0.95); format reward saturated by ~step 60. Raw trace lightly decimated; trainer state lives on Sunspot.</p>
+
+<p class="sc-detail">GRPO polishes an already-solved task. Full write-up: <a href="https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/production/POST-TRAINING-2B.md">POST-TRAINING-2B.md</a></p>
 
 </Slide>
 
@@ -1406,10 +1423,9 @@ flowchart TB
         }
         .sc-eval-grid .sc26-chart .canvas-frame,
         .sc-eval-grid .sc26-chart.compact .canvas-frame {
-            height: auto;
+            height: clamp(150px, 24vh, 240px);
             flex: 0 0 auto;
             min-height: 0;
-            aspect-ratio: 16 / 7;
         }
         /* iPhone-class viewports: shrink the caption so the stack fits
            without scrolling. */
@@ -1446,11 +1462,11 @@ flowchart TB
         }
     }
     .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
-    .sc-post-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 1.5rem; flex: 0 0 auto; align-items: start; }
-    .sc-post-figure { margin: 0; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
-    .sc-post-figure img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; border-radius: 4px; }
-    .sc-post-figure figcaption { font-size: clamp(0.7rem, 1.15vw, 0.95rem); line-height: 1.3; color: var(--foreground1, var(--foreground0)); }
+    .sc-post-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem 1rem; flex: 0 0 auto; align-items: start; }
+    .sc-post-grid .sc26-chart.compact { display: flex; flex-direction: column; min-height: 0; }
+    .sc-post-grid .sc26-chart.compact .canvas-frame { height: clamp(180px, 26vh, 320px); min-height: 0; --sc26-frame-min: 0px; }
     @media (max-width: 700px) {
         .sc-post-grid { grid-template-columns: minmax(0, 1fr); }
+        .sc-post-grid .sc26-chart.compact .canvas-frame { height: clamp(150px, 24vh, 240px); }
     }
 `}</style>

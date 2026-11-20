@@ -2,6 +2,7 @@ import Chart from 'chart.js/auto'
 import type { Plugin } from 'chart.js'
 import { evaluations, loss } from './sc26-chart-data'
 import { optimizerHistories } from './sc26-optimizer-data'
+import { sftTrajectory, grpoCurves } from './sc26-posttrain-data'
 
 // Canvas can't resolve CSS variables, so read the theme's resolved font stack
 // off the root element at init. Falls back to the mono stack if empty.
@@ -96,6 +97,13 @@ function mount(
     const optLoss = root.dataset.sc26Chart === 'optimizer-loss'
     const optGrad = root.dataset.sc26Chart === 'optimizer-grad'
     const optimizer = optLoss || optGrad
+    const sftPanel = root.dataset.sc26Chart?.startsWith('sft-')
+        ? root.dataset.sc26Chart.slice(4)
+        : ''
+    const grpoPanel = root.dataset.sc26Chart?.startsWith('grpo-')
+        ? root.dataset.sc26Chart.slice(5)
+        : ''
+    const postTrain = Boolean(sftPanel || grpoPanel)
     const task = tasks.indexOf(root.dataset.sc26Chart ?? '')
     const compact = root.classList.contains('compact')
     // Resolve any CSS <color> (oklch(), color-mix(), vars, …) to an rgb() string
@@ -163,85 +171,185 @@ function mount(
     const baseSize = fontSizeFor(frameWidth(), frameHeight())
     const font = { family, size: baseSize, weight: 400 as const }
     const axisTitleFont = { family, size: baseSize, weight: 700 as const }
-    const datasets = optimizer
-        ? optimizerHistories
-              .map((run, i) =>
-                  // W&B full-fidelity view: faint raw trace + smoothed line on top.
-                  [
-                      dataset(
-                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
-                          withAlpha(optColors[i], 0.18),
-                          optGrad ? run.grad : run.loss,
-                          1,
-                          0,
-                      ),
-                      dataset(
-                          ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
-                          optColors[i],
-                          optGrad ? run.grad : run.loss,
-                          1,
-                          0,
-                          true,
-                      ),
-                  ],
-              )
-              .flat()
-        : isLoss
-          ? Object.values(loss).map((rows, i) => ({
-                // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
-                // MDS dashed grey · 2B 256N solid pink · 2B 512N dotted blue ·
-                // 20B 256N solid orange · 20B 512N dotted green
-                ...dataset(
-                    labels[i],
-                    i === 0
-                        ? withAlpha(colors[0], 0.75)
-                        : withAlpha(colors[i], i === 1 || i === 3 ? 0.62 : 1),
-                    rows,
-                    1,
-                    0,
-                ),
-                borderWidth: i === 0 ? 4 : i >= 3 ? 6.5 : 5,
-                borderDash: (
+    // Post-training panels: single-series line charts. SFT is reconstructed
+    // from the logged stdout (72 points); GRPO is the EWMA + raw trace
+    // recovered from the paper's figure (trainer_state.json is not available
+    // off Sunspot). One panel per metric, the same way the paper's figures
+    // lay them out in a 2x3 grid.
+    const sftKey: Record<string, keyof typeof sftTrajectory> = {
+        loss: 'loss',
+        'grad-norm': 'grad_norm',
+        lr: 'lr',
+        accuracy: 'mean_token_accuracy',
+        entropy: 'entropy',
+        tokens: 'tokens_cum_B',
+    }
+    const grpoKey: Record<string, keyof typeof grpoCurves.bold> = {
+        reward: 'reward',
+        'acc-reward': 'acc_reward',
+        'fmt-reward': 'fmt_reward',
+        length: 'length_pen',
+        entropy: 'entropy',
+        'grad-norm': 'grad_norm',
+    }
+    const smoothed = Object.fromEntries(
+        Object.entries(grpoCurves.raw).map(([k, rows]) => [
+            k,
+            twema(rows.map(([x, y]) => ({ x, y }))),
+        ]),
+    ) as Record<string, { x: number; y: number }[]>
+    const sftTitles: Record<string, string> = {
+        loss: 'SFT loss',
+        'grad-norm': 'SFT gradient norm',
+        lr: 'SFT learning rate (×1e-5)',
+        accuracy: 'SFT token accuracy',
+        entropy: 'SFT entropy (nats)',
+        tokens: 'SFT tokens seen (B)',
+    }
+    const grpoTitles: Record<string, string> = {
+        reward: 'GRPO reward (EWMA)',
+        'acc-reward': 'GRPO accuracy reward (EWMA)',
+        'fmt-reward': 'GRPO format reward (EWMA)',
+        length: 'GRPO length penalty (EWMA)',
+        entropy: 'GRPO entropy (EWMA)',
+        'grad-norm': 'GRPO gradient norm (EWMA)',
+    }
+    const grpoPanelColor = readVar('--green', '#00897b')
+    const sftCurveColor = readVar('--blue', '#1976d2')
+    const postDatasets = postTrain
+        ? sftPanel
+            ? [
+                  {
+                      label: sftPanel,
+                      data: sftTrajectory.step.map((step, i) => ({
+                          x: step,
+                          y:
+                              sftPanel === 'lr'
+                                  ? (sftTrajectory.lr[i] as number) * 1e5
+                                  : (sftTrajectory[sftKey[sftPanel]][
+                                        i
+                                    ] as number),
+                      })),
+                      borderColor: sftCurveColor,
+                      backgroundColor: sftCurveColor,
+                      borderWidth: 2.4,
+                      pointRadius: 2.4,
+                      pointHoverRadius: 5,
+                  },
+              ]
+            : [
+                  ...(grpoCurves.raw[
+                      grpoKey[grpoPanel] as keyof typeof grpoCurves.raw
+                  ].length > 1
+                      ? [
+                            {
+                                label: `${grpoPanel} (raw)`,
+                                data: grpoCurves.raw[
+                                    grpoKey[
+                                        grpoPanel
+                                    ] as keyof typeof grpoCurves.raw
+                                ].map(([x, y]) => ({ x, y })),
+                                borderColor: withAlpha(grpoPanelColor, 0.5),
+                                backgroundColor: withAlpha(grpoPanelColor, 0.5),
+                                borderWidth: 1.1,
+                                borderDash: [2, 2],
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                            },
+                        ]
+                      : []),
+                  {
+                      label: grpoPanel,
+                      data: smoothed[grpoKey[grpoPanel]],
+                      borderColor: grpoPanelColor,
+                      backgroundColor: grpoPanelColor,
+                      borderWidth: 2.4,
+                      pointRadius: 0,
+                      pointHoverRadius: 5,
+                  },
+              ]
+        : null
+    const datasets = postDatasets
+        ? postDatasets
+        : optimizer
+          ? optimizerHistories
+                .map((run, i) =>
+                    // W&B full-fidelity view: faint raw trace + smoothed line on top.
                     [
-                        [7, 6],
-                        [],
-                        [10, 4, 1.5, 4],
-                        [],
-                        [10, 4, 1.5, 4],
-                    ] as number[][]
-                )[i],
-                pointRadius: 0,
-                pointBorderWidth: 1,
-                // Loss chart reveal sequence: MDS is the resting state,
-                // first press adds the 2B TT pair, second adds the 20B runs.
-                hidden: fullLoss && i >= 1,
-                sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
-            }))
-          : evaluations
-                .map((run, i) => ({
-                    // Eval panels share the production-loss family:
-                    // MDS = dashed grey, 2B 256N = solid pink, 2B 512N = dotted blue,
-                    // 20B 512N = dotted green.
-                    ...dataset(
-                        run.label,
-                        i === 0
-                            ? colors[0]
-                            : [colors[1], colors[2], colors[4]][(i - 1) % 3],
-                        run.rows,
-                        task + 1,
-                        compact ? 3 : 6,
-                    ),
-                    borderDash:
-                        i === 0 ? [7, 6] : i === 2 ? [10, 4, 1.5, 4] : [],
-                    borderWidth: i === 0 ? 2 : 2.6,
-                    pointStyle: (
-                        ['crossRot', 'circle', 'rect', 'triangle'] as const
-                    )[i],
-                }))
-                .filter(
-                    (_, i) =>
-                        compact || i === 0 || i === 1 || i === 2 || i === 3,
+                        dataset(
+                            ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i] + ' (raw)',
+                            withAlpha(optColors[i], 0.18),
+                            optGrad ? run.grad : run.loss,
+                            1,
+                            0,
+                        ),
+                        dataset(
+                            ['LAMB', 'Muon', 'AdamW', 'SophiaG'][i],
+                            optColors[i],
+                            optGrad ? run.grad : run.loss,
+                            1,
+                            0,
+                            true,
+                        ),
+                    ],
                 )
+                .flat()
+          : isLoss
+            ? Object.values(loss).map((rows, i) => ({
+                  // Index 0..4: MDS, 2B 256N, 2B 512N, 20B 256N, 20B 512N.
+                  // MDS dashed grey · 2B 256N solid pink · 2B 512N dotted blue ·
+                  // 20B 256N solid orange · 20B 512N dotted green
+                  ...dataset(
+                      labels[i],
+                      i === 0
+                          ? withAlpha(colors[0], 0.75)
+                          : withAlpha(colors[i], i === 1 || i === 3 ? 0.62 : 1),
+                      rows,
+                      1,
+                      0,
+                  ),
+                  borderWidth: i === 0 ? 4 : i >= 3 ? 6.5 : 5,
+                  borderDash: (
+                      [
+                          [7, 6],
+                          [],
+                          [10, 4, 1.5, 4],
+                          [],
+                          [10, 4, 1.5, 4],
+                      ] as number[][]
+                  )[i],
+                  pointRadius: 0,
+                  pointBorderWidth: 1,
+                  // Loss chart reveal sequence: MDS is the resting state,
+                  // first press adds the 2B TT pair, second adds the 20B runs.
+                  hidden: fullLoss && i >= 1,
+                  sc26Stage: fullLoss ? (i === 0 ? 1 : i <= 2 ? 2 : 3) : 0,
+              }))
+            : evaluations
+                  .map((run, i) => ({
+                      // Eval panels share the production-loss family:
+                      // MDS = dashed grey, 2B 256N = solid pink, 2B 512N = dotted blue,
+                      // 20B 512N = dotted green.
+                      ...dataset(
+                          run.label,
+                          i === 0
+                              ? colors[0]
+                              : [colors[1], colors[2], colors[4]][(i - 1) % 3],
+                          run.rows,
+                          task + 1,
+                          compact ? 3 : 6,
+                      ),
+                      borderDash:
+                          i === 0 ? [7, 6] : i === 2 ? [10, 4, 1.5, 4] : [],
+                      borderWidth: i === 0 ? 2 : 2.6,
+                      pointStyle: (
+                          ['crossRot', 'circle', 'rect', 'triangle'] as const
+                      )[i],
+                  }))
+                  .filter(
+                      (_, i) =>
+                          compact || i === 0 || i === 1 || i === 2 || i === 3,
+                  )
 
     // Per-stage reveal: one clip width per dataset group (MDS, 2B, 20B).
     // 0 = not yet revealed, 0..1 easing in, 1 = fully drawn.
@@ -399,11 +507,10 @@ function mount(
             interaction: { mode: 'nearest', intersect: false },
             plugins: {
                 legend: {
-                    // The optimizer backup slide renders two panels of the same
-                    // four optimizers; only the loss panel carries the legend.
-                    // The production-loss view splits its legend into two columns
-                    // (2B | 20B) rendered as a caption row instead — see below.
-                    display: !optGrad && !fullLoss,
+                    // GRPO panels draw EWMA + faint raw trace for the same
+                    // metric; raw series is hidden from the legend. SFT draws
+                    // one line. Post-training panels never want a legend.
+                    display: postTrain ? false : !optGrad && !fullLoss,
                     position: 'top',
                     align: 'center',
 
@@ -422,8 +529,12 @@ function mount(
                     },
                 },
                 title: {
-                    display: compact,
-                    text: titles[task],
+                    display: compact || postTrain,
+                    text: postTrain
+                        ? sftPanel
+                            ? (sftTitles[sftPanel] ?? '')
+                            : (grpoTitles[grpoPanel] ?? '')
+                        : titles[task],
                     color,
                     font: { ...font, weight: 700 },
                 },
@@ -442,7 +553,11 @@ function mount(
                     max: isLoss ? 8 : undefined,
                     title: {
                         ...axisTitle,
-                        text: 'Tokens consumed (trillions)',
+                        text: postTrain
+                            ? sftPanel
+                                ? 'global step'
+                                : 'GRPO step'
+                            : 'Tokens consumed (trillions)',
                     },
                 },
                 y: {
@@ -463,16 +578,52 @@ function mount(
                     type: optimizer ? 'logarithmic' : 'linear',
                     title: {
                         ...axisTitle,
-                        text: optGrad
-                            ? 'Gradient norm'
-                            : isLoss || optLoss
-                              ? 'Training loss'
-                              : 'HellaSwag accuracy',
+                        text: postTrain
+                            ? ({
+                                  loss: 'loss',
+                                  'grad-norm': 'grad norm',
+                                  lr: 'learning rate',
+                                  accuracy: 'token accuracy',
+                                  entropy: 'entropy (nats)',
+                                  tokens: 'tokens (B)',
+                              }[sftPanel] ??
+                              {
+                                  reward: 'reward',
+                                  'acc-reward': 'accuracy reward',
+                                  'fmt-reward': 'format reward',
+                                  length: 'length penalty',
+                                  entropy: 'entropy (nats)',
+                                  'grad-norm': 'grad norm',
+                              }[grpoPanel] ??
+                              '')
+                            : optGrad
+                              ? 'Gradient norm'
+                              : isLoss || optLoss
+                                ? 'Training loss'
+                                : 'HellaSwag accuracy',
                     },
                 },
             },
         },
     })
+    // Stage visibility at mount time. A theme toggle replaces the chart but
+    // not the deck's fragment counter, so re-creating the sentinels with
+    // data-visible unset would drop back to MDS-only while `fragmentIndex`
+    // stays ahead of the slide's fragment list. Read the stages stashed by
+    // the previous destroy() (sentinels are removed there), or whatever is
+    // on the frame if mounting fresh.
+    const revealedStages = new Set<number>(
+        (
+            (frame as HTMLElement & { __sc26RevealedStages?: number[] })
+                .__sc26RevealedStages ?? []
+        ).concat(
+            Array.from(
+                frame.querySelectorAll<HTMLElement>(
+                    '.sc26-fragment-stage[data-visible]',
+                ),
+            ).map((el) => Number(el.dataset.stage)),
+        ),
+    )
     // Full-loss view: overlay a second, small chart in the empty lower-right
     let placeLegendRef: (() => void) | null = null
     // Everything mount() appends to `frame` or observes is torn down by the
@@ -603,6 +754,7 @@ function mount(
             sentinel.className = 'fragment sc26-fragment-stage'
             sentinel.dataset.stage = String(n)
             sentinel.setAttribute('aria-hidden', 'true')
+            if (revealedStages.has(n)) sentinel.setAttribute('data-visible', '')
             copyCid(sentinel)
             frame.appendChild(sentinel)
         }
@@ -754,6 +906,15 @@ function mount(
         resizeObserver.disconnect()
         // Remove the DOM this mount appended before destroying the chart so
         // a remount doesn't accumulate legends/sentinels in the frame.
+        // Stash which stages were revealed so the rebuilt sentinels can be
+        // re-marked and the chart redraws with the same stage state.
+        ;(
+            frame as HTMLElement & { __sc26RevealedStages?: number[] }
+        ).__sc26RevealedStages = Array.from(
+            frame.querySelectorAll<HTMLElement>(
+                '.sc26-fragment-stage[data-visible]',
+            ),
+        ).map((el) => Number(el.dataset.stage))
         frame
             .querySelectorAll('.sc26-legend, .sc26-fragment-stage')
             .forEach((el) => el.remove())
@@ -762,6 +923,7 @@ function mount(
     return { chart, destroy }
 }
 
+const mountAllForPrint: (() => void)[] = []
 async function initialize() {
     await Promise.all(
         [400, 700].map((weight) =>
@@ -783,8 +945,8 @@ async function initialize() {
         if (!canvas || !frame) continue
         const slide = root.closest('[is-~="slide"]')
         if (!slide) continue
-        const activate = () => {
-            if (!slide.hasAttribute('data-current')) return
+        const activate = (force = false) => {
+            if (!force && !slide.hasAttribute('data-current')) return
             observer.disconnect()
             try {
                 let mounted = mount(root, canvas, frame)
@@ -800,12 +962,19 @@ async function initialize() {
                 console.error('Could not render the SC26 chart', error)
             }
         }
-        const observer = new MutationObserver(activate)
+        const observer = new MutationObserver(() => activate())
         observer.observe(slide, {
             attributes: true,
             attributeFilter: ['data-current'],
         })
         activate()
+        // Print/PDF flattens every slide but never sets data-current, so a
+        // chart that was never visited would stay a hidden, empty frame.
+        // Mount on demand from the shared registry before printing.
+        mountAllForPrint.push(() => activate(true))
     }
 }
+window.addEventListener('beforeprint', () => {
+    for (const mountOne of mountAllForPrint) mountOne()
+})
 void initialize()
