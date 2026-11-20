@@ -177,7 +177,7 @@ The interface is the point. The training program does not branch on the vendor. 
 
 <SC26Chart kind="loss" fallback="/talks/2026-08-03/figures/all-production-loss.svg" label="AuroraGPT training-loss trajectories versus tokens consumed, including 2B stage-2 dolmino continuations" />
 
-<p class="sc-detail"><strong>2B stage 2</strong> continues past 4.67T on the dolmino mix: <strong>6.08T</strong> (256N) and <strong>6.93T</strong> (512N). <strong>2B reference:</strong> 7.77T tokens.</p>
+<p class="sc-detail"><strong>2B stage 2</strong> continues past 4.67T on the dolmino mix: <strong>6.08T</strong> (256N) and <strong>6.93T</strong> (512N). <strong>2B reference:</strong> 7.77T tokens. Optimizer: <strong>SophiaG</strong> at <strong>50M tokens per batch</strong>.</p>
 
 <SpeakerNotes>
 The completed 2B run is our reference: 7.77 trillion tokens. We migrated the production path to TorchTitan and ezpz rather than carrying the old Megatron-DeepSpeed fork forward. The August production snapshot shows the 20B loss trajectories alongside the 2B reference. The 7.77T number is the completed 2B total.
