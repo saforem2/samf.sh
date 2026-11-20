@@ -199,28 +199,6 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 </Slide>
 
-<Slide id="three-failures">
-
-## Three failures changed the stack
-
-<ol class="failure-list">
-    <li class="failure-cyan"><strong>Silent loss reporting</strong><span>the curve looked healthy</span><em>bit-exact regression exposed it</em><span class="failure-link">→ slide 6</span></li>
-    <li class="failure-pink"><strong>80B instability</strong><span>loss still looked finite</span><em>gradient norm went nonfinite one step earlier</em><span class="failure-link">→ optimizer stability</span></li>
-    <li class="failure-orange"><strong>Silent job death</strong><span>the allocation stayed active</span><em>nine runs lost in two weeks</em><span class="failure-link">→ slide 7</span></li>
-</ol>
-
-<p class="takeaway-line"><span>Each one</span> was invisible to the metric we were watching. The fix was a sharper check at the layer where the failure hid.</p>
-
-<SpeakerNotes>
-These are the three concrete failures behind the rest of the talk. They sit at different layers: reporting correctness, training stability, and operations. In every case, the first symptom was misleading. The narrow fix came from strengthening the check at the layer where the failure could hide.
-
-On Sunspot at 6,144 sequences per batch, the gradient norm went nonfinite one step before loss for mano, AdamW, and SophiaG. The cause remains unresolved.
-
-45 seconds.
-</SpeakerNotes>
-
-</Slide>
-
 <Slide id="bit-exact">
 
 ## Bit-exact checks exposed a loss reporting bug
@@ -487,7 +465,6 @@ flowchart TB
     #portable-stack,
     #production-result,
     #sample-efficiency,
-    #three-failures,
     #bit-exact,
     #stability,
     #auto-retry-cluster,
@@ -507,7 +484,6 @@ flowchart TB
         #portable-stack,
         #production-result,
         #sample-efficiency,
-        #three-failures,
         #bit-exact,
         #stability,
         #auto-retry-cluster,
@@ -753,8 +729,7 @@ flowchart TB
         font-weight: 800;
     }
 
-    .stack-grid,
-    .failure-layout {
+    .stack-grid {
         display: grid;
         grid-template-columns: 0.9fr 1.1fr;
         gap: clamp(1.5rem, 4vw, 4rem);
@@ -858,84 +833,6 @@ flowchart TB
     .eval-focus svg { display: block; width: min(100%, 80vh); height: auto; aspect-ratio: 289 / 190; overflow: hidden; }
     .eval-focus figcaption { color: var(--foreground0); font-size: clamp(1rem, 2.15vw, 1.8rem); line-height: 1.18; text-align: left; }
     #eval-backup img.eval-backup-plot { width: min(100%, 76vh); height: auto; margin: 0; }
-
-    .failure-list {
-        display: grid;
-        gap: 0.78rem;
-        margin: 1rem 0 0;
-        padding: 0;
-        list-style: none;
-        counter-reset: failure;
-    }
-
-    .failure-list li {
-        display: grid;
-        grid-template-columns: 2.2rem minmax(14rem, 0.9fr) 1.1fr;
-        gap: 0.15rem 0.8rem;
-        align-items: baseline;
-        padding: 0.72rem 0.8rem;
-        border: 1px solid var(--sc-rule);
-        border-left-width: 4px;
-        counter-increment: failure;
-    }
-
-    .failure-list li::before {
-        grid-row: 1 / 3;
-        content: counter(failure, decimal-leading-zero);
-        font-size: 0.7em;
-        font-weight: 850;
-    }
-
-    .failure-list .failure-cyan { border-left-color: var(--sc-cyan); }
-    .failure-list .failure-cyan::before { color: var(--sc-cyan); }
-    .failure-list .failure-pink { border-left-color: var(--sc-pink); }
-    .failure-list .failure-pink::before { color: var(--sc-pink); }
-    .failure-list .failure-orange { border-left-color: var(--sc-orange); }
-    .failure-list .failure-orange::before { color: var(--sc-orange); }
-
-    .failure-list strong {
-        grid-column: 2;
-        font-size: 0.92em;
-    }
-    .failure-list span,
-    .failure-list em {
-        color: var(--foreground2);
-        font-size: 0.7em;
-        font-style: normal;
-    }
-    .failure-list span { grid-column: 2; }
-    .failure-list em {
-        grid-column: 3;
-        grid-row: 1 / 3;
-        align-self: center;
-        text-align: right;
-    }
-    .failure-list .failure-link {
-        grid-column: 3;
-        grid-row: 3;
-        justify-self: end;
-        color: var(--foreground2);
-        font-size: 0.55em;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
-
-    .failure-rule {
-        margin-top: 1rem;
-        color: var(--foreground0);
-        font-size: 1.05em;
-        font-weight: 800;
-    }
-
-    .failure-copy {
-        display: grid;
-        gap: 0.1rem;
-    }
-
-    .failure-copy p {
-        margin: 0.05rem 0 0.55rem;
-        font-size: 0.88em;
-    }
 
     .regression {
         position: relative;
@@ -1212,15 +1109,11 @@ flowchart TB
         .aurora-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .aurora-layout,
         .stack-grid,
-        .failure-layout,
         .eval-layout,
         .retry-layout,
         .stability-grid {
             grid-template-columns: 1fr;
         }
-
-        .failure-list li { grid-template-columns: 1.5rem 1fr; }
-        .failure-list em { grid-column: 2; text-align: left; }
         .stability-fact { border-right: 0; border-bottom: 1px solid var(--sc-rule); }
         .stability-conclusion { grid-template-columns: 1fr; }
         .stability-conclusion .divider { display: none; }
@@ -1242,13 +1135,13 @@ flowchart TB
     }
     @media (min-width: 701px) {
         :is(#aurora, #portable-stack, #production-result, #sample-efficiency,
-            #three-failures, #bit-exact, #stability, #auto-retry-cluster, #lessons, #thanks)
+            #bit-exact, #stability, #auto-retry-cluster, #lessons, #thanks)
             .slide-inner h2 {
             font-size: clamp(2rem, 4vw, 3.5rem);
             line-height: 1.06;
         }
         :is(.hero-context, .aurora-contract p, .takeaway-line, .result-strip,
-            .failure-list span, .failure-list em, .failure-copy p, .eval-number p,
+            .eval-number p,
             .eval-number small, .lost-runs span, .retry-sequence code, .thanks-line) {
             color: var(--foreground0);
             font-size: clamp(1rem, 2.55vw, 2.15rem);
@@ -1260,7 +1153,6 @@ flowchart TB
         }
         .eval-layout { grid-template-columns: minmax(13ch, 0.65fr) 1.35fr; }
         .eval-number small { margin-top: 0.6rem; }
-        .failure-list em { text-align: left; }
         .retry-layout { grid-template-columns: 1.2fr 0.8fr; }
         .wide-plot, .eval-plot, .retry-plot { max-height: 48vh; }
     }
@@ -1285,7 +1177,6 @@ flowchart TB
         .eval-layout { grid-template-columns: 0.54fr 1.46fr; }
         .retry-sequence li { grid-template-columns: 1.4rem minmax(0, 1fr); }
         .retry-sequence li code { justify-self: start; white-space: nowrap; }
-        .failure-list strong { font-size: clamp(1.1rem, 2.7vw, 2.25rem); }
     }
 
     #title-slide .slide-inner {
