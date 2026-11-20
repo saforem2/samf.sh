@@ -41,8 +41,5 @@
         "shiki": "^3.13.0",
         "unist-util-visit": "^5.0.0",
         "uplot": "^1.6.32"
-    },
-    "devDependencies": {
-        "@fontsource/stix-two-text": "^5.3.0"
     }
 }

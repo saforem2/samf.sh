@@ -116,7 +116,11 @@ function mount(
             ? `rgb(${r}, ${g}, ${b})`
             : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`
     }
+    // Axis titles / legend labels stay at full foreground0; the numeric ticks
+    // sit one step down so the gridline numbers recede and the axis names and
+    // plotted lines read first.
     const color = readVar('--foreground0', '#838383')
+    const tick = readVar('--foreground2', '#838383')
     const grid = withAlpha(readVar('--foreground3', '#838383'), 0.25)
     const colors = paletteVars.map((name, i) =>
         readVar(name, paletteFallback[i]),
@@ -358,7 +362,7 @@ function mount(
     const narrow = frameWidth() < 420
     const axis = {
         ticks: {
-            color,
+            color: tick,
             font,
             maxTicksLimit: compact ? 4 : narrow ? 5 : 6,
             padding: narrow ? 4 : 8,

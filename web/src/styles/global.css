@@ -264,12 +264,6 @@
             'Helvetica Neue', Arial, sans-serif;
         --font-stack-serif:
             ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
-        /* STIX Two Text (SIL OFL 1.1, vendored in public/fonts/stix-two-text).
-           The serif face the ALCF / Argonne reports are set in; ships here so
-           decks can opt into the report look without pulling a webfont at
-           render time. Latin subset, 400/600/700 + 400 italic. */
-        --font-stack-stix:
-            'STIX Two Text', ui-serif, Georgia, 'Times New Roman', serif;
         --font-stack-iosevka-aile:
             'Iosevka Aile Web', ui-sans-serif, system-ui, sans-serif;
         --font-stack-iosevka-etoile:
@@ -372,9 +366,6 @@
     }
     :root[data-mono-font='iosevka-etoile'] {
         --font-stack: var(--font-stack-iosevka-etoile);
-    }
-    :root[data-mono-font='stix-two-text'] {
-        --font-stack: var(--font-stack-stix);
     }
 
     /* ── CODE font axis — [data-code-font] sets --code-font-family,

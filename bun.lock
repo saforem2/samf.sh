@@ -119,9 +119,6 @@
         "unist-util-visit": "^5.0.0",
         "uplot": "^1.6.32",
       },
-      "devDependencies": {
-        "@fontsource/stix-two-text": "^5.3.0",
-      },
     },
   },
   "trustedDependencies": [
@@ -304,8 +301,6 @@
     "@fontsource/ibm-plex-mono": ["@fontsource/ibm-plex-mono@5.3.0", "", {}, "sha512-eTgnZjZEGk1QtD3ZstF+Vclo2HLAni8YMy34/DxllwZvyz1lR/1RF/xTiAquOBO7MvqBx8D2Ig2WCPMVfdZu7Q=="],
 
     "@fontsource/ibm-plex-sans": ["@fontsource/ibm-plex-sans@5.3.0", "", {}, "sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w=="],
-
-    "@fontsource/stix-two-text": ["@fontsource/stix-two-text@5.3.0", "", {}, "sha512-/eVTBPvodwIlsUTImyGjNVG4wqi2SDi6nV0WmE0+ScfbCegC8zMkm6BER8dy8f900xgP1RkNx0HxjbixT/ISOg=="],
 
     "@gar/promise-retry": ["@gar/promise-retry@1.0.2", "", { "dependencies": { "retry": "^0.13.1" } }, "sha512-Lm/ZLhDZcBECta3TmCQSngiQykFdfw+QtI1/GYMsZd4l3nG+P8WLB16XuS7WaBGLQ+9E+cOcWQsth9cayuGt8g=="],
 

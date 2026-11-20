@@ -590,22 +590,6 @@ flowchart TB
         justify-content: flex-start;
         gap: 0.5rem;
     }
-    /* The deck's headings are set in the STIX Two Text face the ALCF/ANL
-       reports use, so the slides read as Argonne material rather than as the
-       site's body mono. Body text stays in the reader's chosen family. */
-    #aurora h2,
-    #portable-stack h2,
-    #production-result h2,
-    #bit-exact h2,
-    #auto-retry-cluster h2,
-    #thanks h2,
-    #eval-backup h2,
-    #optimizer-backup h2,
-    #recovery-scopes h2 {
-        font-family: var(--font-stack-stix);
-        font-weight: 600;
-        letter-spacing: -0.005em;
-    }
     .aurora-layout {
         display: grid;
         grid-template-rows: minmax(0, 1fr) auto;
@@ -639,11 +623,9 @@ flowchart TB
     }
     .aurora-photo figcaption {
         color: var(--foreground1);
-        font-family: var(--font-stack-stix);
-        font-style: italic;
         font-size: 1.4rem;
         line-height: 1.35;
-        letter-spacing: 0.002em;
+        letter-spacing: 0.005em;
     }
     .aurora-photo figcaption a {
         color: inherit;
