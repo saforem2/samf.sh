@@ -281,7 +281,7 @@ Aurora was built by HPE and Intel. Thanks to the ALCF operations and user-suppor
 <div class="thanks-link-row"><dt class="thanks-link-label">This talk</dt><dd><a href="https://samf.sh/talks/2026/11/20/">samf.sh/talks/2026/11/20</a></dd></div>
 <div class="thanks-link-row"><dt class="thanks-link-label">Workshop</dt><dd><a href="https://sc26.conference-program.com/presentation/?id=ws_tpw126&amp;sess=sess149">4th Annual Trillion Parameter Workshop · W181abc</a></dd></div>
 <div class="thanks-link-row"><dt class="thanks-link-label">Code</dt><dd><a href="https://github.com/saforem2/ezpz">ezpz</a> · <a href="https://github.com/saforem2/torchtitan/tree/ezpz">torchtitan@ezpz</a> · <a href="https://github.com/saforem2/torchtitan/blob/293533196acc8543fdd4ea3f54ca9d38596d031b/torchtitan/experiments/ezpz/scripts/submit_agpt_2b_autoretry.sh">auto-retry launcher</a></dd></div>
-<div class="thanks-link-row"><dt class="thanks-link-label">Earlier talks</dt><dd><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a> · <a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a> · <a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a> · <a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></dd></div>
+<div class="thanks-link-row"><dt class="thanks-link-label">Earlier talks</dt><dd class="stacked"><a href="https://samf.sh/talks/2026/10/21/">Scaling PyTorch on Intel XPU</a><a href="https://samf.sh/talks/2026/08/03/">Pre-Training LLMs on a Supercomputer</a><a href="https://samf.sh/talks/2026/07/14/">Pre-Training AuroraGPT at Scale</a><a href="https://samf.sh/talks/2026/06/03/">Production Pre-Training at Scale</a></dd></div>
 <div class="thanks-link-row"><dt class="thanks-link-label">Site</dt><dd><a href="https://samf.sh">samf.sh</a> · <a href="https://github.com/saforem2/samf.sh/tree/feat/sc26-slides/web/src/pages/talks/2026/11/20">this deck’s source</a></dd></div>
 </dl>
 </nav>
@@ -1012,25 +1012,36 @@ flowchart TB
         font-size: 0.68em;
     }
 
-    #thanks .slide-inner { justify-content: center; }
-    #thanks h2 { margin-bottom: 1.2rem; }
+    #thanks .slide-inner {
+        padding-inline: clamp(3.5rem, 8vw, 9rem);
+    }
+    #thanks h2 {
+        margin-bottom: 0.9rem;
+        font-size: clamp(2rem, 3.6vw, 2.6rem);
+    }
+    #thanks h2,
+    .thanks-layout {
+        width: 100%;
+        max-width: none;
+    }
 
     .thanks-line {
-        max-width: 48rem;
-        margin: 0.25rem 0;
-        font-size: 1.08em;
-        line-height: 1.3;
+        max-width: 46ch;
+        margin: 0.4rem 0;
+        font-size: 1.18em;
+        line-height: 1.32;
     }
 
     .thanks-line span { font-weight: 850; }
 
     .acknowledgement {
         width: 100%;
-        margin-top: 1.4rem;
+        margin-top: 2rem;
         margin-bottom: 0.35rem;
-        font-size: 0.72em;
-        line-height: 1.45;
+        font-size: 0.74em;
+        line-height: 1.55;
         text-align: left;
+        padding: 0.9rem 1.1rem;
     }
     .acknowledgement > summary { cursor: pointer; }
     .acknowledgement p { margin: 0 0 0.45em; }
@@ -1041,25 +1052,25 @@ flowchart TB
        link labels against the thanks-line. */
     .thanks-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.45fr) minmax(16rem, 1fr);
-        gap: clamp(1.5rem, 3vw, 3rem);
+        grid-template-columns: minmax(0, 1.35fr) minmax(21rem, 30rem);
+        column-gap: clamp(2.5rem, 5vw, 5rem);
+        row-gap: 1.5rem;
         align-items: start;
         width: 100%;
-        max-width: 76rem;
     }
     .thanks-main { min-width: 0; }
     .thanks-main .acknowledgement { width: 100%; }
     .thanks-links-title {
-        margin: 0 0 0.6rem;
-        font-size: 0.68em;
-        letter-spacing: 0.12em;
+        margin: 0 0 0.9rem;
+        font-size: 0.72em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         color: var(--foreground2);
     }
     .thanks-links {
         margin: 0;
-        padding: 0.85rem 0 0.2rem;
-        font-size: 0.74em;
+        padding: 1.1rem 0 0.4rem;
+        font-size: 0.78em;
         line-height: 1.4;
         text-align: left;
         border-top: 1px solid var(--sc-rule);
@@ -1068,19 +1079,23 @@ flowchart TB
         margin: 0;
         padding: 0;
         display: grid;
-        gap: 0.85rem;
+        gap: 0.9rem;
     }
     /* Label column + value column: wrapped lines align under the value,
        not back under the label. */
     .thanks-link-row {
         display: grid;
         grid-template-columns: max-content minmax(0, 1fr);
-        column-gap: 1.25ch;
-        align-items: baseline;
+        column-gap: 1.5ch;
+        align-items: start;
     }
     .thanks-link-row dt,
     .thanks-link-row dd {
         margin: 0;
+    }
+    .thanks-link-row dd.stacked a {
+        display: block;
+        padding-block: 0.1em;
     }
     .thanks-link-label {
         color: var(--foreground2);
