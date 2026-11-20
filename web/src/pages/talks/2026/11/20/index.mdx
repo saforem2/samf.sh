@@ -78,13 +78,13 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <dl class="aurora-facts">
 <div><dt>Racks</dt><dd>166</dd></div>
 <div><dt>Nodes</dt><dd>10,624</dd></div>
-<div><dt>XPUs</dt><dd>127,488<span class="aurora-fact-note">6 tiles × 2</span></dd></div>
-<div><dt>CPUs</dt><dd>21,248</dd></div>
-<div><dt>NICs</dt><dd>84,992 <span class="aurora-fact-note">Slingshot-11</span></dd></div>
-<div><dt>HBM</dt><dd>8 PB</dd></div>
-<div><dt>DDR5</dt><dd>10 PB</dd></div>
+<div><dt>GPUs</dt><dd>63,744<span class="aurora-fact-note">Max 1550 · 2 XPUs</span></dd></div>
+<div><dt>CPUs</dt><dd>21,248<span class="aurora-fact-note">Xeon Max</span></dd></div>
+<div><dt>Network</dt><dd>Slingshot-11<span class="aurora-fact-note">8 endpoints / node</span></dd></div>
+<div><dt>Memory</dt><dd>20.4 PB</dd></div>
+<div><dt>Storage</dt><dd>230 PB<span class="aurora-fact-note">DAOS · 31 TB/s</span></dd></div>
 </dl>
-<p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11</p>
+<p class="hero-context">~10,000 sq ft · 600 tons · built by Intel + HPE · one of the first exascale systems</p>
 </div>
 
 </div>
@@ -639,9 +639,11 @@ flowchart TB
     }
     .aurora-photo figcaption {
         color: var(--foreground1);
-        font-size: 1.5rem;
+        font-family: var(--font-stack-stix);
+        font-style: italic;
+        font-size: 1.4rem;
         line-height: 1.35;
-        letter-spacing: 0.005em;
+        letter-spacing: 0.002em;
     }
     .aurora-photo figcaption a {
         color: inherit;
