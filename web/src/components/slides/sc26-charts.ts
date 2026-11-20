@@ -214,8 +214,32 @@ function mount(
         entropy: 'GRPO entropy (EWMA)',
         'grad-norm': 'GRPO gradient norm (EWMA)',
     }
-    const grpoPanelColor = readVar('--green', '#00897b')
-    const sftCurveColor = readVar('--blue', '#1976d2')
+    // Per-metric hues, resolved from the active theme so both dark and
+    // light stay distinct. SFT stays cool, GRPO mixes warm + cool by role.
+    const sftPanelColors: Record<string, string> = {
+        loss: readVar('--blue', '#1976d2'),
+        'grad-norm': readVar('--teal', '#00838f'),
+        lr: readVar('--purple', '#9373d6'),
+        accuracy: readVar('--green', '#05a551'),
+        entropy: readVar('--orange', '#d97706'),
+        tokens: readVar('--foreground2', '#767676'),
+    }
+    const grpoPanelColors: Record<string, string> = {
+        reward: readVar('--green', '#40a02b'),
+        'acc-reward': readVar('--green', '#40a02b'),
+        'fmt-reward': readVar('--blue', '#1e66f5'),
+        length: readVar('--orange', '#fe640b'),
+        entropy: readVar('--purple', '#8839ef'),
+        'grad-norm': readVar('--red', '#d20f39'),
+    }
+    const sftCurveColor =
+        sftPanel && sftPanelColors[sftPanel]
+            ? sftPanelColors[sftPanel]
+            : readVar('--blue', '#1976d2')
+    const grpoPanelColor =
+        grpoPanel && grpoPanelColors[grpoPanel]
+            ? grpoPanelColors[grpoPanel]
+            : readVar('--green', '#40a02b')
     const postDatasets = postTrain
         ? sftPanel
             ? [
