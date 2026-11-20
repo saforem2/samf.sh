@@ -72,7 +72,7 @@
         --rosewater: oklch(from #f4dbd6 l c h);
         --flamingo: oklch(from #f0c6c6 l c h);
         --red: #ff1744;
-        --orange: oklch(from #FFB53D l c h);
+        --orange: oklch(from #ffb53d l c h);
         --peach: oklch(from #f5a97f l c h);
         --yellow: oklch(from #fd971f l c h);
         --green: oklch(from #05a551 l c h);
@@ -84,7 +84,7 @@
         --purple: oklch(from #8260cc l c h);
         --aqua: oklch(from #00b8d4 l c h);
         --teal: oklch(from #00838f l c h);
-        --pink: oklch(from #FF55FF l c h);
+        --pink: oklch(from #ff55ff l c h);
         /* --accent: oklch(from #f92672 l c h); */
         --accent: oklch(from #ff1a8f l c h);
         --mauve: oklch(from #c6a0f6 l c h);
@@ -171,7 +171,7 @@
            Other accents already sit in the band, so their hues are unchanged. */
         --red: oklch(from #ff6b6b l c h);
         --peach: oklch(from #f5a97f l c h);
-        --orange: oklch(from #FFB53D l c h);
+        --orange: oklch(from #ffb53d l c h);
         --yellow: oklch(from #fcc419 l c h);
         --lime: oklch(from #82c91e l c h);
         --green: oklch(from #40c057 l c h);
@@ -181,7 +181,7 @@
         --blue: oklch(from #29b6f6 l c h);
         --purple: oklch(from #ae81ff l c h);
         --aqua: oklch(from #00b8d4 l c h);
-        --pink: oklch(from #FF55FF l c h);
+        --pink: oklch(from #ff55ff l c h);
         --mauve: oklch(from #c6a0f6 l c h);
         --lavender: oklch(from #b7bdf8 l c h);
         --maroon: oklch(from #ee99a0 l c h);
