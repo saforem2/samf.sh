@@ -11,6 +11,16 @@
     gap: 1.8ch 1ch;
 }
 
+/* Stacked (mobile/tablet) home grid: cards draw border badges that protrude
+   0.5lh above the card edge, so the row gap must clear half a line plus the
+   intended visual breathing room or the badge is clipped by the card above. */
+@media (max-width: 1024px) {
+    #widgets-grid.home-grid {
+        row-gap: 1.4lh;
+        padding-block-start: 1lh;
+    }
+}
+
 #widgets-grid.home-grid > [tabindex='0'] {
     position: relative;
     overflow: visible !important;
