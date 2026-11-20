@@ -13,7 +13,7 @@ W&B workspace view used for the SC26 backup slides:
   config.args.zero_stage                        == 0
   config.args.checkpoint_activations            == False
   config.args.micro_batch_size                  == 1
-  config.args.world_size                        in {3072, 6240}
+  config.args.world_size                        == 3072
   config.args.data_file_list                    == ALCF/data-lists/aurora/olmo-mix-1124.txt
   config.args.deepspeed_config_dict.grad_accum  >= 2
   config.outdir                                 == optimizer-experiments/Megatron-DeepSpeed
@@ -30,11 +30,10 @@ client-side.
 Output: web/src/components/slides/sc26-optimizer-data.ts
   optimizerHistories[] entries keep [x, y] pairs where x is tokens in BILLIONS
   (the web chart divides by 1000 to draw trillions) and y is the raw metric.
-  Smoothing is left to the chart (it applies TWEMA); this file stores RAW data,
-  raw grad-norm values are kept (the chart clips the y axis at 50); buckets
-  are widened as needed so the surviving two extrema per bucket stay within
-  MAX_POINTS_PER_SERIES. Bucket extrema are preserved, so the AdamW blow-up
-  and MuonClip spikes survive intact.
+  Smoothing is left to the chart (loss: W&B-style TWEMA; grad-norm: a median
+  pre-filter in front of TWEMA so one-step resume spikes cannot drag the
+  smoothed line); this file stores RAW data; buckets are widened as needed
+  so the surviving two extrema per bucket stay within MAX_POINTS_PER_SERIES.
 
 Usage:
     python scripts/fetch-sc26-optimizer.py
@@ -55,7 +54,9 @@ PROJECT = "aurora_gpt/AuroraGPT"
 CREATED_AFTER = "2025-08-20T00:00:00Z"
 NUM_LAYERS = {12}
 TOKENIZERS = {"google/gemma-7b", "google/gemma-7B"}
-WORLD_SIZES = {3072, 6240}
+# Only 3072-rank (256-node) runs exist in this campaign tree; nothing in
+# optimizer-experiments/Megatron-DeepSpeed ran at 6240, so the filter is exact.
+WORLD_SIZES = {3072}
 DATA_LIST = "ALCF/data-lists/aurora/olmo-mix-1124.txt"
 EXCLUDED_NAMES = {"treasured-thunder-4350", "grateful-dust-4351", "glowing-disco-4352"}
 # Runs whose grad_norm telemetry is broken (e.g. logging in wrong units after a

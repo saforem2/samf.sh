@@ -1335,6 +1335,12 @@ export function initTrainingReplay(root: HTMLElement) {
     let time = 0
     let playing = false
     let started = false
+    // Set when the page itself hides us (tab switch, home screen, iOS URL
+    // bar collapsing fires visibilitychange). iOS fires it constantly, so a
+    // plain pause() strands the replay on "Pause" and the user thinks the
+    // animation is broken; we resume on the next visible event only if we
+    // were the ones who stopped it.
+    let hiddenPause = false
     let previousTimestamp: number | undefined
     let animationFrame = 0
     let lastScene = -1
@@ -1474,12 +1480,24 @@ export function initTrainingReplay(root: HTMLElement) {
 
     function onVisibilityChange() {
         if (!isCurrent() || document.hidden) {
-            pause()
+            if (playing) {
+                hiddenPause = true
+                pause()
+            }
             return
         }
         palette = paletteFor(root)
         render()
-        if (!started && !reduced.matches) start()
+        if (!started && !reduced.matches) {
+            start()
+            return
+        }
+        if (hiddenPause && time < total) {
+            hiddenPause = false
+            playing = true
+            previousTimestamp = undefined
+            animationFrame = requestAnimationFrame(tick)
+        }
     }
 
     const visibilityObserver = new MutationObserver(onVisibilityChange)
