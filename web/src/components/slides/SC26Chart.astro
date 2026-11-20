@@ -126,6 +126,12 @@ const { kind, fallback, label, compact = false } = Astro.props
     .compact .canvas-frame {
         height: clamp(150px, 32vh, 380px);
     }
+    /* Backup slides set their own heights via flex stretch; don't fight them
+       with the fixed compact clamp. */
+    :global(.sc-eval-grid) .compact .canvas-frame {
+        height: auto;
+        min-height: 0;
+    }
     @media (max-width: 700px) {
         .compact .canvas-frame {
             height: auto;

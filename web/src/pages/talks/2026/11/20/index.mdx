@@ -84,15 +84,12 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><dt>HBM</dt><dd>8 PB</dd></div>
 <div><dt>DDR5</dt><dd>10 PB</dd></div>
 </dl>
-<p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11 · Argonne Leadership Computing Facility</p>
-<p class="hero-stack">SYCL and oneCCL below PyTorch — not CUDA and NCCL.</p>
+<p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11</p>
 
 
 </div>
 
 </div>
-
-<p class="takeaway-line"><span>So:</span> pre-training here is a sequence of bounded jobs, not one uninterrupted run.</p>
 
 <SpeakerNotes>
 Set the machine and software context once. Aurora is one of the largest non-NVIDIA GPU systems in production. The important difference for this talk is the stack: SYCL and oneCCL below PyTorch, not CUDA and NCCL. We also inherit the usual HPC constraints: shared storage, scheduled allocations, and restarts across job boundaries.
@@ -588,12 +585,17 @@ flowchart TB
         font-weight: 700;
     }
 
+    #aurora .slide-inner {
+        justify-content: flex-start;
+        gap: 0.4rem;
+    }
     .aurora-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-        gap: clamp(1.75rem, 3.5vw, 3.5rem);
+        grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+        gap: clamp(2rem, 3.5vw, 4rem);
         align-items: center;
-        flex: 1;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 
     /* Left column: the machine itself. The render has a pure-black
@@ -602,23 +604,27 @@ flowchart TB
     .aurora-photo {
         margin: 0;
         display: grid;
-        gap: 0.6rem;
-        align-content: center;
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 0.9rem;
+        align-content: stretch;
+        height: 100%;
     }
     .aurora-photo img {
         width: 100%;
-        max-height: 46vh;
-        object-fit: contain;
+        height: 100%;
+        max-height: none;
+        min-height: 0;
+        object-fit: cover;
         object-position: center;
         display: block;
         border-radius: 2px;
         background: #000;
     }
     .aurora-photo figcaption {
-        color: var(--foreground2);
-        font-size: 0.78rem;
+        color: var(--foreground1);
+        font-size: 1.5rem;
         line-height: 1.35;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.005em;
     }
     .aurora-photo figcaption a {
         color: inherit;
@@ -633,36 +639,38 @@ flowchart TB
 
     .aurora-specs {
         display: grid;
-        gap: 0.7rem;
+        gap: 1.1rem;
         align-content: center;
+        align-content: space-evenly;
         min-width: 0;
+        height: 100%;
     }
 
     .aurora-facts {
         margin: 0;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1.1rem 1.25rem;
-        padding-bottom: 1.1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.35rem 1.75rem;
+        padding-bottom: 1.2rem;
         border-bottom: 1px solid var(--sc-rule);
+        align-content: center;
     }
     .aurora-facts > div {
         display: grid;
         gap: 0.15rem;
         align-content: start;
     }
-    #aurora .hero-context { font-size: 1.45rem; line-height: 1.4; color: var(--foreground0); }
-    #aurora .aurora-photo figcaption { font-size: 1.05rem; line-height: 1.4; color: var(--foreground1); }
+    #aurora .hero-context { font-size: 1.75rem; line-height: 1.4; color: var(--foreground0); }
     .aurora-facts dt {
-        font-size: 1.15rem;
+        font-size: 1.6rem;
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: var(--foreground1);
+        color: var(--foreground0);
     }
     .aurora-facts dd {
         margin: 0;
-        font-size: clamp(2rem, 3.1vw, 3rem);
+        font-size: clamp(2.75rem, 4.6vw, 4.4rem);
         font-weight: 800;
         line-height: 1.05;
         letter-spacing: -0.02em;
@@ -671,32 +679,18 @@ flowchart TB
     }
     .aurora-fact-note {
         display: block;
-        font-size: 0.32em;
+        font-size: 0.38em;
         font-weight: 500;
         letter-spacing: 0;
         line-height: 1.35;
-        color: var(--foreground1);
-        margin-top: 0.35em;
+        color: var(--foreground0);
+        margin-top: 0.3em;
     }
 
     .hero-context {
         margin: 0;
         color: var(--foreground2);
         font-size: 0.72em;
-        line-height: 1.35;
-    }
-    .hero-stack {
-        margin: 0.5rem 0 0;
-        color: var(--foreground0);
-        font-weight: 600;
-        font-size: 1.15rem;
-        line-height: 1.3;
-    }
-
-    #aurora .takeaway-line {
-        margin-top: 1.1rem;
-        padding-top: 0.7rem;
-        font-size: 1.35rem;
         line-height: 1.35;
     }
 
@@ -1268,13 +1262,25 @@ flowchart TB
         object-fit: contain;
         margin: 0;
     }
-    .sc-eval-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.1rem; }
-    /* Charts take the space the heading and caption leave behind, and the
-       block back to .slide-inner default centering. The frame height is
-       clamped so panels stay readable rather than full-bleed. */
-    #optimizer-backup .sc-fill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1.6rem; }
-    #optimizer-backup .sc-fill-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: auto; --sc26-frame-min: 0px; }
-    #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { height: clamp(340px, 52vh, 560px); flex: 0 0 auto; min-height: 0; }
+    /* The four panels share whatever height is left after the heading and
+       the caption line; each frame fills its cell so the charts grow to the
+       slide instead of stopping at the compact 32vh default. */
+    /* Give the backup slides a definite grid row for the chart area: flex
+       free-space distribution was leaving the grid at its intrinsic height
+       (tile max-content), so the charts never grew. */
+    #eval-backup .slide-inner,
+    #optimizer-backup .slide-inner {
+        justify-content: flex-start;
+        gap: 0.75rem;
+    }
+    .sc-eval-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(13rem, 37vh); gap: 0.75rem 1.25rem; flex: 0 0 auto; }
+    .sc-eval-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: 100%; --sc26-frame-min: 0px; }
+    .sc-eval-grid .sc26-chart .canvas-frame { flex: 1 1 auto; min-height: 0; height: auto; }
+    /* Charts take whatever vertical room the heading and caption leave;
+       both canvases grow together instead of sitting at a fixed clamp. */
+    #optimizer-backup .sc-fill-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(19rem, 58vh); gap: 0.6rem 1.6rem; flex: 0 0 auto; }
+    #optimizer-backup .sc-fill-grid .sc26-chart { display: flex; flex-direction: column; min-height: 0; height: 100%; --sc26-frame-min: 0px; }
+    #optimizer-backup .sc-fill-grid .sc26-chart .canvas-frame { flex: 1 1 auto; min-height: 0; height: auto; }
     .sc-fill-caption { flex: 0 0 auto; margin-top: 0.4lh; font-size: clamp(0.72rem, 1.1vw, 0.95rem); line-height: 1.35; }
     /* Narrow phones: stack the four eval panels 1xN. Each frame keeps a
        fixed aspect ratio instead of sharing the leftover slide height, so
