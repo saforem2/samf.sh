@@ -34,15 +34,12 @@ The GSM8K gap is 6σ. The HumanEval gap is 1.4σ pooled. The pattern matters mor
 
 ```mermaid
 flowchart LR
-    A["ALCF minerva<br/>inkling-2-small<br/>muse-spark-bf16"] --> B["llm-rosetta gateway<br/>:8765 /v1/chat/completions"]
-    B --> C["lm-eval local-chat-completions<br/>apply_chat_template=true<br/>num_concurrent=4"]
-    C --> D1["GSM8K<br/>200 sampled<br/>flex + strict"]
-    C --> D2["HumanEval<br/>164 full set<br/>fenced-block extract"]
-    D1 --> E["pass@1 + stderr"]
+    A@{ shape: stadium, label: "ALCF minerva<br/>inkling-2-small<br/>muse-spark-bf16" } --> B@{ shape: rect, label: "llm-rosetta gateway<br/>:8765 /v1/chat/completions" }
+    B --> C@{ shape: rect, label: "lm-eval local-chat-completions<br/>apply_chat_template=true<br/>num_concurrent=4" }
+    C --> D1@{ shape: rect, label: "GSM8K<br/>200 sampled<br/>flex + strict" }
+    C --> D2@{ shape: rect, label: "HumanEval<br/>164 full set<br/>fenced-block extract" }
+    D1 --> E@{ shape: stadium, label: "pass@1 + stderr" }
     D2 --> E
-    style A fill:#2563eb,color:#fff
-    style B fill:#0f172a,color:#fff
-    style E fill:#16a34a,color:#fff
 ```
 
 | Setting | Value |
@@ -51,12 +48,6 @@ flowchart LR
 | Harness | `lm-evaluation-harness` via `local-chat-completions`, `temperature=0`, `max_tokens=4096`, `num_concurrent=4` |
 | GSM8K | `lm-eval` `gsm8k` flex + strict `exact_match`, `apply_chat_template` |
 | HumanEval | custom `humaneval_chat.yaml` — single ` ```python ` fenced block, `build_predictions_code`, `until: ["\n\n\n"]` |
-
-Three corrections from earlier in the session:
-
-1. The first HumanEval run reported `0.0` for both models. That was my `humaneval_chat.yaml`, not the models. `lm-eval` defaults `until` to `fewshot_delimiter = "\n\n"` when `generation_kwargs.until` is unset, and every ` ```python ` block has a blank line. Fix was `until: ["\n\n\n"]`. Verified on 20 samples: `muse-spark-bf16` went `0.0 -> 0.30` before the full 164.
-2. The first GSM8K run at `n=1000` hit a stale Globus token mid-flight. `muse-spark-bf16` 401'd at sample 278, `inkling-2` at 918. Refreshed with `launchctl kickstart -k gui/$(id -u)/ai.llm-rosetta.gateway` and re-ran at `n=200` clean.
-3. `alcf-minerva/beam-1.0-bf16` is retired (410). Replaced by `alcf-tara/beam-1.0-fp8` in `~/.config/llm-rosetta-gateway/config.jsonc` and `ai-memory` config. Gateway resolves `ALCF_INFERENCE_TOKEN` once at launch, so a kickstart is the fix when it goes stale.
 
 Token usage from the rollout captures:
 
@@ -71,12 +62,11 @@ Token usage from the rollout captures:
 
 ```mermaid
 flowchart TD
-    Q[Question] --> R1[inkling-2<br/>short CoT<br/>75-110 tok]
-    Q --> R2[muse-spark<br/>long CoT<br/>447-496 tok]
-    R1 --> A[Same answer<br/>72 / $150]
+    Q@{ shape: stadium, label: "Question" }
+    Q --> R1@{ shape: rect, label: "inkling-2<br/>short CoT<br/>75-110 tok" }
+    Q --> R2@{ shape: rect, label: "muse-spark<br/>long CoT<br/>447-496 tok" }
+    R1 --> A@{ shape: stadium, label: "Same answer<br/>72 / $150" }
     R2 --> A
-    style R1 fill:#dbeafe
-    style R2 fill:#fef3c7
 ```
 
 <div class="mermaid-chart-pair">
@@ -87,8 +77,8 @@ xychart-beta
     title "GSM8K and HumanEval — pass rate"
     x-axis ["GSM8K flex", "GSM8K strict", "HumanEval"]
     y-axis "pass rate" 0 --> 1
-    bar [0.945, 0.935, 0.848]
-    bar [0.73, 0.725, 0.787]
+    bar "inkling-2" [0.945, 0.935, 0.848]
+    bar "muse-spark-bf16" [0.73, 0.725, 0.787]
 ```
 
 ```mermaid
@@ -96,7 +86,7 @@ xychart-beta
     title "inkling-2 lead in points"
     x-axis ["GSM8K flex", "HumanEval"]
     y-axis "delta" 0 --> 0.25
-    bar [0.215, 0.061]
+    bar "lead (points)" [0.215, 0.061]
 ```
 
 </div>
