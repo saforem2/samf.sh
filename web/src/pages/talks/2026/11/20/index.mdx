@@ -29,6 +29,13 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 
 <Slide id="title-slide">
 
+<a class="title-slide-qr" href="https://samf.sh/talks/2026/11/20/"
+   aria-label="QR code linking to these slides">
+  <img src="/talks/2026/11/20/figures/qr-slides.svg"
+       alt="QR code linking to samf.sh/talks/2026/11/20" />
+  <span>samf.sh/talks/2026/11/20</span>
+</a>
+
 <img
     class="title-aurora"
     src="/talks/2026-10-21/figures/aurora-hero.jpg"
@@ -64,16 +71,14 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 <Slide id="aurora" size="sm">
 
-## Aurora, at production scale
+<img
+    class="aurora-bg"
+    src="/talks/2026-10-21/figures/aurora-hero.jpg"
+    alt="Aurora cabinets at the Argonne Leadership Computing Facility"
+/>
 
-<div class="aurora-layout">
-
-<figure class="aurora-photo">
-<img src="/talks/2026/11/20/figures/ALCF_Aurora_16x9.png" alt="Aurora cabinets at the Argonne Leadership Computing Facility" loading="eager" />
-<figcaption>Aurora cabinets, Argonne Leadership Computing Facility · <a href="https://www.alcf.anl.gov/sites/default/files/2024-07/Aurora_FactSheet_2024.pdf">ALCF Aurora Fact Sheet (PDF)</a></figcaption>
-</figure>
-
-<div class="aurora-specs">
+<div class="aurora-card">
+<h2 class="aurora-title">Aurora, at production scale</h2>
 
 <dl class="aurora-facts">
 <div><dt>Racks</dt><dd>166</dd></div>
@@ -85,8 +90,7 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><dt>Storage</dt><dd>230 PB<span class="aurora-fact-note">DAOS · 31 TB/s</span></dd></div>
 </dl>
 <p class="hero-context">~10,000 sq ft · 600 tons · built by Intel + HPE · one of the first exascale systems</p>
-</div>
-
+<p class="aurora-credit">Aurora cabinets, Argonne Leadership Computing Facility · <a href="https://www.alcf.anl.gov/sites/default/files/2024-07/Aurora_FactSheet_2024.pdf">ALCF Fact Sheet (PDF)</a> · <a href="https://docs.alcf.anl.gov/">ALCF User Guides</a></p>
 </div>
 
 <SpeakerNotes>
@@ -531,6 +535,51 @@ flowchart TB
         text-align: left;
     }
 
+    /* QR in the top-right of the title slide, same placement as the other
+       decks. The artwork sits over a near-black gradient, so the QR needs a
+       light chip behind it to stay scannable on both themes. */
+    #title-slide .title-slide-qr {
+        position: absolute;
+        top: 1.4lh;
+        right: 2.5ch;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        text-decoration: none;
+        color: #f5f7fa;
+        z-index: 2;
+    }
+    #title-slide .title-slide-qr img {
+        width: 7.5rem;
+        height: 7.5rem;
+        display: block;
+        padding: 0.45rem;
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 0.45);
+    }
+    #title-slide .title-slide-qr span {
+        font-size: 0.72rem;
+        color: #e8edf3;
+        white-space: nowrap;
+        background: rgb(8 13 20 / 0.72);
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+    }
+    @media (max-width: 768px) {
+        #title-slide .title-slide-qr { display: none; }
+    }
+    /* Global print/dark-theme rules invert .title-slide-qr img (written for
+       transparent black strokes on dark slides). This QR sits on a white
+       chip, so inverting it would break scanning. */
+    body.slides-print-mode #title-slide .title-slide-qr img,
+    html[data-webtui-theme='doe'] #title-slide .title-slide-qr img,
+    html[data-webtui-theme='alcf'] #title-slide .title-slide-qr img,
+    html[data-webtui-theme='custom-dark'] #title-slide .title-slide-qr img {
+        filter: none !important;
+    }
+
     .title-panel .eyebrow {
         margin-bottom: 0.45rem;
         color: #aeb8c2;
@@ -587,117 +636,111 @@ flowchart TB
         font-weight: 700;
     }
 
-    /* Let the content block grow into the leftover height, then centre
-       heading + layout as one group so there is no dead band above or
-       below the figure. */
+    /* Aurora slide: full-bleed title-slide photo with the spec sheet in a
+       frosted panel over the left third. Reuses the title-slide image so the
+       deck doesn't carry two crops of the same render. */
     #aurora .slide-inner {
-        justify-content: flex-start;
-        gap: 0.5rem;
+        padding: 0;
+        justify-content: center;
+        overflow: hidden;
     }
-    .aurora-layout {
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.65rem;
-        flex: 1 1 auto;
-        min-height: 0;
-    }
-
-    /* Left column: the machine itself. The render has a pure-black
-       backdrop, so it sits directly on the dark theme without a frame.
-       In the light theme the black slab is deliberate — caption it. */
-    .aurora-photo {
-        margin: 0;
-        display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
-        gap: 0.4rem;
-        min-height: 0;
-        align-content: stretch;
-    }
-    .aurora-photo img {
+    #aurora .aurora-bg {
+        position: absolute;
+        inset: 0;
         width: 100%;
         height: 100%;
-        max-height: none;
-        min-height: 0;
         object-fit: cover;
-        object-position: 50% 62%;
+        object-position: 58% 46%;
+        z-index: 0;
+    }
+    #aurora::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background: linear-gradient(90deg, rgb(5 10 18 / 0.86) 0%, rgb(5 10 18 / 0.66) 30%, rgb(5 10 18 / 0.18) 58%, rgb(5 10 18 / 0) 76%);
+    }
+    .aurora-card {
+        position: relative;
+        z-index: 2;
+        margin-left: clamp(1.5rem, 5vw, 5rem);
+        width: min(54ch, 42vw);
+        display: grid;
+        gap: 0.4rem;
+        padding: 0.9rem 1.1rem 0.95rem;
+        background: rgb(12 17 25 / 0.78);
+        border: 1px solid rgb(255 255 255 / 0.18);
+        border-left: 4px solid var(--sc-cyan);
+        box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 0.4);
+        backdrop-filter: blur(7px);
+        color: #e8edf3;
+        align-content: center;
+    }
+    .aurora-title {
+        margin: 0;
+        color: #f7f9fb !important;
+        font-size: clamp(1.75rem, 2.9vw, 2.9rem) !important;
+        line-height: 1.06;
+        letter-spacing: -0.03em;
+    }
+    .aurora-card .aurora-facts {
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.3rem 1.1rem;
+        padding-block: 0.45rem;
+        border-block: 1px solid rgb(255 255 255 / 0.16);
+    }
+    .aurora-card .aurora-facts > div {
+        display: grid;
+        gap: 0.08rem;
+        align-content: start;
+    }
+    .aurora-card .aurora-facts dt {
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--blue);
+    }
+    .aurora-card .aurora-facts dd {
+        margin: 0;
+        white-space: nowrap;
+        font-size: clamp(1.15rem, 1.65vw, 1.75rem);
+        font-weight: 800;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+        color: #fff;
+        font-variant-numeric: tabular-nums;
+    }
+    .aurora-card .aurora-fact-note {
         display: block;
-        border-radius: 2px;
-        background: #000;
+        font-size: 0.56em;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 1.3;
+        color: #aeb8c2;
+        margin-top: 0.15em;
     }
-    .aurora-photo figcaption {
-        color: var(--foreground1);
-        font-size: 1.4rem;
-        line-height: 1.35;
-        letter-spacing: 0.005em;
+    #aurora .hero-context {
+        font-size: 0.88rem;
+        line-height: 1.3;
+        color: #d6dde5;
+        margin: 0;
     }
-    .aurora-photo figcaption a {
+    .aurora-credit {
+        font-size: 0.58rem;
+        color: #8b95a1;
+        margin: 0;
+        line-height: 1.3;
+    }
+    .aurora-credit a {
         color: inherit;
         text-decoration: underline;
         text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
         text-underline-offset: 0.15em;
     }
-    .aurora-photo figcaption a:hover {
-        color: var(--foreground0);
-        text-decoration-color: currentColor;
-    }
-
-    .aurora-specs {
-        display: grid;
-        gap: 0.35rem;
-        align-content: end;
-        min-width: 0;
-    }
-
-    .aurora-facts {
-        margin: 0;
-        display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 0.25rem 1.25rem;
-        padding-bottom: 0.7rem;
-        border-bottom: 1px solid var(--sc-rule);
-        align-content: end;
-    }
-    .aurora-facts > div {
-        display: grid;
-        gap: 0.15rem;
-        align-content: start;
-    }
-    #aurora .hero-context {
-        font-size: 1.15rem;
-        line-height: 1.3;
-        color: var(--foreground1);
-        margin: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .aurora-facts dt {
-        font-size: 1.1rem;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--foreground0);
-    }
-    .aurora-facts dd {
-        margin: 0;
-        white-space: nowrap;
-        font-size: clamp(1.3rem, 2.45vw, 2.2rem);
-        font-weight: 800;
-        line-height: 1.05;
-        letter-spacing: -0.02em;
-        color: var(--foreground0);
-        font-variant-numeric: tabular-nums;
-    }
-    .aurora-fact-note {
-        display: block;
-        font-size: 0.46em;
-        font-weight: 500;
-        letter-spacing: 0;
-        line-height: 1.35;
-        color: var(--foreground0);
-        margin-top: 0.3em;
-    }
+    .aurora-credit a:hover { color: #fff; }
 
     .hero-context {
         margin: 0;
@@ -1089,8 +1132,7 @@ flowchart TB
 
     @media (max-width: 700px) {
         .title-panel { width: 88vw; }
-        .aurora-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .aurora-layout,
+        .aurora-card { width: auto; margin-inline: 6vw; }
         .stack-grid,
         .eval-layout,
         .retry-layout,
