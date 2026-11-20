@@ -114,17 +114,35 @@ const scenes: Scene[] = [
         kicker: 'Training · step 3004',
         title: 'The collective completes',
         detail: 'All eight hosts participate and step 3004 completes.',
-        note: 'Training continues from the saved checkpoint.',
+        note: 'Gradients flow out, the reduction comes back, every host lands on the same result.',
         event: 'step 3004 · synchronizing gradients',
+    },
+    {
+        id: 'save-3004',
+        duration: 6500,
+        kicker: 'Checkpoint',
+        title: 'Save the finished step',
+        detail: 'The trainer saves checkpoint 3004 with the new weights.',
+        note: 'A checkpoint is written only after the collective succeeds.',
+        event: 'step 3004 · saving checkpoint',
+    },
+    {
+        id: 'batch-next',
+        duration: 7000,
+        kicker: 'Training · step 3005',
+        title: 'A fresh batch goes out',
+        detail: 'The run moves on: each host receives its next shard.',
+        note: 'Training continues from the saved checkpoint.',
+        event: 'step 3005 · distributing batch shards',
     },
     {
         id: 'done',
         duration: 4500,
         kicker: 'Training resumed',
         title: 'Back to training',
-        detail: 'The replacement host joins the same distributed run.',
+        detail: 'Checkpoint 3004 is on disk and the next batch is on the wire — the run continues.',
         note: 'If retries cannot continue, the launcher returns an error.',
-        event: 'step 3004 complete · training continues',
+        event: 'training continues from checkpoint 3004',
     },
 ]
 
@@ -488,6 +506,8 @@ function draw(
     const swapped =
         id === 'restore' ||
         id === 'resume' ||
+        id === 'save-3004' ||
+        id === 'batch-next' ||
         id === 'done' ||
         id === 'batch-retry'
     const stopped = id === 'timeout' || swapping
@@ -511,7 +531,10 @@ function draw(
     const signal =
         failed || swapping
             ? palette.orange
-            : gradient || id === 'batch-3004' || id === 'batch-retry'
+            : gradient ||
+                id === 'batch-3004' ||
+                id === 'batch-retry' ||
+                id === 'batch-next'
               ? palette.purple
               : palette.cyan
     const checkpoint = [
@@ -522,17 +545,26 @@ function draw(
         'swap',
         'restore',
         'resume',
+        'save-3004',
+        'batch-next',
         'batch-retry',
         'done',
     ].includes(id)
-    const saveDone = id !== 'save' || p > 0.78
+    const saveDone = id === 'save' || id === 'save-3004' ? p > 0.78 : true
+    // Which checkpoint the shared save/restore visuals refer to: 3003 until
+    // the retry's save begins, 3004 from then on.
+    const checkpointStep =
+        id === 'save-3004' || id === 'batch-next' || id === 'done' ? 3004 : 3003
     // A packet is "in" when its own delayed() ramp completes — the same test
     // the packet renderer uses — so the pips and the count can never run
     // ahead of the animation.
     const packetArrived = (i: number) =>
         id === 'stall'
             ? i > 0 && delayed(p * 1.85, i) >= 1
-            : id === 'batch' || id === 'batch-3004' || id === 'batch-retry'
+            : id === 'batch' ||
+                id === 'batch-3004' ||
+                id === 'batch-retry' ||
+                id === 'batch-next'
               ? delayed(p, i) >= 1
               : id === 'sync' || id === 'resume'
                 ? delayed(p / 0.6, i) >= 1
@@ -543,16 +575,20 @@ function draw(
         id === 'resume' ||
         id === 'batch' ||
         id === 'batch-3004' ||
-        id === 'batch-retry'
+        id === 'batch-retry' ||
+        id === 'batch-next'
     const collectiveProgress = packetScene
         ? ranks.reduce((n, _, i) => n + (packetArrived(i) ? 1 : 0), 0)
-        : id === 'save' || id === 'done'
+        : id === 'save' || id === 'save-3004' || id === 'done'
           ? 8
           : 0
     // Batch pips colour by shard (each host's own shard) rather than the
     // collective-result hue, so the panel reads as "shards arriving", not "gradients in".
     const batchRetry =
-        id === 'batch' || id === 'batch-3004' || id === 'batch-retry'
+        id === 'batch' ||
+        id === 'batch-3004' ||
+        id === 'batch-retry' ||
+        id === 'batch-next'
 
     ctx.clearRect(0, 0, width, height)
 
@@ -561,7 +597,9 @@ function draw(
         ctx,
         id === 'batch' || id === 'sync' || id === 'save'
             ? 'step 3003'
-            : 'step 3004',
+            : id === 'batch-next' || id === 'done'
+              ? 'step 3005'
+              : 'step 3004',
         415,
         79,
         palette.text,
@@ -612,7 +650,8 @@ function draw(
         { x: 685, y: 300 },
         { x: 743, y: 260 },
     ]
-    if (id === 'save') curve(ctx, checkpointPath, palette.green)
+    if (id === 'save' || id === 'save-3004')
+        curve(ctx, checkpointPath, palette.green)
     if (id === 'restore') curve(ctx, restorePath, palette.green)
     if (swapping) curve(ctx, sparePath, palette.green, 0.75)
 
@@ -722,7 +761,7 @@ function draw(
     // Idle checkpoint: barely there until the step-3003 save actually begins,
     // then it ramps up with the write and stays solid for the rest of the run.
     const checkpointAlpha =
-        id === 'save'
+        id === 'save' || id === 'save-3004'
             ? lerp(0.12, 0.95, smooth(clamp(p / 0.78)))
             : checkpoint
               ? 0.95
@@ -759,11 +798,11 @@ function draw(
         ctx,
         checkpoint && saveDone
             ? compact
-                ? '3003'
-                : 'step 3003'
+                ? String(checkpointStep)
+                : 'step ' + checkpointStep
             : compact
-              ? '3002'
-              : 'step 3002',
+              ? String(checkpointStep - 1)
+              : 'step ' + (checkpointStep - 1),
         820,
         454,
         palette.text,
@@ -815,21 +854,36 @@ function draw(
             return allReduceLanded(i, 0.4, 0.6)
                 ? palette.purple
                 : palette.shards[i]
-        // Step 3004 re-runs the all-reduce on the restored ranks. Restore
-        // leaves every host green, so resume flips each green host to purple
-        // as its packet lands; never routing back through shard colors.
+        // Resume is the same collective as sync, run on the retried batch:
+        // each host keeps the shard colour it received in batch-retry and
+        // flips to purple as its all-reduce packet lands, one rank at a time.
         if (id === 'resume')
-            return allReduceLanded(i, 0.4, 0.6) ? palette.purple : palette.green
-        if (id === 'done') return palette.purple
-        // Restore: checkpoint bytes arrive per rank; the step-3003 purple is
-        // still the last completed state until a rank's shard is restored, at
-        // which point it shows green. After restore completes every host is
-        // green (checkpoint), not purple, and resume re-derives purple.
+            return allReduceLanded(i, 0.4, 0.6)
+                ? palette.purple
+                : palette.shards[i]
+        // save-3004 starts from the purple the collective just produced and
+        // the batch after it deals shard colours out again from purple.
+        if (id === 'save-3004') return palette.purple
+        if (id === 'batch-next')
+            return delayed(p, i) >= 1 ? palette.shards[i] : palette.purple
+        // done follows batch-next, which ends with every host holding its
+        // shard colour; keep that state instead of snapping to a new hue.
+        if (id === 'done') return palette.shards[i]
+        // Restore: at swap exit the seven surviving hosts were still wearing
+        // their step-3004 shard colours while the failed slot is green (the
+        // spare). Checkpoint bytes land per rank and flip each of those hosts
+        // to green; keeping the shard colour as the pre-restore base avoids
+        // snapping shard → purple → green across the swap/restore seam.
         if (id === 'restore')
             return p > 0.45 && delayed((p - 0.45) / 0.55, i) >= 1
                 ? palette.green
-                : palette.purple
-        // stall/timeout/swap hold whatever step 3004 staged: once the fresh
+                : i === 0
+                  ? palette.green
+                  : palette.shards[i]
+        // Swap: the spare has docked in slot 0 but has no data yet — it is
+        // checkpoint-green until the retried batch is dealt to it.
+        if (i === 0 && id === 'swap') return palette.green
+        // stall/timeout hold whatever step 3004 staged: once the fresh
         // batch lands, every healthy host keeps its shard colour while it
         // waits at the collective (host-041 blends toward red via failRamp).
         // save still holds the step-3003 collective result (purple).
@@ -858,22 +912,11 @@ function draw(
             host(ctx, rank.x, rank.y, 80, hostColor, opacity)
         }
         if (badHost && spareInSlot)
-            // The spare inherits the failed slot. It takes its shard colour
-            // when the redistributed batch lands on rank 0, flips to purple
-            // once the all-reduce reaches it, and stays purple from then on.
-            host(
-                ctx,
-                rank.x,
-                rank.y,
-                80,
-                (id === 'resume' && allReduceLanded(0, 0.4, 0.6)) ||
-                    id === 'done'
-                    ? palette.purple
-                    : id === 'batch-retry' && delayed(p, 0) >= 1
-                      ? palette.shards[0]
-                      : palette.green,
-                1,
-            )
+            // The spare inherits the failed slot and follows the exact same
+            // colour script as every other rank (checkpoint green → shard on
+            // deal → purple on the all-reduce), so hostColorFor is the single
+            // source of truth for it too.
+            host(ctx, rank.x, rank.y, 80, hostColorFor(0), 1)
         // Same eased opacity as everywhere else in the stall arc; drawing a
         // second, more opaque red pass here popped brighter at swap entry.
         if (badHost && swapping && swapProgress === 0)
@@ -909,7 +952,12 @@ function draw(
         )
     }
 
-    if (id === 'batch' || id === 'batch-3004' || id === 'batch-retry') {
+    if (
+        id === 'batch' ||
+        id === 'batch-3004' ||
+        id === 'batch-retry' ||
+        id === 'batch-next'
+    ) {
         ranks.forEach((rank, index) => {
             const progress = delayed(p, index)
             if (progress > 0 && progress < 1)
@@ -946,7 +994,7 @@ function draw(
         })
     }
 
-    if (id === 'save') {
+    if (id === 'save' || id === 'save-3004') {
         if (p < 0.8)
             packet(
                 ctx,
@@ -969,7 +1017,7 @@ function draw(
         ctx.restore()
         label(
             ctx,
-            mb + ' / 412 MB',
+            (compact ? '' : 'ckpt ' + checkpointStep + '  ') + mb + ' / 412 MB',
             barX + barW / 2,
             barY + 17,
             palette.muted,

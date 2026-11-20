@@ -249,7 +249,7 @@ The dangerous migration failure was not a crash. The reported loss looked plausi
 <AutoRetryCluster />
 
 <SpeakerNotes>
-Illustrative replay. The healthy step saves checkpoint 3003. Step 3004 starts normally and the batch is redistributed, then one host goes quiet and the collective waits. The replay compresses 30 minutes of silence. The watchdog exits with 124, and the retry rotates in a spare before the trainer restores checkpoint 3003.
+Illustrative replay. The healthy step saves checkpoint 3003. Step 3004 starts normally and the batch is redistributed, then one host goes quiet and the collective waits. The replay compresses 30 minutes of silence. The watchdog exits with 124, and the retry rotates in a spare before the trainer restores checkpoint 3003, re-runs the collective, saves checkpoint 3004, and deals the next batch.
 </SpeakerNotes>
 
 </Slide>
