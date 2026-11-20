@@ -85,15 +85,8 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><dt>DDR5</dt><dd>10 PB</dd></div>
 </dl>
 <p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11 · Argonne Leadership Computing Facility</p>
+<p class="hero-stack">SYCL and oneCCL below PyTorch — not CUDA and NCCL.</p>
 
-<div class="aurora-contract">
-
-<div><span class="contract-label">JOBS</span><p>Wall-clock allocations end mid-run — training spans many of them.</p></div>
-<div><span class="contract-label">STORAGE</span><p>Checkpoints land on shared Lustre; the next allocation reads them back.</p></div>
-<div><span class="contract-label">RESTARTS</span><p>Model, optimizer, data position, and RNG state all resume from the last checkpoint.</p></div>
-<div><span class="contract-label">STACK</span><p>SYCL and oneCCL below PyTorch, not CUDA and NCCL.</p></div>
-
-</div>
 
 </div>
 
@@ -649,8 +642,8 @@ flowchart TB
         margin: 0;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 0.6rem 1.1rem;
-        padding-bottom: 0.9rem;
+        gap: 1.1rem 1.25rem;
+        padding-bottom: 1.1rem;
         border-bottom: 1px solid var(--sc-rule);
     }
     .aurora-facts > div {
@@ -658,11 +651,10 @@ flowchart TB
         gap: 0.15rem;
         align-content: start;
     }
-    #aurora .hero-context { font-size: 1.02rem; line-height: 1.35; }
-    #aurora .aurora-contract p { font-size: 1.15rem; line-height: 1.3; }
+    #aurora .hero-context { font-size: 1.25rem; line-height: 1.35; }
     #aurora .aurora-photo figcaption { font-size: 0.78rem; }
     .aurora-facts dt {
-        font-size: 0.58em;
+        font-size: 0.78rem;
         font-weight: 800;
         letter-spacing: 0.12em;
         text-transform: uppercase;
@@ -670,16 +662,16 @@ flowchart TB
     }
     .aurora-facts dd {
         margin: 0;
-        font-size: 1.05em;
+        font-size: clamp(2rem, 3.1vw, 3rem);
         font-weight: 800;
-        line-height: 1.1;
-        letter-spacing: -0.01em;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
         color: var(--foreground0);
         font-variant-numeric: tabular-nums;
     }
     .aurora-fact-note {
         display: block;
-        font-size: 0.42em;
+        font-size: 0.34em;
         font-weight: 500;
         letter-spacing: 0;
         line-height: 1.35;
@@ -693,44 +685,18 @@ flowchart TB
         font-size: 0.72em;
         line-height: 1.35;
     }
-
-    .aurora-contract {
-        display: grid;
-        gap: 0.45rem;
-        padding-top: 0.1rem;
-    }
-
-    .aurora-contract > div {
-        display: grid;
-        grid-template-columns: 9ch 1fr;
-        align-items: baseline;
-        gap: 0.9rem;
-        padding-bottom: 0.3rem;
-        border-bottom: 1px solid var(--sc-rule);
-    }
-    .aurora-contract > div:last-child {
-        border-bottom: 0;
-        padding-bottom: 0;
-    }
-
-    .aurora-contract .contract-label,
-    .micro-label {
-        font-size: 0.6em;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-    }
-
-    .aurora-contract p {
-        color: var(--foreground2);
-        font-size: 0.66em;
-        line-height: 1.28;
-        margin: 0;
+    .hero-stack {
+        margin: 0.5rem 0 0;
+        color: var(--foreground0);
+        font-weight: 600;
+        font-size: 1.15rem;
+        line-height: 1.3;
     }
 
     #aurora .takeaway-line {
-        margin-top: 0.6rem;
-        padding-top: 0.5rem;
-        font-size: 0.7em;
+        margin-top: 1.1rem;
+        padding-top: 0.7rem;
+        font-size: 0.95rem;
     }
 
     .takeaway-line span {
@@ -1150,7 +1116,7 @@ flowchart TB
             font-size: clamp(2rem, 4vw, 3.5rem);
             line-height: 1.06;
         }
-        :is(.hero-context, .aurora-contract p, .takeaway-line, .result-strip,
+        :is(.hero-context, .takeaway-line, .result-strip,
             .eval-number p,
             .eval-number small, .lost-runs span, .retry-sequence code, .thanks-line) {
             color: var(--foreground0);
