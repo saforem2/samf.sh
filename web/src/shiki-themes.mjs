@@ -42,33 +42,125 @@ const withOverrides = (
 export const customLightTheme = withOverrides(nvimLightRole, {
     name: 'custom-light',
     displayName: 'Light blend',
-    // Blend the soft Material Lighter / Onelight canvas with syntax accents
-    // sampled from all four Vim themes.
-    foreground: '#6A6A6A',
+    // Derived from mbph /tmp/lushify-onelight.lua (the active Nvim/Lush
+    // light theme). Keep textmate scopes broadly grouped by treesitter role
+    // so the web theme tracks the editor instead of inventing its own roles.
+    foreground: '#444444',
     background: '#FAFAFA',
     rules: [
+        // comments / punctuation
         [['comment', 'punctuation.definition.comment'], '#9B9FA6'],
+        [['punctuation.definition', 'punctuation.separator'], '#6A6A6A'],
+        [
+            [
+                'punctuation.definition.string.begin',
+                'punctuation.definition.string.end',
+            ],
+            '#1DA912',
+        ],
+        // text / identifiers — @variable
         [['variable', 'variable.other.readwrite'], '#444444'],
-        [['variable.other.member', 'variable.other.property'], '#0F62FE'],
-        // Separate the executable, flags, and ordinary arguments.
-        [['entity.name.function.call.shell'], '#0F62FE'],
+        // member access / properties — @variable.member / @property
+        [['variable.other.member', 'variable.other.property'], '#E05661'],
+        // parameters — @variable.parameter (and *.builtin stay default-ish)
+        [['variable.parameter'], '#E05661'],
+        // @variable.builtin (self/this/super)
+        [['variable.language'], '#EEA825'],
+        // constants / numbers — @constant / @number
+        [
+            [
+                'constant.numeric',
+                'constant.character',
+                'constant.character.escape',
+            ],
+            '#EE9025',
+        ],
+        // @constant.builtin / python True, False, None -> Lush purple
+        [['constant.language', 'constant.language.python'], '#9A77CF'],
+        [
+            ['constant.numeric.shell', 'constant.numeric.integer.shell'],
+            '#EE9025',
+        ],
+        // @constant.builtin — theme keeps these purple
+        [['constant.language.boolean', 'constant.language.null'], '#9A77CF'],
+        // strings — Lush uses #1da912 for String, #fd971f for @string;
+        // normal strings read better in the sheer role on the page.
+        [['string'], '#1DA912'],
+        [
+            ['string.quoted', 'string.template', 'string.interpolated'],
+            '#FD971F',
+        ],
+        [['string.regexp', 'string.regexp.python'], '#1DA912'],
         [
             ['string.unquoted.argument.shell', 'string.unquoted.argument'],
             '#6A6A6A',
         ],
+        // operators / accessors — @operator / @operator.lua
+        [['keyword.operator', 'punctuation.accessor'], '#56B6C2'],
+        // keywords — @keyword / Conditional / Repeat / Include / Exception
+        [
+            [
+                'keyword',
+                'storage.type',
+                'storage.modifier',
+                'storage.type.function',
+                'keyword.control',
+                'keyword.declaration',
+                'keyword.control.import',
+                'keyword.control.from',
+            ],
+            '#9A77CF',
+        ],
+        // type annotations — @type (Lush uses #EEA825 here)
+        [['entity.name.type', 'support.type', 'meta.type'], '#EEA825'],
+        [['support.type.primitive', 'support.type.python'], '#EEA825'],
+        // namespaces / modules — @module
+        [
+            [
+                'entity.name.namespace',
+                'support.module',
+                'entity.name.namespace.python',
+            ],
+            '#01A9F4',
+        ],
+        // function definitions vs calls:
+        // @function / @function.method -> #118dc3
+        // @function.call / @function.method.call -> #ec407a (python inherits the blue; calls stay warm)
+        [
+            [
+                'entity.name.function',
+                'entity.name.function.python',
+                'entity.name.function.method',
+                'entity.name.function.method.python',
+                'support.function',
+                'meta.function-call',
+            ],
+            '#118DC3',
+        ],
+        [
+            [
+                'meta.function-call.generic',
+                'meta.function-call.python',
+                'meta.method-call',
+                'meta.method-call.python',
+                'entity.name.function.call',
+                'variable.function',
+            ],
+            '#EC407A',
+        ],
+        // builtins — @function.builtin
+        [
+            ['support.function.builtin', 'support.function.builtin.python'],
+            '#1DA912',
+        ],
+        // decorators — @attribute
+        [['entity.other.attribute-name', 'meta.function.decorator'], '#9A77CF'],
+        // shell / flags
+        [['entity.name.function.call.shell'], '#01A9F4'],
         [
             ['constant.other.option', 'constant.other.option.dash.shell'],
-            '#673AB7',
+            '#9A77CF',
         ],
-        [['constant.numeric.shell'], '#0F62FE'],
-        [['string'], '#2E7D32'],
-        [['support.function.builtin'], '#2E7D32'],
-        [['constant.language.python', 'constant.other.python'], '#673AB7'],
-        [['entity.name.namespace', 'support.module'], '#0F62FE'],
-        [['entity.name.function', 'meta.function-call'], '#673AB7'],
-        [['keyword', 'storage.type'], '#673AB7'],
-        [['constant.numeric', 'constant.language'], '#0F62FE'],
-        [['entity.name.type', 'support.type'], '#0F62FE'],
     ],
 })
 
