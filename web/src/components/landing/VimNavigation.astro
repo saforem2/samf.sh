@@ -71,7 +71,7 @@ const { showHL = false } = Astro.props as Props
 
     const content = document.querySelector('main') as HTMLElement
     const vimQuery =
-        '[tabindex="0"], a[href], summary, button:not(#btn-j):not(#btn-k):not(#btn-h):not(#btn-l):not(#btn-question)'
+        '[data-widget-card], a[href], summary, button:not(#btn-j):not(#btn-k):not(#btn-h):not(#btn-l):not(#btn-question)'
     const buttonH = document.querySelector('#btn-h') as HTMLButtonElement
     const buttonJ = document.querySelector('#btn-j') as HTMLButtonElement
     const buttonK = document.querySelector('#btn-k') as HTMLButtonElement
@@ -82,7 +82,7 @@ const { showHL = false } = Astro.props as Props
 
     // Apply vim-style j/k navigation to cycle through focusable links in main.
     // Skip when Doc.astro manages the page (it applies its own handler with
-    // a richer query that includes [tabindex="0"] content elements).
+    // a richer query that includes [data-widget-card] cards).
     if (content && !content.id) {
         applyVimNavigation(content, vimQuery)
     }

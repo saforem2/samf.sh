@@ -4,7 +4,9 @@
 function mountFrameBadges(root: Element) {
     const grid = root.querySelector('#widgets-grid')
     if (!grid) return
-    const cards = grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]')
+    const cards = grid.querySelectorAll<HTMLElement>(
+        ':scope > [data-widget-card]',
+    )
     for (const card of cards) {
         if (card.querySelector(':scope > .wbl-frame-badge')) continue
         const src =
@@ -85,7 +87,7 @@ function wireHoverDim(grid: HTMLElement) {
     if (grid.dataset.wblHoverDim === 'true') return
     grid.dataset.wblHoverDim = 'true'
     const cards = Array.from(
-        grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'),
+        grid.querySelectorAll<HTMLElement>(':scope > [data-widget-card]'),
     )
     const update = () => {
         const vimActive = grid.querySelector('[data-vim-focused="true"]')

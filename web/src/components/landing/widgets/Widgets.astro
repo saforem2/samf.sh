@@ -157,10 +157,10 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
        [box-~='square']:is(:hover,:focus-within)` -> element box-shadow +
        translate) out-specifies any grid-level selector, so suppress its
        detached element shadow + translate with !important. */
-    #widgets-grid > [tabindex='0'] {
+    #widgets-grid > [data-widget-card] {
         transition: color 100ms linear;
     }
-    #widgets-grid > [tabindex='0']::before {
+    #widgets-grid > [data-widget-card]::before {
         transition:
             box-shadow 120ms ease-out,
             border-color 120ms ease-out;
@@ -171,17 +171,17 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
        shadow here AND the content brightening (opacity rule in Intro.astro),
        so a widget's border and its contents light up together — otherwise a
        scrolled-in card gets the frame but its text stays dim. */
-    #widgets-grid > [tabindex='0']:hover,
-    #widgets-grid > [tabindex='0']:focus-within,
-    #widgets-grid > [tabindex='0'][data-scroll-active='true'],
-    #widgets-grid > [tabindex='0'][data-vim-focused='true'] {
+    #widgets-grid > [data-widget-card]:hover,
+    #widgets-grid > [data-widget-card]:focus-within,
+    #widgets-grid > [data-widget-card][data-scroll-active='true'],
+    #widgets-grid > [data-widget-card][data-vim-focused='true'] {
         box-shadow: none !important;
         transform: none !important;
     }
-    #widgets-grid > [tabindex='0']:hover::before,
-    #widgets-grid > [tabindex='0']:focus-within::before,
-    #widgets-grid > [tabindex='0'][data-scroll-active='true']::before,
-    #widgets-grid > [tabindex='0'][data-vim-focused='true']::before {
+    #widgets-grid > [data-widget-card]:hover::before,
+    #widgets-grid > [data-widget-card]:focus-within::before,
+    #widgets-grid > [data-widget-card][data-scroll-active='true']::before,
+    #widgets-grid > [data-widget-card][data-vim-focused='true']::before {
         border-color: var(--foreground0);
         box-shadow: 2px 2px 0 0
             color-mix(
@@ -190,8 +190,8 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
                 rgba(0, 0, 0, 0.55)
             );
     }
-    #widgets-grid > [tabindex='0'][data-scroll-active='true'],
-    #widgets-grid > [tabindex='0'][data-vim-focused='true'] {
+    #widgets-grid > [data-widget-card][data-scroll-active='true'],
+    #widgets-grid > [data-widget-card][data-vim-focused='true'] {
         color: var(--foreground0);
     }
 
@@ -391,35 +391,37 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
             flex-shrink: 0;
         }
 
-        /* Reorder: intro first, content next, decorative last */
-        #widgets-grid.intro-in-grid #intro-widget {
+        /* Tab order follows the DOM. Non-home variants need an explicit
+           visual order; home cards are reordered in the DOM at <=1024px
+           (see syncHomeWidgetOrder) so visual and keyboard order match. */
+        #widgets-grid.intro-in-grid:not(.home-grid) #intro-widget {
             order: 1;
         }
-        #widgets-grid.intro-in-grid .posts-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .posts-widget {
             order: 2;
         }
-        #widgets-grid.intro-in-grid .talks-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .talks-widget {
             order: 3;
         }
-        #widgets-grid.intro-in-grid .gitlog-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .gitlog-widget {
             order: 4;
         }
-        #widgets-grid.intro-in-grid #clock-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) #clock-widget {
             order: 5;
         }
-        #widgets-grid.intro-in-grid .cal-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .cal-widget {
             order: 6;
         }
-        #widgets-grid.intro-in-grid .contrib-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .contrib-widget {
             order: 7;
         }
-        #widgets-grid.intro-in-grid .spark-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .spark-widget {
             order: 8;
         }
-        #widgets-grid.intro-in-grid .work-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) .work-widget {
             order: 9;
         }
-        #widgets-grid.intro-in-grid #stats-widget {
+        #widgets-grid.intro-in-grid:not(.home-grid) #stats-widget {
             order: 10;
         }
     }
@@ -729,11 +731,10 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
                 scroll-margin-block-start: 1lh;
             }
 
-            /* Single-column order: intro, then work / posts / talks, with the
-               last.fm (#stats-widget) player moved to the END — on desktop it
-               sits top-right next to the intro, but stacked it's a tall, busy
-               track list, so it reads better after the content sections than
-               wedged between intro and work. */
+            /* Stacked visual order: intro, work, posts, talks, last.fm.
+               Kept in CSS so the stack is correct before JS runs;
+               syncHomeWidgetOrder() applies the same order to the DOM at
+               this breakpoint so keyboard/AT order matches what's on screen. */
             #intro-widget {
                 order: 1;
             }
@@ -839,13 +840,52 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
        use, so on desktop the shadow is driven purely by :hover/:focus-within. */
     const mobileScroll = window.matchMedia('(max-width: 1024px)')
 
+    /* DOM order places last.fm second (desktop bento top-right). The stacked
+       layout moves it after talks. CSS `order` cannot change Tab/AT order, so
+       re-append the cards to match the stacked order at <=1024px and restore
+       the desktop order above it. Runs on load and on breakpoint changes. */
+    const homeOrderDesktop = [
+        '#intro-widget',
+        '#stats-widget',
+        '.work-widget',
+        '.posts-widget',
+        '.talks-widget',
+    ]
+    const homeOrderMobile = [
+        '#intro-widget',
+        '.work-widget',
+        '.posts-widget',
+        '.talks-widget',
+        '#stats-widget',
+    ]
+    function syncHomeWidgetOrder() {
+        const grid = document.querySelector(
+            '#widgets-grid.home-grid.intro-v21',
+        ) as HTMLElement | null
+        if (!grid) return
+        const wanted = mobileScroll.matches ? homeOrderMobile : homeOrderDesktop
+        const cards = wanted.map((sel) =>
+            grid.querySelector<HTMLElement>(`:scope > ${sel}`),
+        )
+        if (cards.some((c) => !c)) return
+        const current = Array.from(grid.children).filter((el) =>
+            (cards as HTMLElement[]).includes(el as HTMLElement),
+        )
+        if (cards.every((c, i) => current[i] === c)) return
+        const active = document.activeElement
+        for (const card of cards as HTMLElement[]) grid.append(card)
+        if (active instanceof HTMLElement && grid.contains(active)) {
+            active.focus({ preventScroll: true })
+        }
+    }
+
     function markActiveWidget() {
         const grid = document.querySelector(
             '#widgets-grid.intro-v21',
         ) as HTMLElement | null
         if (!grid) return
         const widgets = Array.from(
-            grid.querySelectorAll<HTMLElement>(':scope > [tabindex="0"]'),
+            grid.querySelectorAll<HTMLElement>(':scope > [data-widget-card]'),
         )
         if (!widgets.length) return
 
@@ -904,11 +944,18 @@ const layoutClass = isIntroWidget ? `intro-v${variant}` : ''
         })
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', markActiveWidget)
-    } else {
+    const initHomeGrid = () => {
+        syncHomeWidgetOrder()
         markActiveWidget()
     }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHomeGrid, {
+            once: true,
+        })
+    } else {
+        initHomeGrid()
+    }
+    mobileScroll.addEventListener('change', syncHomeWidgetOrder)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll, { passive: true })
 </script>

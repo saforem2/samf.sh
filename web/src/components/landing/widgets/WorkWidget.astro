@@ -132,7 +132,8 @@ const works = [
     pad-="2 1"
     gap-="0"
     class="work-widget"
-    tabindex="0"
+    tabindex="-1"
+    data-widget-card
     data-random-accent={String(randomAccent)}
     data-accent-pool={accentPool?.join(',') ?? undefined}>
     <span is-="badge" variant-="green" class="ww-title"

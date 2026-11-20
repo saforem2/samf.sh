@@ -8,7 +8,13 @@ interface Props {
 const { variant, total, home = false } = Astro.props
 ---
 
-<column box-="square" class="widget" pad-="2 1" id="intro-widget" tabindex="0">
+<column
+    box-="square"
+    class="widget"
+    pad-="2 1"
+    id="intro-widget"
+    tabindex="-1"
+    data-widget-card>
     {
         !home && (
             <row class="iw-variant-header">

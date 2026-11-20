@@ -17,7 +17,13 @@ for (let d = 1; d <= daysInMonth; d++) cells.push(d)
 while (cells.length < 42) cells.push(null)
 ---
 
-<column box-="square" pad-="2" gap-="0" class="cal-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="2"
+    gap-="0"
+    class="cal-widget"
+    tabindex="-1"
+    data-widget-card>
     <span class="cal-title">{monthName} {year}</span>
     <row gap-="0" class="cal-header">
         {dayHeaders.map((d) => <span class="cal-hdr">{d}</span>)}
