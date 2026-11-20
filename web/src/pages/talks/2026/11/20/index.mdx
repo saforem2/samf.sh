@@ -80,7 +80,7 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><dt>Nodes</dt><dd>10,624</dd></div>
 <div><dt>GPUs</dt><dd>63,744<span class="aurora-fact-note">Max 1550 · 2 XPUs</span></dd></div>
 <div><dt>CPUs</dt><dd>21,248<span class="aurora-fact-note">Xeon Max</span></dd></div>
-<div><dt>Network</dt><dd>Slingshot-11<span class="aurora-fact-note">8 endpoints / node</span></dd></div>
+<div><dt>Network</dt><dd>Slingshot<span class="aurora-fact-note">11 · 8 endpoints</span></dd></div>
 <div><dt>Memory</dt><dd>20.4 PB</dd></div>
 <div><dt>Storage</dt><dd>230 PB<span class="aurora-fact-note">DAOS · 31 TB/s</span></dd></div>
 </dl>
@@ -695,7 +695,8 @@ flowchart TB
     }
     .aurora-facts dd {
         margin: 0;
-        font-size: clamp(1.35rem, 2.6vw, 2.35rem);
+        white-space: nowrap;
+        font-size: clamp(1.3rem, 2.45vw, 2.2rem);
         font-weight: 800;
         line-height: 1.05;
         letter-spacing: -0.02em;
