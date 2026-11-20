@@ -174,21 +174,39 @@ const shardTokens = [
     '--pink',
 ]
 
+let probeCanvas: HTMLCanvasElement | null = null
+/** Exact sRGB bytes for any CSS color, via a 1x1 canvas fill. */
+function toRgb(color: string): [number, number, number] | null {
+    if (typeof document === 'undefined') return null
+    if (!probeCanvas) {
+        probeCanvas = document.createElement('canvas')
+        probeCanvas.width = 1
+        probeCanvas.height = 1
+    }
+    const ctx = probeCanvas.getContext('2d')
+    if (!ctx) return null
+    ctx.clearRect(0, 0, 1, 1)
+    ctx.fillStyle = '#000'
+    ctx.fillStyle = color
+    // Unparseable assignments leave fillStyle at its previous value.
+    ctx.fillRect(0, 0, 1, 1)
+    const d = ctx.getImageData(0, 0, 1, 1).data
+    return [d[0], d[1], d[2]]
+}
+
 function relativeLuminance(cssColor: string) {
-    const m = cssColor.match(/[\d.]+/g)
-    if (!m || m.length < 3) return 0.5
-    const [r, g, b] = m
-        .slice(0, 3)
-        .map(Number)
-        .map((v) => {
-            const c = v / 255
-            return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-        })
+    const rgb = toRgb(cssColor)
+    if (!rgb) return 0.5
+    const [r, g, b] = rgb.map((v) => {
+        const c = v / 255
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 function shardTextColor(cssColor: string) {
-    return relativeLuminance(cssColor) > 0.35 ? '#0b0b0b' : '#f5f5f5'
+    // 0.179 is the WCAG mid-gray break-even for black vs white text.
+    return relativeLuminance(cssColor) > 0.18 ? '#0b0b0b' : '#f5f5f5'
 }
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -198,18 +216,10 @@ const smooth = (value: number) => {
 }
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-function rgbParts(cssColor: string) {
-    const m = cssColor.match(/rgba?\(([^)]+)\)/)
-    if (!m) return null
-    const parts = m[1].split(',').map((n) => Number.parseFloat(n))
-    if (parts.length < 3 || parts.some(Number.isNaN)) return null
-    return parts.slice(0, 3) as [number, number, number]
-}
-
-/** Interpolate two rgb() colors; falls back to `to` when either side is not rgb(). */
+/** Interpolate two arbitrary CSS colors; falls back to `to` when unresolvable. */
 function mixColor(from: string, to: string, t: number) {
-    const a = rgbParts(from)
-    const b = rgbParts(to)
+    const a = toRgb(from)
+    const b = toRgb(to)
     const k = clamp(t)
     if (!a || !b) return k < 0.5 ? from : to
     const c = a.map((v, i) => Math.round(lerp(v, b[i], k)))
