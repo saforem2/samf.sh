@@ -57,7 +57,8 @@ import SpeakerNotes from '@/components/slides/SpeakerNotes.astro'
 </div>
 
 <div class="title-conf-line">4th Annual Trillion Parameter Workshop · November 20, 2026</div>
-<div class="title-url">samf.sh/talks/2026/11/20</div>
+<div class="title-url"><a href="https://samf.sh/talks/2026/11/20">samf.sh/talks/2026/11/20</a></div>
+<div class="title-paper"><a href="https://www.computer.org/csdl/proceedings-article/sc-w/2026/122100a636/2lkuEi9dZFS">Conference paper ↗</a></div>
 
 </div>
 
@@ -69,13 +70,7 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 
 </Slide>
 
-<Slide id="aurora" size="sm">
-
-<img
-    class="aurora-bg"
-    src="/talks/2026-10-21/figures/aurora-hero.jpg"
-    alt="Aurora cabinets at the Argonne Leadership Computing Facility"
-/>
+<Slide id="aurora" size="sm" aria-label="Aurora cabinets at the Argonne Leadership Computing Facility">
 
 <div class="aurora-card">
 <h2 class="aurora-title">Aurora, at production scale</h2>
@@ -90,7 +85,8 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <div><dt>Storage</dt><dd>230 PB<span class="aurora-fact-note">DAOS · 31 TB/s</span></dd></div>
 </dl>
 <p class="hero-context">~10,000 sq ft · 600 tons · built by Intel + HPE · one of the first exascale systems</p>
-<p class="aurora-credit">Aurora cabinets, Argonne Leadership Computing Facility · <a href="https://www.alcf.anl.gov/sites/default/files/2024-07/Aurora_FactSheet_2024.pdf">ALCF Fact Sheet (PDF)</a> · <a href="https://docs.alcf.anl.gov/">ALCF User Guides</a></p>
+<p class="aurora-credit">Aurora cabinets, Argonne Leadership Computing Facility</p>
+<p class="aurora-credit aurora-credit-links"><a href="https://www.alcf.anl.gov/sites/default/files/2024-07/Aurora_FactSheet_2024.pdf">ALCF Fact Sheet (PDF)</a> · <a href="https://docs.alcf.anl.gov/">ALCF User Guides</a></p>
 </div>
 
 <SpeakerNotes>
@@ -125,7 +121,7 @@ print(f"Rank {rank}/{size}")
 ```
 
 ```bash
-$ ezpz launch python3 demo.py
+$ ezpz launch python3 demo.py  # 2N Aurora
 Rank 0/24
 Rank 1/24
 ```
@@ -193,7 +189,9 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 
 <Slide id="bit-exact">
 
-## Bit-exact checks exposed a loss reporting bug
+## Living on the bleeding edge
+
+<p class="sc-subtitle">how to keep your sanity when the software keeps moving</p>
 
 ```mermaid
 %%{init: {'gitGraph': {'mainBranchName': 'upstream:main', 'showCommitLabel': false}}}%%
@@ -299,6 +297,27 @@ Stop here. Leave the links on screen for questions.
 </div>
 
 <p class="sc-backup-legend sc-fill-caption">Same filters as the W&B report: gemma-7B tokenizer, 12 layers, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, world size 3072/6240, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>, excluding restart-from-checkpoint runs. Log scale; smoothed (TWEMA) with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
+
+</Slide>
+
+<Slide id="post-training-backup">
+
+## Backup: post-training the 2B
+
+<div class="sc-post-grid">
+    <figure class="sc-post-figure">
+        <img src="/talks/2026/11/20/figures/post-training-sft.png" alt="SFT training curves for AuroraGPT-2B on tulu_math_uc_mix: loss, grad-norm, learning rate, token accuracy, entropy, and tokens seen versus global step" />
+        <figcaption>SFT (tulu_math_uc_mix): loss / grad-norm / LR / token accuracy / entropy / tokens seen vs. global step. Final loss 0.77 over ~4.5B tokens.</figcaption>
+    </figure>
+    <figure class="sc-post-figure">
+        <img src="/talks/2026/11/20/figures/post-training-grpo.png" alt="GRPO training curves on sum_digits for the SFT'd 2B: reward climbs from about 0.4 to about 0.9 over 1000 steps" />
+        <figcaption>GRPO on the SFT'd 2B (sum_digits, 1000 steps, 8 nodes): reward climbs ~0.4 -&gt; ~0.9; accuracy is what moves, format was already saturated.</figcaption>
+    </figure>
+</div>
+
+<p class="sc-detail">SFT gives the capability (0.205 GSM8K-CoT after two-stage SFT); GRPO polishes format/accuracy on an already-solved task; the base model's ceiling is the binding constraint.</p>
+
+<p class="sc-backup-legend">Full write-up: <a href="https://github.com/saforem2/torchtitan/blob/ezpz/torchtitan/experiments/ezpz/docs/production/POST-TRAINING-2B.md">POST-TRAINING-2B.md</a></p>
 
 </Slide>
 
@@ -527,7 +546,7 @@ flowchart TB
         width: min(72ch, 72vw);
         padding: 1.15rem 1.45rem 1.25rem;
         border: 1px solid rgb(255 255 255 / 0.2);
-        border-left: 4px solid var(--sc-cyan);
+        border-left: 4px solid var(--blue);
         background: rgb(15 18 24 / 0.76);
         box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 0.35);
         color: #f5f7fa;
@@ -623,7 +642,8 @@ flowchart TB
     }
 
     .title-conf-line,
-    .title-url {
+    .title-url,
+    .title-paper {
         margin-top: 0.75rem;
         color: #aeb8c2;
         font-size: 0.56em;
@@ -635,23 +655,39 @@ flowchart TB
         font-family: var(--font-family-mono, monospace);
         font-weight: 700;
     }
+    .title-url a {
+        color: inherit;
+        text-decoration: none;
+    }
+    .title-url a:hover { text-decoration: underline; }
+    .title-paper {
+        margin-top: 0.3rem;
+        font-size: 0.8em;
+        color: #aeb8c2;
+    }
+    .title-paper a {
+        color: inherit;
+        text-decoration: none;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+        padding-bottom: 1px;
+    }
+    .title-paper a:hover { color: #fff; }
 
     /* Aurora slide: full-bleed title-slide photo with the spec sheet in a
        frosted panel over the left third. Reuses the title-slide image so the
        deck doesn't carry two crops of the same render. */
+    #aurora {
+        background: #050a12 url('/talks/2026-10-21/figures/aurora-hero.jpg') 58% 46% / cover no-repeat;
+    }
     #aurora .slide-inner {
         padding: 0;
         justify-content: center;
         overflow: hidden;
-    }
-    #aurora .aurora-bg {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: 58% 46%;
-        z-index: 0;
+        /* .slide-inner stops 1lh above the bottom edge to reserve room for
+           the status bar; let the gradient + card reach into that strip so
+           the photo is continuous behind it. */
+        bottom: 0;
+        padding-bottom: 1lh;
     }
     #aurora::before {
         content: '';
@@ -670,7 +706,7 @@ flowchart TB
         padding: 0.9rem 1.1rem 0.95rem;
         background: rgb(12 17 25 / 0.78);
         border: 1px solid rgb(255 255 255 / 0.18);
-        border-left: 4px solid var(--sc-cyan);
+        border-left: 4px solid var(--blue);
         box-shadow: 0 1.25rem 4rem rgb(0 0 0 / 0.4);
         backdrop-filter: blur(7px);
         color: #e8edf3;
@@ -729,11 +765,13 @@ flowchart TB
         margin: 0;
     }
     .aurora-credit {
-        font-size: 0.58rem;
+        font-size: 0.66rem;
         color: #8b95a1;
         margin: 0;
-        line-height: 1.3;
+        line-height: 1.35;
     }
+    .aurora-credit + .aurora-credit { margin-top: 0.15rem; }
+    .aurora-credit-links a { color: #cdd6df; }
     .aurora-credit a {
         color: inherit;
         text-decoration: underline;
@@ -1304,6 +1342,13 @@ flowchart TB
     }
     .scope-detail strong { color: var(--scope-color); }
     .scope-card.scope-process .scope-detail { margin-left: 0; }
+    .sc-subtitle {
+        margin: -0.4em 0 0.4em;
+        color: var(--foreground1);
+        font-size: clamp(0.9rem, 1.5vw, 1.4rem);
+        line-height: 1.2;
+        letter-spacing: 0.01em;
+    }
     .sc-lead, .sc-detail {
         color: var(--foreground0);
         font-size: clamp(1.05rem, 2.55vw, 2.2rem);
@@ -1401,4 +1446,11 @@ flowchart TB
         }
     }
     .sc-backup-legend { font-size: clamp(1rem, 2vw, 1.65rem); color: var(--foreground0); }
+    .sc-post-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem 1.5rem; flex: 0 0 auto; align-items: start; }
+    .sc-post-figure { margin: 0; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+    .sc-post-figure img { width: 100%; height: auto; max-height: 52vh; object-fit: contain; border-radius: 4px; }
+    .sc-post-figure figcaption { font-size: clamp(0.7rem, 1.15vw, 0.95rem); line-height: 1.3; color: var(--foreground1, var(--foreground0)); }
+    @media (max-width: 700px) {
+        .sc-post-grid { grid-template-columns: minmax(0, 1fr); }
+    }
 `}</style>
