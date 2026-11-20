@@ -475,6 +475,10 @@ function mount(
     })
     // Full-loss view: overlay a second, small chart in the empty lower-right
     let placeLegendRef: (() => void) | null = null
+    // Everything mount() appends to `frame` or observes is torn down by the
+    // returned destroy() so a remount (e.g. theme toggle) starts clean.
+    const sentinelObservers: MutationObserver[] = []
+    let rafId = 0
     // region showing the first 600B tokens for the two 20B chains — this is the
     if (fullLoss) {
         // Legend split into two columns: a 2B group and a 20B group, matching the
@@ -670,19 +674,22 @@ function mount(
                     const done = [0, 1, 2].every(
                         (i) => !active[i] || time - start >= stageDurations[i],
                     )
-                    if (!done) requestAnimationFrame(tick)
+                    if (done) return
+                    rafId = requestAnimationFrame(tick)
                 }
-                requestAnimationFrame(tick)
+                rafId = requestAnimationFrame(tick)
             }
             // The reveal changes legend width; re-anchor it to the plot's top-right.
             // (placeLegend is declared below; defer if we're still in init.)
             if (placeLegendRef) placeLegendRef()
         }
         for (const el of sentinels()) {
-            new MutationObserver(syncStages).observe(el, {
+            const obs = new MutationObserver(syncStages)
+            obs.observe(el, {
                 attributes: true,
                 attributeFilter: ['data-visible'],
             })
+            sentinelObservers.push(obs)
         }
         syncStages()
     }
@@ -741,7 +748,18 @@ function mount(
     resizeObserver.observe(frame)
     placeLegend()
     root.dataset.ready = ''
-    return chart
+    const destroy = () => {
+        cancelAnimationFrame(rafId)
+        for (const obs of sentinelObservers) obs.disconnect()
+        resizeObserver.disconnect()
+        // Remove the DOM this mount appended before destroying the chart so
+        // a remount doesn't accumulate legends/sentinels in the frame.
+        frame
+            .querySelectorAll('.sc26-legend, .sc26-fragment-stage')
+            .forEach((el) => el.remove())
+        chart.destroy()
+    }
+    return { chart, destroy }
 }
 
 async function initialize() {
@@ -769,10 +787,10 @@ async function initialize() {
             if (!slide.hasAttribute('data-current')) return
             observer.disconnect()
             try {
-                let chart = mount(root, canvas, frame)
+                let mounted = mount(root, canvas, frame)
                 new MutationObserver(() => {
-                    chart.destroy()
-                    chart = mount(root, canvas, frame)
+                    mounted.destroy()
+                    mounted = mount(root, canvas, frame)
                 }).observe(document.documentElement, {
                     attributes: true,
                     attributeFilter: ['data-webtui-theme'],
