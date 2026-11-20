@@ -295,7 +295,7 @@ Stop here. Leave the links on screen for questions.
     <SC26Chart kind="optimizer-grad" label="Optimizer gradient norms versus consumed tokens, W&B filters applied" />
 </div>
 
-<p class="sc-backup-legend sc-fill-caption">W&amp;B <code>aurora_gpt/AuroraGPT</code>, <code>optimizer-experiments/Megatron-DeepSpeed</code> outdir, 12-layer gemma-7B tokenizer, rope θ=50k, zero-stage 0, no activation checkpointing, mbs=1, grad-accum ≥ 2, 50M-token batches, world size 3072, torch ≥ 2.8, <code class="sc-cli">olmo-mix-1124</code>. Resume chains from the campaign’s auto-retry are merged longest-run-first. The SophiaG grad-norm trace shows brief 1–3-step spikes to 10–114 (max 113.7; most are a single logged step) scattered through healthy runs, not tied to a single resume boundary; the smoothed line uses a median pre-filter and the spike heights should not be read as real gradient magnitudes. Log scale; smoothed with the raw trace faint behind. Source: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
+<p class="sc-backup-legend sc-fill-caption">50M-token batches, 3072-rank; median pre-filter + TWEMA; spikes are logging artifacts, not gradient magnitudes. Recipe: <code class="sc-cli">scripts/fetch-sc26-optimizer.py</code>.</p>
 
 </Slide>
 
