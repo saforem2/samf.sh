@@ -1414,7 +1414,7 @@ html[data-webtui-theme='alcf'] .astro-code {
 html[data-webtui-theme='custom-light'] .astro-code span:not(.line),
 html[data-webtui-theme='doe'] .astro-code span:not(.line),
 html[data-webtui-theme='alcf'] .astro-code span:not(.line) {
-    --pre-background: oklch(from var(--code-bg, #f8f8f8) l c h);
+    --pre-background: var(--code-bg, #f8f8f8);
     background-color: transparent !important;
 }
 
