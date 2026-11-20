@@ -8,7 +8,13 @@ interface Props {
 const { variant, total, home = false } = Astro.props
 ---
 
-<column box-="square" class="widget" pad-="2 1" id="intro-widget" tabindex="0">
+<column
+    box-="square"
+    class="widget"
+    pad-="2 1"
+    id="intro-widget"
+    tabindex="-1"
+    data-widget-card>
     {
         !home && (
             <row class="iw-variant-header">
@@ -263,6 +269,10 @@ const { variant, total, home = false } = Astro.props
         pointer-events: auto;
         gap: 0.5lh;
 
+        @media (max-width: 1024px) {
+            gap: 0.8lh;
+        }
+
         h1 {
             display: inline-flex;
         }
@@ -385,6 +395,13 @@ const { variant, total, home = false } = Astro.props
             color: var(--foreground1);
             margin-block: 0.5lh;
         }
+        /* Phones: let the body copy breathe — desktop keeps the tighter 0.5lh. */
+        @media (max-width: 1024px) {
+            p {
+                margin-block: 0.7lh;
+                line-height: 1.55;
+            }
+        }
     }
 
     /* Wrap: icon row + [a]bout CTA. On wide containers they sit
@@ -395,6 +412,10 @@ const { variant, total, home = false } = Astro.props
         flex-wrap: wrap;
         align-items: center;
         gap: 0.5lh 1ch;
+        /* breathing room above the icon row: pinned to the card bottom by
+           margin-top:auto, so without a floor the accordion/bio block and the
+           chips sit flush on phones. */
+        padding-block-start: 0.6lh;
         margin-top: auto;
     }
     /* [a]bout → CTA chip. Same keycap-chip language as the icon row,
@@ -506,6 +527,17 @@ const { variant, total, home = false } = Astro.props
                 box-shadow 0.1s ease-out;
         }
 
+        /* Coarse pointer: 1lh chips (~19px) are below the WCAG 2.5.8 24px
+           tap-target floor, so grow them to 2.2lh. flex: 1 1 0 keeps the
+           nine chips equal-width, so the row never overflows. */
+        @media (pointer: coarse) and (max-width: 640px) {
+            min-height: 2.2lh;
+
+            a,
+            button {
+                min-height: 2.2lh;
+            }
+        }
         a:hover,
         a:focus-visible,
         a[data-vim-focused='true'],

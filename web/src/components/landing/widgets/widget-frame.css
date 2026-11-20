@@ -11,7 +11,17 @@
     gap: 1.8ch 1ch;
 }
 
-#widgets-grid.home-grid > [tabindex='0'] {
+/* Stacked (mobile/tablet) home grid: cards draw border badges that protrude
+   0.5lh above the card edge, so the row gap must clear half a line plus the
+   intended visual breathing room or the badge is clipped by the card above. */
+@media (max-width: 1024px) {
+    #widgets-grid.home-grid {
+        row-gap: 1.4lh;
+        padding-block-start: 1lh;
+    }
+}
+
+#widgets-grid.home-grid > [data-widget-card] {
     position: relative;
     overflow: visible !important;
     --code-mask-under: var(--background0);
@@ -34,8 +44,8 @@
 }
 
 /* Suppress the WebTUI inset box frame — card draws its own real border now */
-#widgets-grid.home-grid > [tabindex='0']::before,
-#widgets-grid.home-grid > [tabindex='0']::after {
+#widgets-grid.home-grid > [data-widget-card]::before,
+#widgets-grid.home-grid > [data-widget-card]::after {
     display: none !important;
 }
 
@@ -72,7 +82,7 @@
 
 /* Active border/shadow: hover, focus-within, scroll-active (mobile), vim-focused */
 #widgets-grid.home-grid
-    > [tabindex='0']:is(
+    > [data-widget-card]:is(
         :hover,
         :focus-within,
         [data-scroll-active='true'],
@@ -88,13 +98,13 @@
 }
 
 /* Dim cycle — mirrors Intro.astro behaviour */
-#widgets-grid.home-grid:has([data-vim-focused='true']) > [tabindex='0'],
-#widgets-grid.home-grid:has([data-scroll-active='true']) > [tabindex='0'],
-#widgets-grid.home-grid[data-wbl-hover='true'] > [tabindex='0'] {
+#widgets-grid.home-grid:has([data-vim-focused='true']) > [data-widget-card],
+#widgets-grid.home-grid:has([data-scroll-active='true']) > [data-widget-card],
+#widgets-grid.home-grid[data-wbl-hover='true'] > [data-widget-card] {
     opacity: 0.35;
 }
 #widgets-grid.home-grid
-    > [tabindex='0']:is(
+    > [data-widget-card]:is(
         :hover,
         :focus,
         :focus-within,
@@ -243,14 +253,14 @@
     right: auto;
 }
 #widgets-grid.home-grid
-    > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+    > [data-widget-card]:is(:hover, :focus-within, [data-vim-focused='true'])
     .wbl-frame-badge {
     transform: translate(-1px, -1px);
     box-shadow: 2px 2px 0 0 var(--wbl-accent);
     border-color: var(--wbl-accent);
 }
 #widgets-grid.home-grid
-    > [tabindex='0']:is(:hover, :focus-within, [data-vim-focused='true'])
+    > [data-widget-card]:is(:hover, :focus-within, [data-vim-focused='true'])
     .wbl-frame-badge:active {
     transform: translate(0, 0);
     box-shadow: 1px 1px 0 0 var(--wbl-accent);

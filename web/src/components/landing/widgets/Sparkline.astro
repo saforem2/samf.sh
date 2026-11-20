@@ -30,7 +30,13 @@ function sparkline(data: number[]): string {
 }
 ---
 
-<column box-="square" pad-="1 2" gap-="1" class="spark-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="1 2"
+    gap-="1"
+    class="spark-widget"
+    tabindex="-1"
+    data-widget-card>
     <span class="spark-title">activity</span>
 
     <column gap-="0">

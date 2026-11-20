@@ -27,7 +27,13 @@ function stripEmoji(text: string): string {
 }
 ---
 
-<column box-="square" pad-="2 1" gap-="0" class="posts-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="2 1"
+    gap-="0"
+    class="posts-widget"
+    tabindex="-1"
+    data-widget-card>
     <span is-="badge" variant-="blue" class="pw-title"
         >&#xf02d; <a href="/posts" class="widget-link"><u>p</u>osts</a></span
     >
@@ -74,12 +80,10 @@ function stripEmoji(text: string): string {
 
     .pw-list {
         gap: 0;
-        /* Rows sat flush (19px pitch) against the last.fm list's 32px, which
-           reads noticeably airier. The box height is fixed and already
-           scrolls, so gap trades visible rows for breathing room: matching
-           32px outright would drop 11.5 visible rows to 6.8. 0.25lh lands at
-           23.8px and keeps 9.2. */
-        row-gap: 0.25lh;
+        /* Rows need breathing room on touch: the 0.25lh pitch read as
+           cramped on phones. 0.45lh lands near 28px, short of the last.fm
+           list's 32px but comfortable to tap. */
+        row-gap: 0.65lh;
         flex: 1;
         overflow-x: hidden;
         overflow-y: auto;
@@ -127,7 +131,8 @@ function stripEmoji(text: string): string {
        box. lh keeps the target scaling with the font. */
     @media (pointer: coarse) {
         .pw-item {
-            min-height: 1.3lh;
+            min-height: 2lh;
+            padding-block: 0.22lh;
             align-items: center;
         }
     }

@@ -322,7 +322,7 @@ const total = variants.length
         if (grid && grid.classList.contains('intro-in-grid')) {
             applyVimNavigation(
                 grid,
-                '[tabindex="0"], a[href], button:not([disabled])',
+                '[data-widget-card], a[href], button:not([disabled])',
             )
             // Mouse visitors start with no widget "selected" — the
             // frame highlight is keyboard/scroll only (see Widgets.astro
@@ -565,13 +565,13 @@ const total = variants.length
            all cards equal (1) until they j/k — avoids the "one card
            is already selected" first paint. Mobile scroll uses
            data-scroll-active at <=1024px and doesn't need this. */
-        :global(#widgets-grid.intro-in-grid [tabindex='0']) {
+        :global(#widgets-grid.intro-in-grid [data-widget-card]) {
             opacity: 1;
             transition: opacity 0.15s;
         }
         :global(
             #widgets-grid.intro-in-grid:has([data-vim-focused='true'])
-                [tabindex='0']
+                [data-widget-card]
         ) {
             opacity: 0.4;
         }
@@ -580,26 +580,27 @@ const total = variants.length
            states as the frame-shadow rule in Widgets.astro (:hover,
            :focus-within/:focus, data-scroll-active, data-vim-focused) so a
            widget's border and its contents always light up together. */
-        :global(#widgets-grid.intro-in-grid [tabindex='0']:hover),
-        :global(#widgets-grid.intro-in-grid [tabindex='0']:focus),
+        :global(#widgets-grid.intro-in-grid [data-widget-card]:hover),
+        :global(#widgets-grid.intro-in-grid [data-widget-card]:focus-visible),
         :global(
-            #widgets-grid.intro-in-grid [tabindex='0'][data-vim-focused='true']
+            #widgets-grid.intro-in-grid
+                [data-widget-card][data-vim-focused='true']
         ),
         :global(
             #widgets-grid.intro-in-grid
-                [tabindex='0'][data-scroll-active='true']
+                [data-widget-card][data-scroll-active='true']
         ),
-        :global(#widgets-grid.intro-in-grid [tabindex='0']:has(:focus)) {
+        :global(#widgets-grid.intro-in-grid [data-widget-card]:has(:focus)) {
             opacity: 1;
         }
 
         /* Widget focus styles for vim navigation */
-        :global(#widgets-grid.intro-in-grid [tabindex='0']:focus-visible),
+        :global(#widgets-grid.intro-in-grid [data-widget-card]:focus-visible),
         :global(
             #widgets-grid.intro-in-grid
-                [tabindex='0'][data-vim-focused='true']:focus
+                [data-widget-card][data-vim-focused='true']:focus
         ),
-        :global(#widgets-grid.intro-in-grid [tabindex='0']:has(:focus)) {
+        :global(#widgets-grid.intro-in-grid [data-widget-card]:has(:focus)) {
             --box-border-color: var(--foreground0);
             outline: none;
             z-index: 1;

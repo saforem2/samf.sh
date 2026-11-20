@@ -51,7 +51,13 @@ const commits = [
 ]
 ---
 
-<column box-="square" pad-="1 2" gap-="0" class="gitlog-widget" tabindex="0">
+<column
+    box-="square"
+    pad-="1 2"
+    gap-="0"
+    class="gitlog-widget"
+    tabindex="-1"
+    data-widget-card>
     <span class="gl-header">$ git log --oneline -8</span>
     {
         commits.map((c) => (
