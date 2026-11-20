@@ -192,28 +192,25 @@ The completed 2B run is our reference: 7.77 trillion tokens. We migrated the pro
 ## Bit-exact checks exposed a loss reporting bug
 
 ```mermaid
-flowchart LR
-    A["<span style='font-weight:700'>same inputs</span><br/>ckpt · batch · RNG"] --> B["<span style='font-weight:700'>one step</span><br/>reference vs migrated"] --> D{"bits match?"}
-    D -->|✅| C["<span style='font-weight:700'>✓ ship</span>"]
-    D -.->|❌| F["<span style='font-weight:700'>bisect</span>"]
-    F -.-> B
-
-    classDef source stroke-width:1.5px
-    classDef stage  stroke-width:1.5px
-    classDef ship   stroke-width:1.5px
-    classDef gate   stroke-width:1.5px
-    classDef bad    stroke-width:1.5px
-    class A source
-    class B stage
-    class D gate
-    class C ship
-    class F bad
+%%{init: {'gitGraph': {'mainBranchName': 'upstream:main', 'showCommitLabel': false}}}%%
+gitGraph LR:
+    commit id: "base" msg: "upstream HEAD — ezpz forks here"
+    branch ezpz order: 1
+    commit id: "e1" msg: "ezpz: XPU + oneCCL"
+    commit id: "e2" msg: "experiments/ezpz fork"
+    checkout "upstream:main"
+    commit id: "u2" msg: "upstream: a refactor lands"
+    checkout ezpz
+    merge "upstream:main" tag: "resync"
+    commit id: "gate1" type: REVERSE tag: "diff ≠ 0" msg: "50-step smoke: loss disagrees"
+    commit id: "fix" msg: "bisect → fix"
+    commit id: "gate2" type: HIGHLIGHT tag: "bit-exact" msg: "re-run: bits match"
 ```
 
-<p class="sc-detail">The run looked healthy. The step outputs disagreed — so exact parity became the migration gate, not a post-hoc plot comparison.</p>
+<p class="sc-detail">The run looked healthy. The step outputs disagreed — so every resync from <code>upstream:main</code> into <code>ezpz</code> passes a bit-exact gate before it ships, not a post-hoc plot comparison.</p>
 
 <SpeakerNotes>
-The dangerous migration failure was not a crash. The reported loss looked plausible and decreased normally. Aggregate curves could not catch it. A controlled, bit-exact comparison on the same checkpoint, batch, RNG state, and step did. That changed the acceptance criterion for the migrated stack: exact parity first, long-run similarity second.
+The dangerous migration failure was not a crash. The reported loss looked plausible and decreased normally. Aggregate curves could not catch it. A controlled, bit-exact comparison on the same checkpoint, batch, RNG state, and step did. Every upstream resync into ezpz now runs that comparison on a 50-step deterministic step; if the loss disagrees, we bisect before anything ships. That changed the acceptance criterion for the migrated stack: exact parity first, long-run similarity second.
 
 85 seconds. Cumulative: 6:50.
 </SpeakerNotes>
@@ -395,19 +392,26 @@ flowchart TB
     #portable-stack .pele-edge[data-id='L_EZ_MPS_0'] { --_l: var(--sc-mps); }
     #portable-stack .pele-edge path { stroke: var(--_l) !important; }
     #portable-stack .pele-edge .pele-marker { fill: var(--_l) !important; }
-    /* Bit-exact slide: theme-mapped node accents. Source = purple, stage = teal,
-       ship = green, gate = neutral, bad = red. Fills are accent at ~4% alpha. */
-    #bit-exact { --sc-source: var(--purple); --sc-stage: var(--teal); --sc-ship: var(--green); --sc-gate: var(--foreground2); --sc-bad: var(--red); }
-    #bit-exact .pele-node.source rect, #bit-exact .pele-node.source polygon { fill: color-mix(in srgb, var(--sc-source) 4%, transparent) !important; stroke: var(--sc-source) !important; }
-    #bit-exact .pele-node.source .pele-label { fill: var(--sc-source) !important; }
-    #bit-exact .pele-node.stage rect, #bit-exact .pele-node.stage polygon { fill: color-mix(in srgb, var(--sc-stage) 4%, transparent) !important; stroke: var(--sc-stage) !important; }
-    #bit-exact .pele-node.stage .pele-label { fill: var(--sc-stage) !important; }
-    #bit-exact .pele-node.ship rect, #bit-exact .pele-node.ship polygon { fill: color-mix(in srgb, var(--sc-ship) 5%, transparent) !important; stroke: var(--sc-ship) !important; }
-    #bit-exact .pele-node.ship .pele-label { fill: var(--sc-ship) !important; }
-    #bit-exact .pele-node.gate polygon, #bit-exact .pele-node.gate rect { fill: color-mix(in srgb, var(--sc-gate) 10%, transparent) !important; stroke: var(--sc-gate) !important; }
-    #bit-exact .pele-node.gate .pele-label { fill: var(--sc-gate) !important; }
-    #bit-exact .pele-node.bad rect, #bit-exact .pele-node.bad polygon { fill: color-mix(in srgb, var(--sc-bad) 4%, transparent) !important; stroke: var(--sc-bad) !important; }
-    #bit-exact .pele-node.bad .pele-label { fill: var(--sc-bad) !important; }
+    /* Bit-exact slide: gitGraph of the resync. upstream:main takes series-1
+       (neutral), ezpz takes series-2 (accent). pele resolves lanes/edges/commits
+       via var(--pele-series-N) at the .pele root, so override the vars on the
+       svg itself. Commit ids are hidden; the tags carry the story
+       (resync, gate fails, gate passes). */
+    #bit-exact svg.pele-gitGraph {
+        --pele-series-1: var(--foreground2);
+        --pele-series-2: var(--orange);
+    }
+    #bit-exact .pele-branch[data-id='ezpz'] .pele-label { fill: var(--background0) !important; }
+    #bit-exact .pele-branch[data-id='upstream:main'] .pele-label { fill: var(--background0) !important; }
+    #bit-exact .pele-commit-normal circle { stroke: none; }
+    #bit-exact .pele-commit-reverse circle { fill: var(--red) !important; }
+    #bit-exact .pele-commit-highlight rect { fill: var(--green) !important; }
+    #bit-exact .pele-commit-reverse .pele-tag path { fill: color-mix(in srgb, var(--red) 14%, var(--background1)) !important; stroke: var(--red) !important; }
+    #bit-exact .pele-commit-reverse .pele-tag text { fill: var(--red) !important; }
+    #bit-exact .pele-commit-highlight .pele-tag path { fill: color-mix(in srgb, var(--green) 16%, var(--background1)) !important; stroke: var(--green) !important; }
+    #bit-exact .pele-commit-highlight .pele-tag text { fill: var(--green) !important; }
+    #bit-exact .pele-commit-merge .pele-tag path { fill: var(--background1) !important; stroke: var(--foreground2) !important; }
+    #bit-exact .pele-commit-merge .pele-tag text { fill: var(--foreground0) !important; }
     /* Recovery-scopes: nested clusters job/node/proc mapped to teal/orange/green. */
     #recovery-scopes { --sc-job: var(--teal); --sc-node: var(--orange); --sc-proc: var(--green); }
     #recovery-scopes .pele-cluster.jobC rect { fill: color-mix(in srgb, var(--sc-job) 4%, transparent) !important; stroke: var(--sc-job) !important; }
