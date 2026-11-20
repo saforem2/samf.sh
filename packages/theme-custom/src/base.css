@@ -74,7 +74,7 @@
         --red: #ff1744;
         --orange: oklch(from #ffb53d l c h);
         --peach: oklch(from #f5a97f l c h);
-        --yellow: oklch(from #fd971f l c h);
+        --yellow: oklch(from #ffff00 l c h);
         --green: oklch(from #05a551 l c h);
         --teal: oklch(from #8bd5ca l c h);
         --sky: oklch(from #91d7e3 l c h);
@@ -161,8 +161,10 @@
         --bright-red: oklch(from #fa5252 l c h);
         /* Accents harmonized to a common band (oklch L≈0.71–0.85, C≈0.13–0.18)
            so the row reads as one set:
-             - yellow was pure #ffff00 (L0.97/C0.21) — glaring; → #fcc419
-               (L0.85/C0.17) amber-gold, in-band.
+             - yellow was #fcc419 to stay in-band; restored to pure #ffff00
+               by request. It is far from --orange (#ffb53d, ΔE00 ~15.6) but is
+               deliberately loud; the ANSI/terminal yellows below stay #ffff00
+               too, so console and accent agree.
              - teal was #8bd5ca (L0.82/C0.08) — pale and too close to aqua;
                → #38d9a9 (L0.79/C0.15, hue 168) so it's saturated AND clearly
                separated from aqua (hue 214).
@@ -172,7 +174,7 @@
         --red: oklch(from #ff6b6b l c h);
         --peach: oklch(from #f5a97f l c h);
         --orange: oklch(from #ffb53d l c h);
-        --yellow: oklch(from #fcc419 l c h);
+        --yellow: oklch(from #ffff00 l c h);
         --lime: oklch(from #82c91e l c h);
         --green: oklch(from #40c057 l c h);
         --teal: oklch(from #38d9a9 l c h);
