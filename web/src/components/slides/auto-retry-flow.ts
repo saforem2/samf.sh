@@ -55,6 +55,15 @@ const scenes: Scene[] = [
         event: 'step 3003 · saving checkpoint',
     },
     {
+        id: 'batch-3004',
+        duration: 7000,
+        kicker: 'Training · step 3004',
+        title: 'A fresh batch goes out',
+        detail: 'Step 3004 starts: each host receives its shard, including host-041.',
+        note: 'The batch is distributed before any gradient is computed.',
+        event: 'step 3004 · distributing batch shards',
+    },
+    {
         id: 'stall',
         duration: 12000,
         kicker: 'Training · step 3004',
@@ -502,11 +511,12 @@ function draw(
     const signal =
         failed || swapping
             ? palette.orange
-            : gradient || id === 'batch-retry'
+            : gradient || id === 'batch-3004' || id === 'batch-retry'
               ? palette.purple
               : palette.cyan
     const checkpoint = [
         'save',
+        'batch-3004',
         'stall',
         'timeout',
         'swap',
@@ -522,7 +532,7 @@ function draw(
     const packetArrived = (i: number) =>
         id === 'stall'
             ? i > 0 && delayed(p * 1.85, i) >= 1
-            : id === 'batch-retry'
+            : id === 'batch' || id === 'batch-3004' || id === 'batch-retry'
               ? delayed(p, i) >= 1
               : id === 'sync' || id === 'resume'
                 ? delayed(p / 0.6, i) >= 1
@@ -531,15 +541,18 @@ function draw(
         id === 'stall' ||
         id === 'sync' ||
         id === 'resume' ||
+        id === 'batch' ||
+        id === 'batch-3004' ||
         id === 'batch-retry'
     const collectiveProgress = packetScene
         ? ranks.reduce((n, _, i) => n + (packetArrived(i) ? 1 : 0), 0)
         : id === 'save' || id === 'done'
           ? 8
           : 0
-    // Batch-retry pips colour by shard (each host's own shard) rather than the
+    // Batch pips colour by shard (each host's own shard) rather than the
     // collective-result hue, so the panel reads as "shards arriving", not "gradients in".
-    const batchRetry = id === 'batch-retry'
+    const batchRetry =
+        id === 'batch' || id === 'batch-3004' || id === 'batch-retry'
 
     ctx.clearRect(0, 0, width, height)
 
@@ -790,6 +803,8 @@ function draw(
     const hostColorFor = (i: number) => {
         if (id === 'batch')
             return delayed(p, i) >= 1 ? palette.shards[i] : palette.muted
+        if (id === 'batch-3004')
+            return delayed(p, i) >= 1 ? palette.shards[i] : palette.purple
         if (id === 'batch-retry')
             // The replacement host (slot 0) is still checkpoint-green until
             // its shard lands; the rest are green from the restore as well.
@@ -814,8 +829,12 @@ function draw(
             return p > 0.45 && delayed((p - 0.45) / 0.55, i) >= 1
                 ? palette.green
                 : palette.purple
-        // save/stall/timeout/swap: step 3003's all-reduce already landed.
-        return palette.purple
+        // stall/timeout/swap hold whatever step 3004 staged: once the fresh
+        // batch lands, every healthy host keeps its shard colour while it
+        // waits at the collective (host-041 blends toward red via failRamp).
+        // save still holds the step-3003 collective result (purple).
+        if (id === 'save') return palette.purple
+        return palette.shards[i]
     }
     // Draw hosts above their connections so the lines don't cross the blocks.
     ranks.forEach((rank, index) => {
@@ -890,7 +909,7 @@ function draw(
         )
     }
 
-    if (id === 'batch' || id === 'batch-retry') {
+    if (id === 'batch' || id === 'batch-3004' || id === 'batch-retry') {
         ranks.forEach((rank, index) => {
             const progress = delayed(p, index)
             if (progress > 0 && progress < 1)
