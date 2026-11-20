@@ -21,22 +21,47 @@ const themeOptions = {
     doe: 'DOE',
     alcf: 'ALCF',
 }
-const fontOptions = {
-    iosevka: 'Iosevka',
-    'iosevka25-condensed': 'Iosevka25 Condensed',
-    'victor-mono': 'Victor Mono',
-    'miosevka-term': 'mIosevka-Term',
-    'miosevka-qp': 'mIosevka-QP',
-    system: 'System',
-    sans: 'Sans',
-    serif: 'Serif',
-    'iosevka-aile': 'Iosevka Aile',
-    'iosevka-etoile': 'Iosevka Etoile',
-}
+// Body font chips, grouped the same way as the command dialog in
+// Filter.astro: the two defaults first, then the mono, then the
+// proportional Iosevka cuts, then the generic system stacks.
+const fontRows: { options: [string, string][] }[] = [
+    {
+        options: [
+            ['miosevka-qp', 'Default (mIosevka-QP)'],
+            ['miosevka-term', 'mIosevka-Term'],
+        ],
+    },
+    {
+        options: [
+            ['iosevka', 'Iosevka'],
+            ['iosevka25-condensed', 'Iosevka25 Condensed'],
+        ],
+    },
+    {
+        options: [
+            ['iosevka-aile', 'Iosevka Aile'],
+            ['iosevka-etoile', 'Iosevka Etoile'],
+        ],
+    },
+    {
+        options: [
+            ['victor-mono', 'Victor Mono'],
+            ['system', 'System'],
+        ],
+    },
+    {
+        options: [
+            ['sans', 'Sans'],
+            ['serif', 'Serif'],
+            ['ibm-plex-sans', 'IBM Plex Sans'],
+        ],
+    },
+]
 // Code font: true-monospace only — no QP (it breaks ASCII / column
 // alignment). Mirrors the code axis in Filter.astro's command dialog.
 const codeFontOptions = {
-    'miosevka-term': 'mIosevka-Term',
+    'miosevka-term': 'Default (mIosevka-Term)',
+    'ibm-plex-mono': 'IBM Plex Mono',
     iosevka: 'Iosevka',
     'iosevka25-condensed': 'Iosevka25 Condensed',
     'victor-mono': 'Victor Mono',
@@ -120,18 +145,20 @@ const deckThemeOptions: Record<string, string> = {
             <span is-="badge" class="shs-title shs-title-blue"
                 >&#xf031; Font</span
             >
-            <row class="shn-theme-buttons" gap-="0">
-                {
-                    Object.entries(fontOptions).map(([key, value]) => (
-                        <button
-                            data-font-option={key}
-                            aria-selected="false"
-                            class="shn-theme-chip shn-font-chip">
-                            {value}
-                        </button>
-                    ))
-                }
-            </row>
+            {
+                fontRows.map((row) => (
+                    <row class="shn-theme-buttons" gap-="0">
+                        {row.options.map(([key, value]) => (
+                            <button
+                                data-font-option={key}
+                                aria-selected="false"
+                                class="shn-theme-chip shn-font-chip">
+                                {value}
+                            </button>
+                        ))}
+                    </row>
+                ))
+            }
         </section>
 
         <section class="slide-help-section">

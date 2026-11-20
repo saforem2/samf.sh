@@ -71,20 +71,22 @@
         /* --h6: oklch(from #00897B l c h); */
         --rosewater: oklch(from #f4dbd6 l c h);
         --flamingo: oklch(from #f0c6c6 l c h);
-        --red: #ff1744;
-        --orange: #ff5722;
+        /* Red/orange taken from the lushify-light editor theme
+           (ErrorMsg / lualine_a_visual hues). */
+        --red: oklch(from #e05661 l c h);
+        --orange: oklch(from #ee9025 l c h);
         --peach: oklch(from #f5a97f l c h);
-        --yellow: oklch(from #fd971f l c h);
+        --yellow: oklch(0.86657 0.16466 88.684);
         --green: oklch(from #05a551 l c h);
         --teal: oklch(from #8bd5ca l c h);
         --sky: oklch(from #91d7e3 l c h);
         --aqua: oklch(#84d6eb l c h);
         --sapphire: oklch(from #7dc4e4 l c h);
         --blue: oklch(from #2196f3 l c h);
-        --purple: oklch(from #8260cc l c h);
+        --purple: oklch(from #9373d6 l c h);
         --aqua: oklch(from #00b8d4 l c h);
         --teal: oklch(from #00838f l c h);
-        --pink: oklch(from #ff3399 l c h);
+        --pink: #ef6292;
         /* --accent: oklch(from #f92672 l c h); */
         --accent: oklch(from #ff1a8f l c h);
         --mauve: oklch(from #c6a0f6 l c h);
@@ -161,8 +163,10 @@
         --bright-red: oklch(from #fa5252 l c h);
         /* Accents harmonized to a common band (oklch L≈0.71–0.85, C≈0.13–0.18)
            so the row reads as one set:
-             - yellow was pure #ffff00 (L0.97/C0.21) — glaring; → #fcc419
-               (L0.85/C0.17) amber-gold, in-band.
+             - yellow was #fcc419 to stay in-band; restored to pure #ffff00
+               by request (custom-dark only; custom-light kept #fd971f). It is
+               far from --orange (#ffb53d, ΔE00 ~15.6) but is deliberately loud;
+               the ANSI/terminal yellows below stay #ffff00 too.
              - teal was #8bd5ca (L0.82/C0.08) — pale and too close to aqua;
                → #38d9a9 (L0.79/C0.15, hue 168) so it's saturated AND clearly
                separated from aqua (hue 214).
@@ -171,8 +175,8 @@
            Other accents already sit in the band, so their hues are unchanged. */
         --red: oklch(from #ff6b6b l c h);
         --peach: oklch(from #f5a97f l c h);
-        --orange: oklch(from #fd971f l c h);
-        --yellow: oklch(from #fcc419 l c h);
+        --orange: oklch(from #ffb53d l c h);
+        --yellow: oklch(from #ffff00 l c h);
         --lime: oklch(from #82c91e l c h);
         --green: oklch(from #40c057 l c h);
         --teal: oklch(from #38d9a9 l c h);
@@ -181,7 +185,12 @@
         --blue: oklch(from #29b6f6 l c h);
         --purple: oklch(from #ae81ff l c h);
         --aqua: oklch(from #00b8d4 l c h);
-        --pink: oklch(from #e599f7 l c h);
+        /* --pink sat at 0.272 chroma (near max for its hue) and read as the
+           loudest accent in the row; everything else sits at 0.14-0.18.
+           #f26eb4 (L 0.74 / C 0.18 / H ~347) keeps the same lightness and
+           roughly the same contrast (6.7:1 on #1c1c1c) at a chroma that sits
+           with the rest of the palette. */
+        --pink: oklch(from #f26eb4 l c h);
         --mauve: oklch(from #c6a0f6 l c h);
         --lavender: oklch(from #b7bdf8 l c h);
         --maroon: oklch(from #ee99a0 l c h);

@@ -11,6 +11,38 @@ interface ViewportState {
     ty: number
 }
 
+// pele CSS variable names, shared by the expand-modal clone and the renderer.
+// Values come from web/src/styles/pele.css via the cascade; this module only
+// needs the names when copying computed values onto the cloned modal SVG.
+const peleCssVars = [
+    '--pele-bg',
+    '--pele-fg',
+    '--pele-fg-on-light',
+    '--pele-fg-on-dark',
+    '--pele-muted',
+    '--pele-line',
+    '--pele-surface',
+    '--pele-surface-alt',
+    '--pele-border',
+    '--pele-accent',
+    '--pele-critical',
+    '--pele-error',
+    '--pele-series-1',
+    '--pele-series-2',
+    '--pele-series-3',
+    '--pele-series-4',
+    '--pele-series-5',
+    '--pele-series-6',
+    '--pele-series-7',
+    '--pele-series-8',
+    '--pele-font',
+    '--pele-font-mono',
+    '--pele-title-weight',
+    '--pele-heading-weight',
+    '--pele-bold-weight',
+    '--pele-radius',
+] as const
+
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const ALLOWED_SVG_ELEMENTS = new Set([
     'circle',
@@ -189,27 +221,7 @@ function openExpandedView(svg: SVGElement, source: string) {
     const diagram = svg.closest<HTMLElement>('.mermaid')
     if (diagram) {
         const computedStyle = getComputedStyle(diagram)
-        for (const name of [
-            '--pele-bg',
-            '--pele-fg',
-            '--pele-muted',
-            '--pele-line',
-            '--pele-surface',
-            '--pele-surface-alt',
-            '--pele-border',
-            '--pele-accent',
-            '--pele-series-1',
-            '--pele-series-2',
-            '--pele-series-3',
-            '--pele-series-4',
-            '--pele-series-5',
-            '--pele-series-6',
-            '--pele-series-7',
-            '--pele-series-8',
-            '--pele-font',
-            '--pele-font-mono',
-            '--pele-radius',
-        ]) {
+        for (const name of peleCssVars) {
             const value = computedStyle.getPropertyValue(name).trim()
             if (value) svgClone.style.setProperty(name, value)
         }
@@ -267,6 +279,8 @@ function setupInteractiveViewport(block: HTMLElement) {
     viewport.className = 'mermaid-viewport'
     svg.parentNode?.insertBefore(viewport, svg)
     viewport.appendChild(svg)
+    // Controls are inserted as a leading row in the viewport (see below),
+    // so the SVG is pushed down instead of overlaid.
 
     const state: ViewportState = { scale: 1, tx: 0, ty: 0 }
 
@@ -437,7 +451,9 @@ function setupInteractiveViewport(block: HTMLElement) {
     )
     actionControls.append(expandBtn, copyBtn)
     controls.append(viewControls, actionControls)
-    viewport.appendChild(controls)
+    // Before the SVG in document order: a reserved strip above the diagram
+    // rather than an overlay on top of it.
+    viewport.insertBefore(controls, svg)
 
     // Keyboard support when block is focused
     block.tabIndex = block.tabIndex < 0 ? 0 : block.tabIndex
@@ -503,7 +519,19 @@ function stabilizeMermaidSvgLayout() {
             node.getBoundingClientRect().width ||
             node.parentElement?.getBoundingClientRect().width ||
             widthRaw
-        const maxHeight = window.innerHeight * 0.5
+        // Default cap is half the viewport; a slide/block can raise it via
+        // the --mermaid-max-height custom property (e.g. the launch diagram).
+        const requestedMax = getComputedStyle(node)
+            .getPropertyValue('--mermaid-max-height')
+            .trim()
+        const parsedMax = Number.parseFloat(requestedMax)
+        const unit = requestedMax.replace(/^[0-9.]+/, '').trim()
+        const maxHeight =
+            Number.isFinite(parsedMax) && unit.startsWith('vh')
+                ? (window.innerHeight * parsedMax) / 100
+                : Number.isFinite(parsedMax) && unit === 'px'
+                  ? parsedMax
+                  : window.innerHeight * 0.5
         const naturalHeight = (renderedWidth * heightRaw) / widthRaw
         const resolvedHeight =
             Number.isFinite(naturalHeight) && naturalHeight > 0
@@ -617,33 +645,6 @@ export function initMermaid() {
     )
     if (mermaidBlocks.length === 0) return
 
-    // Keep default diagrams close to the page surface. Use the theme accent
-    // for node outlines, while keeping connectors neutral and semantic classes
-    // free to use their own accent and series colors.
-    const peleTheme = {
-        '--pele-bg': 'var(--background0, #ffffff)',
-        '--pele-fg': 'var(--foreground0, #1f1f1f)',
-        '--pele-muted': 'var(--foreground2, #6e6e6e)',
-        '--pele-line': 'var(--foreground2, #6e6e6e)',
-        '--pele-surface': 'var(--background0, #ffffff)',
-        '--pele-surface-alt': 'var(--background1, #f3f3f3)',
-        '--pele-border':
-            'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
-        '--pele-accent':
-            'var(--pt-diagram-accent, var(--accent, var(--pink, #5b7bd5)))',
-        '--pele-series-1': 'var(--pt-diagram-accent, var(--blue, #5b7bd5))',
-        '--pele-series-2': 'var(--green, #4f9d69)',
-        '--pele-series-3': 'var(--orange, #ee8f24)',
-        '--pele-series-4': 'var(--pink, #ea76cb)',
-        '--pele-series-5': 'var(--purple, #9b72cf)',
-        '--pele-series-6': 'var(--cyan, #118cc2)',
-        '--pele-series-7': 'var(--yellow, #d7a500)',
-        '--pele-series-8': 'var(--red, #ee4c2c)',
-        '--pele-font': 'var(--font-family, sans-serif)',
-        '--pele-font-mono': 'var(--code-font-family, monospace)',
-        '--pele-radius': '0',
-    } as const
-
     let diagramSequence = 0
     const observedWidths = new WeakMap<HTMLElement, number>()
     let renderQueued = false
@@ -669,9 +670,6 @@ export function initMermaid() {
                 node.classList.remove('mermaid-interactive')
                 node.textContent = source
                 observedWidths.set(node, node.clientWidth)
-                for (const [name, value] of Object.entries(peleTheme)) {
-                    node.style.setProperty(name, value)
-                }
             })
 
             try {

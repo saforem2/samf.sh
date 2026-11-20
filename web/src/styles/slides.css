@@ -186,7 +186,14 @@
     }
     /* Heads are only slightly bigger than body — keeps proportions
        balanced and avoids "billboard title, mouse-print body" effect.
-       Colors inherit from global.css (h1=red / h2=orange / h3=green). */
+       Colors: remap the heading vars to the body foreground instead of the
+       blue/orange/green palette — the tint carries no meaning here and the
+       blue reads faint at projection distance. (The variable is global, but
+       `[is-~='slide']` only matches the deck, so the site-wide h2 is
+       untouched.) */
+    --h1: var(--foreground0);
+    --h2: var(--foreground0);
+    --h3: var(--foreground0);
     h1 {
         font-size: 1.4em;
     }
@@ -267,6 +274,12 @@
         width: max-content;
         max-width: 100%;
         table-layout: auto;
+    }
+    table:not([data-table-style='terminal']):not(:has(.line-code)) {
+        border-collapse: collapse;
+    }
+    table:not([data-table-style='terminal']):not(:has(.line-code)) :is(th, td) {
+        border: 1px solid var(--foreground3);
     }
     th,
     td {
@@ -1148,7 +1161,6 @@ body[data-speaker-window] [is-~='notes'] {
         align-items: center;
         justify-content: center;
         border: 1px solid var(--background3, var(--foreground3));
-        border-radius: 3px;
         background: var(--background0);
         color: var(--foreground1);
         font-size: 1.35rem;
@@ -1634,7 +1646,9 @@ body.slides-print-mode .slide-web-link {
     position: fixed !important;
     bottom: calc(1lh + 0.5lh) !important;
     right: 1ch !important;
-    height: 1.25lh !important;
+    /* Argonne | ALCF lockup is wide (6.6:1); size by height like the
+       old mark but a touch taller so the wordmark reads at distance. */
+    height: 1.6lh !important;
     width: auto !important;
     /* No opacity dim — the black/white SVG variants already contrast
        appropriately against their respective theme backgrounds. The
@@ -1682,36 +1696,57 @@ body.slides-print-mode .slide-web-link {
         display: block !important;
     }
 }
-/* Hide the persistent logo on mobile — at narrow widths it overlaps
-   content rather than tucking into a corner (less horizontal slack
-   for content to flow around it). The title slide still shows its
-   own bigger logo via the title-specific block below. */
-@media (max-width: 768px) {
+/* Hide the persistent logo on small screens — at narrow widths (notably
+   phone landscape, ~874px wide with a 402px height) it overlaps the content
+   rather than tucking into a corner, and the gutter reservation it forces
+   on the slide's last flow child costs more horizontal room than the mark
+   is worth there. The title slide still shows its own bigger logo. The
+   height breakpoint covers wide-but-short decks where the content column
+   runs into the mark; past this point the mark is not worth the crowding. */
+@media (max-width: 1024px), (max-height: 800px) {
     .deck-corner-logo {
         display: none !important;
     }
-}
-
-/* The corner logo is position:fixed with nothing reserving space for it,
-   so a wide figcaption or a full-measure paragraph runs underneath. Pad
-   the last flow child of each slide out of the logo's corner instead of
-   moving the logo -- the logo placement is a brand decision, the collision
-   is a layout one. Width covers the mark plus its right offset. A plain
-   :last-child would land on the hidden <aside is-="notes"> that most
-   slides end with, so count only visible flow children. */
-[is-~='slide']
-    .slide-inner
-    > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
-    /* Margin, not padding: padding moved the right edge of a callout's
-       title row (and its +/x toggle) 9ch inside the box. */
-    margin-inline-end: var(--deck-logo-gutter, 0);
-}
-/* Logo is hidden at <=768px, so the gutter only applies above that. */
-@media (min-width: 769px) {
+    /* Nothing left to reserve room for. */
     [is-~='presentation']:not(:has(#title-slide[data-current]))
         [is-~='slide'][data-current]
         .slide-inner {
-        --deck-logo-gutter: 9ch;
+        --deck-logo-gutter: 0;
+    }
+}
+
+/* The corner logo is position:fixed at the bottom-right of the viewport,
+   so the content it can collide with is the LAST block on the slide, not the
+   widest. Reserve vertical room for it on that block instead of stealing
+   inline-size from every last child. A plain :last-child would land on the
+   hidden <aside is-="notes"> that most slides end with, so count only
+   visible flow children.
+
+   --deck-logo-gutter is in lh: the mark sits 1lh + 0.5lh above the viewport
+   bottom and is 1.6lh tall, so it occupies the bottom ~1.6lh of the
+   slide-inner box (its bottom edge is 0.5lh above the slide-inner's bottom
+   edge) — plus a small breathing margin. The old rule used a 15ch inline
+   gutter, which cost full-width figures ~200px of width even though the
+   logo is only ~1.6lh tall. */
+[is-~='slide']
+    .slide-inner
+    > :nth-last-child(1 of :not([is-~='notes'], style, script)) {
+    /* Margin, not padding: reserving on the block axis keeps full-width
+       figures and charts clear of a bottom-right mark without narrowing them.
+       No max-height cap — clamping the last flow child's height squashes
+       flex/figure children and defeats their own aspect-ratio sizing. */
+    margin-block-end: var(--deck-logo-gutter, 0);
+}
+/* Gutter applies only where the logo is actually visible. Keep these bounds
+   identical to the hide rule above, or short-wide decks pay for a gutter
+   reserving room for a logo that isn't there. */
+@media (min-width: 1025px) and (min-height: 801px) {
+    [is-~='presentation']:not(:has(#title-slide[data-current]))
+        [is-~='slide'][data-current]
+        .slide-inner {
+        /* Mark is 1.6lh tall starting 0.5lh above the slide-inner bottom;
+           2.5lh leaves the bottom row of the last block clear of it. */
+        --deck-logo-gutter: 2.5lh;
     }
 }
 
@@ -1729,7 +1764,6 @@ body.slides-print-mode .slide-web-link {
     text-decoration: none;
     padding: 0 0.6ch;
     border: 1px solid var(--background3, var(--foreground3));
-    border-radius: 2px;
     background: var(--background0);
     line-height: 1.4;
 }
@@ -2285,7 +2319,6 @@ body.slides-print-mode
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     background: rgba(0, 0, 0, 0.35);
     padding: 0.15ch 0.8ch;
-    border-radius: 2px;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;

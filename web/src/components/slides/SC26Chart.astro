@@ -1,0 +1,165 @@
+---
+interface Props {
+    kind:
+        | 'loss'
+        | 'optimizer-loss'
+        | 'optimizer-grad'
+        | 'hellaswag'
+        | 'arc_easy'
+        | 'arc_challenge'
+        | 'winogrande'
+        | `sft-${string}`
+        | `grpo-${string}`
+    fallback?: string
+    label: string
+    compact?: boolean
+}
+const { kind, fallback, label, compact = false } = Astro.props
+---
+
+<div class:list={['sc26-chart', { compact }]} data-sc26-chart={kind}>
+    {fallback && <img src={fallback} alt={label} />}
+    <div class="canvas-frame" hidden>
+        <canvas role="img" aria-label={label}></canvas>
+    </div>
+</div>
+
+<style>
+    .sc26-chart {
+        width: 100%;
+        min-width: 0;
+    }
+    .sc26-chart > img {
+        display: block;
+        width: 100%;
+        max-height: 61vh;
+        object-fit: contain;
+    }
+    .compact > img {
+        max-height: 28vh;
+    }
+    .canvas-frame {
+        position: relative;
+        height: clamp(250px, 75vh, 850px);
+        min-width: 0;
+    }
+    .sc26-fragment-stage {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+    }
+    /* Two-column legend (2B block / 20B block) for the production-loss chart. */
+    .sc26-legend {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        z-index: 2;
+        display: flex;
+        align-items: flex-start;
+        gap: clamp(0.6rem, 2.4vw, 1.4rem);
+        padding: clamp(0.25em, 0.8vw, 0.4em) clamp(0.35em, 1vw, 0.75em);
+        max-width: calc(100% - 1rem);
+        width: max-content;
+        font-family: var(--code-font-family, var(--font-family));
+        white-space: nowrap;
+        border-radius: 6px;
+        border: 1px solid
+            color-mix(in srgb, var(--foreground3) 55%, transparent);
+        background: color-mix(in srgb, var(--background0) 88%, transparent);
+        /* Scale the whole chip with the frame width instead of a fixed 23px
+           cell; the desktop values are the ceiling. */
+        font-size: clamp(0.62rem, 3.6vw, 1rem);
+        zoom: 1;
+    }
+    .sc26-legend-col {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15em;
+    }
+    .sc26-legend-head {
+        font-size: 1.2em;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--foreground2);
+        text-align: center;
+    }
+    .sc26-legend-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        font-size: 1.45em;
+        color: var(--foreground0);
+    }
+    .sc26-legend-swatch {
+        width: 2.1em;
+        height: 0;
+        align-self: center;
+        display: inline-block;
+        flex: 0 0 auto;
+    }
+    .sc26-legend-label {
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    /* Portrait phones (e.g. 402x874 iPhone, ratio < 0.9): the fixed
+       clamp() height left ~55% of the slide empty. Let the frame grow to
+       fill whatever vertical room the flex column has left after the
+       heading/caption, keeping a floor so it never collapses. Only in
+       portrait \u2014 desktop keeps its authored height. */
+    @media (max-width: 700px) {
+        /* Narrow slides stack their charts; keep the frame wide enough that
+           ticks and legends stay legible. The deck-specific rules own the
+           grid itself so each backup slide can pick its own aspect ratio. */
+        .sc26-chart:not(.compact) {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .sc26-chart:not(.compact) .canvas-frame {
+            height: auto;
+            flex: 0 0 auto;
+            min-height: clamp(220px, 48vh, 380px);
+        }
+    }
+    /* Compact panels share the eval grid height, but on narrow phones they
+       stack full-width, so drop the fixed height and let the deck's
+       aspect-ratio rule drive them instead. */
+    .compact .canvas-frame {
+        height: clamp(150px, 32vh, 380px);
+    }
+    /* Backup slides set their own heights via flex stretch; don't fight them
+       with the fixed compact clamp. */
+    :global(.sc-eval-grid) .compact .canvas-frame,
+    /* Post-training panels: the deck sizes .canvas-frame itself via
+       .sc-post-grid .canvas-frame, so don't override it here. */
+    @media (max-width: 700px) {
+        .compact .canvas-frame {
+            height: auto;
+        }
+        .canvas-frame :global(canvas) {
+            max-width: 100%;
+        }
+    }
+    .sc26-chart[data-ready] > img {
+        display: none;
+    }
+    @media print {
+        /* Charts with a fallback image swap to it for print. Charts
+           without one print the live canvas — the legend and stage
+           sentinels carry their own layout, so the frame still has height. */
+        .sc26-chart[data-ready] > img {
+            display: none;
+        }
+        .sc26-chart[data-ready]:has(> img) > img {
+            display: block;
+        }
+        .sc26-chart[data-ready]:has(> img) .canvas-frame {
+            display: none;
+        }
+    }
+</style>
+
+<script>
+    import './sc26-charts'
+</script>

@@ -11,13 +11,13 @@ interface Props {
     deckTheme?: string
 }
 const { deckTheme } = Astro.props
-const doe = deckTheme === 'doe'
-const alcf = deckTheme === 'alcf'
 const pytorch = deckTheme === 'pytorch'
-// A branded deck renders both footers; slides.css shows the one that
-// matches the live theme, so switching themes in the picker swaps the
-// branding too. The pin only chooses the opening theme.
-const branded = doe || alcf
+// Both branded footers always render; slides.css shows whichever matches
+// the live theme, so switching themes in the picker swaps the branding too.
+// The frontmatter theme pin only chooses the opening theme and body font.
+// Without this a deck pinned to a non-branded theme (e.g. the SC26 talk)
+// had no ALCF footer once the theme was picked: CSS hides the corner logo
+// for alcf/doe, but the footer was never emitted for a non-branded pin.
 const url = Astro.url.pathname
 const canonical = `samf.sh${url}`
 ---
@@ -30,40 +30,40 @@ const canonical = `samf.sh${url}`
         !pytorch && (
             <>
                 <img
-                    src="/anl-logos/anl-color-light.svg"
+                    src="/anl-logos/anl-alcf-lockup-light.svg"
                     alt=""
                     aria-hidden="true"
+                    width="196"
+                    height="30"
                     class="deck-corner-logo deck-corner-logo-light"
                 />
                 <img
-                    src="/anl-logos/anl-color-dark.svg"
+                    src="/anl-logos/anl-alcf-lockup-dark.svg"
                     alt=""
                     aria-hidden="true"
+                    width="196"
+                    height="30"
                     class="deck-corner-logo deck-corner-logo-dark"
                 />
             </>
         )
     }
-    {
-        branded && (
-            <div class="doe-footer" aria-hidden="true">
-                <img
-                    src="/doe-template/genesis-on-light.png"
-                    alt=""
-                    class="doe-footer-genesis"
-                    width="706"
-                    height="96"
-                />
-                <img
-                    src="/doe-template/doe-on-light.png"
-                    alt=""
-                    class="doe-footer-doe"
-                    width="1712"
-                    height="96"
-                />
-            </div>
-        )
-    }
+    <div class="doe-footer" aria-hidden="true">
+        <img
+            src="/doe-template/genesis-on-light.png"
+            alt=""
+            class="doe-footer-genesis"
+            width="706"
+            height="96"
+        />
+        <img
+            src="/doe-template/doe-on-light.png"
+            alt=""
+            class="doe-footer-doe"
+            width="1712"
+            height="96"
+        />
+    </div>
     {
         pytorch && (
             <div class="pytorch-footer" aria-hidden="true">
@@ -102,44 +102,40 @@ const canonical = `samf.sh${url}`
             </div>
         )
     }
-    {
-        branded && (
-            <div class="alcf-footer" aria-hidden="true">
-                <span>
-                    <img
-                        src="/alcf-template/doe-lockup.png"
-                        alt=""
-                        class="alcf-footer-doe"
-                        width="1100"
-                        height="116"
-                    />
-                    <img
-                        src="/alcf-template/doe-lockup-on-dark.png"
-                        alt=""
-                        class="alcf-footer-doe-dark"
-                        width="714"
-                        height="73"
-                    />
-                </span>
-                <span>
-                    <img
-                        src="/alcf-template/argonne-alcf-lockup.png"
-                        alt=""
-                        class="alcf-footer-anl"
-                        width="2005"
-                        height="256"
-                    />
-                    <img
-                        src="/alcf-template/argonne-alcf-lockup-on-dark.png"
-                        alt=""
-                        class="alcf-footer-anl-dark"
-                        width="1946"
-                        height="249"
-                    />
-                </span>
-            </div>
-        )
-    }
+    <div class="alcf-footer" aria-hidden="true">
+        <span>
+            <img
+                src="/alcf-template/doe-lockup.png"
+                alt=""
+                class="alcf-footer-doe"
+                width="1100"
+                height="116"
+            />
+            <img
+                src="/alcf-template/doe-lockup-on-dark.png"
+                alt=""
+                class="alcf-footer-doe-dark"
+                width="714"
+                height="73"
+            />
+        </span>
+        <span>
+            <img
+                src="/alcf-template/argonne-alcf-lockup.png"
+                alt=""
+                class="alcf-footer-anl"
+                width="2005"
+                height="256"
+            />
+            <img
+                src="/alcf-template/argonne-alcf-lockup-on-dark.png"
+                alt=""
+                class="alcf-footer-anl-dark"
+                width="1946"
+                height="249"
+            />
+        </span>
+    </div>
     <a class="deck-slide-number" id="deck-slide-number" href="#1"
         ><span id="deck-slide-number-text">1</span></a
     >
