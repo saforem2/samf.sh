@@ -128,11 +128,12 @@ const { kind, fallback, label, compact = false } = Astro.props
     .compact .canvas-frame {
         height: clamp(150px, 32vh, 380px);
     }
-    /* Backup slides set their own heights via flex stretch; don't fight them
-       with the fixed compact clamp. */
-    :global(.sc-eval-grid) .compact .canvas-frame,
-    /* Post-training panels: the deck sizes .canvas-frame itself via
-       .sc-post-grid .canvas-frame, so don't override it here. */
+    /* Eval-backup grid drives panel height via flex; let the frame fill it. */
+    :global(.sc-eval-grid) .compact .canvas-frame {
+        height: auto;
+        min-height: 0;
+    }
+    /* Narrow phones: compact falls back to width-driven height. */
     @media (max-width: 700px) {
         .compact .canvas-frame {
             height: auto;
