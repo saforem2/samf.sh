@@ -1430,8 +1430,20 @@ flowchart TB
         /* iPhone-class viewports: shrink the caption so the stack fits
            without scrolling. */
         #eval-backup h2,
-        #optimizer-backup h2 {
-            font-size: 1.35rem;
+        #optimizer-backup h2,
+        #post-training-sft h2,
+        #post-training-grpo h2 {
+            font-size: 1.3rem;
+            line-height: 1.15;
+        }
+        #post-training-sft .sc-post-grid,
+        #post-training-grpo .sc-post-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.4rem;
+        }
+        #post-training-sft .sc-post-grid .sc26-chart.compact .canvas-frame,
+        #post-training-grpo .sc-post-grid .sc26-chart.compact .canvas-frame {
+            height: clamp(140px, 20vh, 190px);
         }
         .sc-backup-legend {
             font-size: 0.72rem;
