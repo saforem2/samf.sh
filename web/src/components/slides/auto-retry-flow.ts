@@ -1481,7 +1481,9 @@ export function initTrainingReplay(root: HTMLElement) {
     function onVisibilityChange() {
         if (!isCurrent() || document.hidden) {
             if (playing) {
-                hiddenPause = true
+                // Only the page hiding can strand the replay on iOS; navigating
+                // away from the slide must not arm an auto-resume.
+                if (document.hidden) hiddenPause = true
                 pause()
             }
             return
@@ -1492,7 +1494,7 @@ export function initTrainingReplay(root: HTMLElement) {
             start()
             return
         }
-        if (hiddenPause && time < total) {
+        if (hiddenPause && !reduced.matches && time < total) {
             hiddenPause = false
             playing = true
             previousTimestamp = undefined
@@ -1516,7 +1518,10 @@ export function initTrainingReplay(root: HTMLElement) {
     resizeObserver.observe(canvas)
     document.addEventListener('visibilitychange', onVisibilityChange)
     reduced.addEventListener('change', () => {
-        if (reduced.matches) pause()
+        if (reduced.matches) {
+            hiddenPause = false
+            pause()
+        }
         render()
     })
 
