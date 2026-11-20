@@ -71,10 +71,13 @@
         /* --h6: oklch(from #00897B l c h); */
         --rosewater: oklch(from #f4dbd6 l c h);
         --flamingo: oklch(from #f0c6c6 l c h);
-        --red: #ff1744;
-        --orange: oklch(from #ff5722 l c h);
+        /* Orange/yellow pair pulled from the kitty light palette so the two
+           are distinct (red #f44336 / orange #ff794e / yellow #ffbc33); the
+           previous #ff5722/#fd971f pair sat only ~10 degrees apart. */
+        --red: oklch(0.64265 0.21531 28.806);
+        --orange: oklch(0.72616 0.17377 38.237);
         --peach: oklch(from #f5a97f l c h);
-        --yellow: oklch(from #fd971f l c h);
+        --yellow: oklch(0.86657 0.16466 88.684);
         --green: oklch(from #05a551 l c h);
         --teal: oklch(from #8bd5ca l c h);
         --sky: oklch(from #91d7e3 l c h);
@@ -84,7 +87,7 @@
         --purple: oklch(from #9373d6 l c h);
         --aqua: oklch(from #00b8d4 l c h);
         --teal: oklch(from #00838f l c h);
-        --pink: oklch(from #ff3399 l c h);
+        --pink: #ef6292;
         /* --accent: oklch(from #f92672 l c h); */
         --accent: oklch(from #ff1a8f l c h);
         --mauve: oklch(from #c6a0f6 l c h);

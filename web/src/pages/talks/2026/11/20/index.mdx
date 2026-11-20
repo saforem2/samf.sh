@@ -78,15 +78,13 @@ AuroraGPT pre-trains open foundation models for science on Aurora. This talk is 
 <dl class="aurora-facts">
 <div><dt>Racks</dt><dd>166</dd></div>
 <div><dt>Nodes</dt><dd>10,624</dd></div>
-<div><dt>XPUs</dt><dd>127,488 <span class="aurora-fact-note">6 tiles · 2 XPUs each</span></dd></div>
+<div><dt>XPUs</dt><dd>127,488<span class="aurora-fact-note">6 tiles × 2</span></dd></div>
 <div><dt>CPUs</dt><dd>21,248</dd></div>
 <div><dt>NICs</dt><dd>84,992 <span class="aurora-fact-note">Slingshot-11</span></dd></div>
 <div><dt>HBM</dt><dd>8 PB</dd></div>
 <div><dt>DDR5</dt><dd>10 PB</dd></div>
 </dl>
 <p class="hero-context">HPE Cray EX · Intel® Data Center GPU Max 1550 · Slingshot-11</p>
-
-
 </div>
 
 </div>
@@ -585,15 +583,34 @@ flowchart TB
         font-weight: 700;
     }
 
+    /* Let the content block grow into the leftover height, then centre
+       heading + layout as one group so there is no dead band above or
+       below the figure. */
     #aurora .slide-inner {
         justify-content: flex-start;
-        gap: 0.4rem;
+        gap: 0.5rem;
+    }
+    /* The deck's headings are set in the STIX Two Text face the ALCF/ANL
+       reports use, so the slides read as Argonne material rather than as the
+       site's body mono. Body text stays in the reader's chosen family. */
+    #aurora h2,
+    #portable-stack h2,
+    #production-result h2,
+    #bit-exact h2,
+    #auto-retry-cluster h2,
+    #thanks h2,
+    #eval-backup h2,
+    #optimizer-backup h2,
+    #recovery-scopes h2 {
+        font-family: var(--font-stack-stix);
+        font-weight: 600;
+        letter-spacing: -0.005em;
     }
     .aurora-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-        gap: clamp(2rem, 3.5vw, 4rem);
-        align-items: center;
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.65rem;
         flex: 1 1 auto;
         min-height: 0;
     }
@@ -605,9 +622,9 @@ flowchart TB
         margin: 0;
         display: grid;
         grid-template-rows: minmax(0, 1fr) auto;
-        gap: 0.9rem;
+        gap: 0.4rem;
+        min-height: 0;
         align-content: stretch;
-        height: 100%;
     }
     .aurora-photo img {
         width: 100%;
@@ -615,7 +632,7 @@ flowchart TB
         max-height: none;
         min-height: 0;
         object-fit: cover;
-        object-position: center;
+        object-position: 50% 62%;
         display: block;
         border-radius: 2px;
         background: #000;
@@ -639,30 +656,36 @@ flowchart TB
 
     .aurora-specs {
         display: grid;
-        gap: 1.1rem;
-        align-content: center;
-        align-content: space-evenly;
+        gap: 0.35rem;
+        align-content: end;
         min-width: 0;
-        height: 100%;
     }
 
     .aurora-facts {
         margin: 0;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1.35rem 1.75rem;
-        padding-bottom: 1.2rem;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.25rem 1.25rem;
+        padding-bottom: 0.7rem;
         border-bottom: 1px solid var(--sc-rule);
-        align-content: center;
+        align-content: end;
     }
     .aurora-facts > div {
         display: grid;
         gap: 0.15rem;
         align-content: start;
     }
-    #aurora .hero-context { font-size: 1.75rem; line-height: 1.4; color: var(--foreground0); }
+    #aurora .hero-context {
+        font-size: 1.15rem;
+        line-height: 1.3;
+        color: var(--foreground1);
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .aurora-facts dt {
-        font-size: 1.6rem;
+        font-size: 1.1rem;
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
@@ -670,7 +693,7 @@ flowchart TB
     }
     .aurora-facts dd {
         margin: 0;
-        font-size: clamp(2.75rem, 4.6vw, 4.4rem);
+        font-size: clamp(1.35rem, 2.6vw, 2.35rem);
         font-weight: 800;
         line-height: 1.05;
         letter-spacing: -0.02em;
@@ -679,7 +702,7 @@ flowchart TB
     }
     .aurora-fact-note {
         display: block;
-        font-size: 0.38em;
+        font-size: 0.46em;
         font-weight: 500;
         letter-spacing: 0;
         line-height: 1.35;
