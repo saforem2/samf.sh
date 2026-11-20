@@ -7,7 +7,7 @@ W&B workspace view used for the SC26 backup slides:
 
   created_at                                    >= 2025-08-20
   user                                          == foremans
-  config.args.num_layers                        in {4,6,8,10,12,14,16,18,20}
+  config.args.num_layers                        == 12
   config.args.tokenizer_model                   in {google/gemma-7b, google/gemma-7B}
   config.args.rope_theta                        == 50000
   config.args.zero_stage                        == 0
@@ -16,6 +16,7 @@ W&B workspace view used for the SC26 backup slides:
   config.args.world_size                        in {3072, 6240}
   config.args.data_file_list                    == ALCF/data-lists/aurora/olmo-mix-1124.txt
   config.args.deepspeed_config_dict.grad_accum  >= 2
+  config.outdir                                 == optimizer-experiments/Megatron-DeepSpeed
   config.torch_version_as_float                 >= 2.8
   env.LOAD                                      unset (fresh runs, not resumes)
   name                                          not in {treasured-thunder-4350,
@@ -30,9 +31,10 @@ Output: web/src/components/slides/sc26-optimizer-data.ts
   optimizerHistories[] entries keep [x, y] pairs where x is tokens in BILLIONS
   (the web chart divides by 1000 to draw trillions) and y is the raw metric.
   Smoothing is left to the chart (it applies TWEMA); this file stores RAW data,
-  downsampled to ~2 points per bucket of `BUCKET_TOKENS` so the module stays a
-  few hundred KB. Every bucket keeps both its min and max so extrema (the
-  AdamW blow-up, MuonClip spikes) survive.
+  raw grad-norm values are kept (the chart clips the y axis at 50); buckets
+  are widened as needed so the surviving two extrema per bucket stay within
+  MAX_POINTS_PER_SERIES. Bucket extrema are preserved, so the AdamW blow-up
+  and MuonClip spikes survive intact.
 
 Usage:
     python scripts/fetch-sc26-optimizer.py
@@ -51,15 +53,34 @@ import pandas as pd
 
 PROJECT = "aurora_gpt/AuroraGPT"
 CREATED_AFTER = "2025-08-20T00:00:00Z"
-NUM_LAYERS = {4, 6, 8, 10, 12, 14, 16, 18, 20}
+NUM_LAYERS = {12}
 TOKENIZERS = {"google/gemma-7b", "google/gemma-7B"}
 WORLD_SIZES = {3072, 6240}
 DATA_LIST = "ALCF/data-lists/aurora/olmo-mix-1124.txt"
 EXCLUDED_NAMES = {"treasured-thunder-4350", "grateful-dust-4351", "glowing-disco-4352"}
+# Runs whose grad_norm telemetry is broken (e.g. logging in wrong units after a
+# resume) — their grad series is garbage and pins the chart's clipped axis.
+# `1a7bjaeu` (muonclip, name solar-river-4174) logs grad_norm values orders of
+# magnitude above any healthy run from the first logged step onward.
+BAD_GRAD_RUN_NAMES = {"solar-river-4174"}  # grad_norm telemetry corrupt
+# Scope to the canonical 50M-token-per-batch campaign tree (same as
+# scripts/fetch-optimizer-comparison.py). The whole 2025-08 sweep this chart is
+# built from launched out of optimizer-experiments/Megatron-DeepSpeed; the
+# large-batch-training/tok50M-n512 tree holds the older muon-only run, which is
+# intentionally excluded. Set to "" to disable the filter.
+OUTDIR = (
+    "/lus/flare/projects/AuroraGPT/AuroraGPT-v1/Experiments/AuroraGPT-2B/"
+    "optimizer-experiments/Megatron-DeepSpeed"
+)
 CACHE = Path("/tmp/sc26-optimizer-cache")
 OUT = Path(__file__).resolve().parent.parent / "web/src/components/slides/sc26-optimizer-data.ts"
 BUCKET_TOKENS = 1_000_000_000  # 1B tokens — dense enough to see spikes on a 5T axis
-MAX_POINTS_PER_SERIES = 4000
+# W&B history is logged every ~25M tokens, so a 5T-token chain is ~200k rows.
+# Keeping two extrema per 1B bucket already yields ~9.3k points per series,
+# which then gets stride-thinned below; rather than thin after the fact we
+# widen the bucket until we are under the cap so the surviving extrema are
+# real observed values, not stride artefacts of the first N points.
+MAX_POINTS_PER_SERIES = 2400
 
 STEP_KEY = "_step"
 TOKEN_KEY = "training/consumed_tokens"
@@ -86,11 +107,10 @@ def enumerate_candidates(api, cache_path: Path):
     out, seen = [], set()
     for wandb_name, _ in RUNS:
         print(f"enumerating {wandb_name} …", flush=True)
-        runs = api.runs(
-            PROJECT,
-            filters={"config.args.optimizer": wandb_name, "created_at": {"$gte": CREATED_AFTER}},
-            per_page=500,
-        )
+        filters = {"config.args.optimizer": wandb_name, "created_at": {"$gte": CREATED_AFTER}}
+        if OUTDIR:
+            filters["config.outdir"] = OUTDIR
+        runs = api.runs(PROJECT, filters=filters, per_page=500)
         kept = 0
         for r in runs:
             if keep_run(r) and r.id not in seen:
@@ -105,6 +125,12 @@ def enumerate_candidates(api, cache_path: Path):
 
 def keep_run(r):
     if r.name in EXCLUDED_NAMES:
+        return False
+    # muonclip `solar-river-4174` logs grad_norm orders of magnitude too high
+    # from step 0 (resumed mid-run with a wrong scale); including it would pin
+    # every other run to the 50 clip on the chart. Drop it entirely rather than
+    # silently charting noise. Loss curve is still representative of the chain.
+    if r.name in BAD_GRAD_RUN_NAMES:
         return False
     cfg = r.config or {}
     args = cfg.get("args") or {}
@@ -141,24 +167,29 @@ GRAD_CLIP = 50.0  # W&B panel clips the grad-norm axis at 50; diverged runs sit 
 
 
 def downsample(df, col, max_points=MAX_POINTS_PER_SERIES):
-    """Keep min and max per bucket so extrema survive; drop NaNs."""
+    """Keep min and max per bucket so extrema survive; drop NaNs.
+
+    Raw grad-norm values are preserved verbatim (the chart clips the y axis
+    at GRAD_CLIP for display); clipping here would let TWEMA smooth a spike
+    away, which is exactly what the raw trace is meant to show.
+    """
     d = df.dropna(subset=["tokens", col]).sort_values("tokens")
     if d.empty:
         return []
-    b = (d.tokens // BUCKET_TOKENS).astype("int64")
+    bucket = BUCKET_TOKENS
+    while True:
+        b = (d.tokens // bucket).astype("int64")
+        n = b.nunique() * 2
+        if n <= max_points or bucket >= 512 * BUCKET_TOKENS:
+            break
+        bucket *= 2
     out = []
     for _, grp in d.groupby(b):
         idx = [grp[col].idxmin(), grp[col].idxmax()]
         for i in idx:
             y = float(d.loc[i, col])
-            if col == "grad_norm" and y > GRAD_CLIP:
-                y = GRAD_CLIP
             out.append((d.loc[i, "tokens"] / 1e9, y))
     out.sort(key=lambda p: p[0])
-    # stride-thin uniformly if still too dense (keeps shape, bounds size)
-    if len(out) > max_points:
-        stride = math.ceil(len(out) / max_points)
-        out = out[::stride]
     return [(round(x, 4), round(y, 5)) for x, y in out]
 
 
@@ -239,11 +270,18 @@ def main() -> int:
             print(f"    {rid} rows={len(df):>6} tokens<={df.tokens.max()/1e9:8.1f}B")
         if not frames:
             continue
+        # Process longest runs first so the dedup below keeps the row from the
+        # most-progressed run when two runs report the same token count.
+        frames.sort(key=lambda df: df.tokens.max(), reverse=True)
         union = pd.concat(frames, ignore_index=True)
-        # consumed_tokens is monotonic across resume chains; dedup on it.
+        # consumed_tokens is monotonic along a resume chain. Runs in the same
+        # campaign all describe one logical 50M-tokens-per-step training, so
+        # overlapping observations of the same token count should agree; keep
+        # the longest-running (i.e. latest, post-resume) copy rather than an
+        # arbitrary first-sorted row, which was dropping real extrema.
         union["_tkey"] = (union["tokens"] / 1e6).round().astype("int64")
         union = (
-            union.sort_values("tokens")
+            union.sort_values(["tokens"], kind="stable")
             .drop_duplicates(subset=["_tkey"], keep="first")
             .drop(columns=["_tkey"])
             .reset_index(drop=True)
