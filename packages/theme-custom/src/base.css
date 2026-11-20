@@ -71,11 +71,10 @@
         /* --h6: oklch(from #00897B l c h); */
         --rosewater: oklch(from #f4dbd6 l c h);
         --flamingo: oklch(from #f0c6c6 l c h);
-        /* Orange/yellow pair pulled from the kitty light palette so the two
-           are distinct (red #f44336 / orange #ff794e / yellow #ffbc33); the
-           previous #ff5722/#fd971f pair sat only ~10 degrees apart. */
-        --red: oklch(0.64265 0.21531 28.806);
-        --orange: oklch(0.72616 0.17377 38.237);
+        /* Red/orange taken from the lushify-light editor theme
+           (ErrorMsg / lualine_a_visual hues). */
+        --red: oklch(from #e05661 l c h);
+        --orange: oklch(from #ee9025 l c h);
         --peach: oklch(from #f5a97f l c h);
         --yellow: oklch(0.86657 0.16466 88.684);
         --green: oklch(from #05a551 l c h);
